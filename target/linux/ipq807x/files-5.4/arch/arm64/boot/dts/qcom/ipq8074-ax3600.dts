@@ -8,8 +8,8 @@
 / {
 	#address-cells = <0x2>;
 	#size-cells = <0x2>;
-	model = "Xiaomi Mi Router AX3600 IPQ807x/AP-AC04";
-	compatible = "xiaomi,ax3600", "qcom,ipq8074";
+	model = "XIAOMI AX3600";
+	compatible = "qcom,ap-ac04", "qcom,ipq8074";
 	qcom,board-id = <0x8 0x0>;
 	qcom,msm-id = <0x18C 0x0>;
 	qcom,pmic-id = <0x0 0x0 0x0 0x0>;
