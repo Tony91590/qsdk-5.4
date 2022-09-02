@@ -13,11 +13,11 @@ __target_inc=1
 DEVICE_TYPE?=router
 
 # Default packages - the really basic set
-DEFAULT_PACKAGES:=base-files libc libgcc busybox dropbear mtd uci opkg netifd fstools uclient-fetch logd urandom-seed urngd
+DEFAULT_PACKAGES:=base-files libc libgcc busybox dropbear mtd uci opkg netifd fstools uclient-fetch libustream-openssl logd urandom-seed urngd
 # For nas targets
 DEFAULT_PACKAGES.nas:=block-mount fdisk lsblk mdadm
 # For router targets
-DEFAULT_PACKAGES.router:=dnsmasq iptables ip6tables ppp ppp-mod-pppoe firewall odhcpd-ipv6only odhcp6c kmod-ipt-offload
+DEFAULT_PACKAGES.router:=dnsmasq-full iptables ip6tables ppp ppp-mod-pppoe firewall odhcpd-ipv6only odhcp6c luci luci-lib-ipkg
 DEFAULT_PACKAGES.bootloader:=
 
 ifneq ($(DUMP),)
@@ -109,20 +109,23 @@ ifneq ($(TARGET_BUILD)$(if $(DUMP),,1),)
 endif
 
 GENERIC_PLATFORM_DIR := $(TOPDIR)/target/linux/generic
+ifeq ($(CONFIG_TARGET_ipq60xx),y)
+GENERIC_BACKPORT_DIR :=
+GENERIC_PATCH_DIR :=
+GENERIC_HACK_DIR :=
+GENERIC_FILES_DIR :=
+else
 GENERIC_BACKPORT_DIR := $(GENERIC_PLATFORM_DIR)/backport$(if $(wildcard $(GENERIC_PLATFORM_DIR)/backport-$(KERNEL_PATCHVER)),-$(KERNEL_PATCHVER))
 GENERIC_PATCH_DIR := $(GENERIC_PLATFORM_DIR)/pending$(if $(wildcard $(GENERIC_PLATFORM_DIR)/pending-$(KERNEL_PATCHVER)),-$(KERNEL_PATCHVER))
 GENERIC_HACK_DIR := $(GENERIC_PLATFORM_DIR)/hack$(if $(wildcard $(GENERIC_PLATFORM_DIR)/hack-$(KERNEL_PATCHVER)),-$(KERNEL_PATCHVER))
 GENERIC_FILES_DIR := $(foreach dir,$(wildcard $(GENERIC_PLATFORM_DIR)/files $(GENERIC_PLATFORM_DIR)/files-$(KERNEL_PATCHVER)),"$(dir)")
+endif
 
-EXTERNAL_LINUX_CONFIG = $(call qstrip,$(CONFIG_EXTERNAL_LINUX_CONFIG_NAME))
-__config_name_list = $(if $(EXTERNAL_LINUX_CONFIG),$(1)/$(EXTERNAL_LINUX_CONFIG),$(1)/config-$(KERNEL_PATCHVER)) $(1)/config-default
+__config_name_list = $(1)/config-$(KERNEL_PATCHVER) $(1)/config-default
 __config_list = $(firstword $(wildcard $(call __config_name_list,$(1))))
 find_kernel_config=$(if $(__config_list),$(__config_list),$(lastword $(__config_name_list)))
 
 GENERIC_LINUX_CONFIG = $(call find_kernel_config,$(GENERIC_PLATFORM_DIR))
-ifeq ($(wildcard $(GENERIC_LINUX_CONFIG)),)
-GENERIC_LINUX_CONFIG = $(GENERIC_PLATFORM_DIR)/config-$(KERNEL_PATCHVER)
-endif
 LINUX_TARGET_CONFIG = $(call find_kernel_config,$(PLATFORM_DIR))
 ifneq ($(PLATFORM_DIR),$(PLATFORM_SUBDIR))
   LINUX_SUBTARGET_CONFIG = $(call find_kernel_config,$(PLATFORM_SUBDIR))
@@ -130,9 +133,6 @@ endif
 
 # config file list used for compiling
 LINUX_KCONFIG_LIST = $(wildcard $(GENERIC_LINUX_CONFIG) $(LINUX_TARGET_CONFIG) $(LINUX_SUBTARGET_CONFIG) $(TOPDIR)/env/kernel-config)
-ifeq ($(LINUX_KCONFIG_LIST),)
-LINUX_KCONFIG_LIST=$(TOPDIR)/qca/src/linux-$(KERNEL_PATCHVER)/arch/arm/configs/qcom_defconfig
-endif
 
 # default config list for reconfiguring
 # defaults to subtarget if subtarget exists and target does not
@@ -209,8 +209,7 @@ ifeq ($(DUMP),1)
   ifeq ($(ARCH),aarch64)
     CPU_TYPE ?= generic
     CPU_CFLAGS_generic = -mcpu=generic
-    CPU_CFLAGS_cortex-a53 = -march=armv8-a -mcpu=cortex-a53+crypto
-    CPU_CFLAGS_cortex-a73 = -march=armv8-a -mcpu=cortex-a73+crypto
+    CPU_CFLAGS_cortex-a53 = -mcpu=cortex-a53
   endif
   ifeq ($(ARCH),arc)
     CPU_TYPE ?= arc700
