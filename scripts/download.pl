@@ -232,7 +232,22 @@ foreach my $mirror (@ARGV) {
 		push @mirrors, "ftp://cdimage.debian.org/mirror/gnu.org/savannah/$1";
 		push @mirrors, "ftp://ftp.acc.umu.se/mirror/gnu.org/savannah/$1";
 	} elsif ($mirror =~ /^\@KERNEL\/(.+)$/) {
-		push @mirrors, "https://github.com/Tony91590/Q60/blob/Test/dl/linux-5.4.164.tar.xz?raw=true";		
+		my @extra = ( $1 );
+		if ($filename =~ /linux-\d+\.\d+(?:\.\d+)?-rc/) {
+			push @extra, "$extra[0]/testing";
+		} elsif ($filename =~ /linux-(\d+\.\d+(?:\.\d+)?)/) {
+			push @extra, "$extra[0]/longterm/v$1";
+		}		
+		foreach my $dir (@extra) {
+			push @mirrors, "https://cdn.kernel.org/pub/$dir";
+			push @mirrors, "https://mirror.rackspace.com/kernel.org/$dir";
+			push @mirrors, "http://download.xs4all.nl/ftp.kernel.org/pub/$dir";
+			push @mirrors, "http://mirrors.mit.edu/kernel/$dir";
+			push @mirrors, "http://ftp.nara.wide.ad.jp/pub/kernel.org/$dir";
+			push @mirrors, "http://www.ring.gr.jp/archives/linux/kernel.org/$dir";
+			push @mirrors, "ftp://ftp.riken.jp/Linux/kernel.org/$dir";
+			push @mirrors, "ftp://www.mirrorservice.org/sites/ftp.kernel.org/pub/$dir";
+		}
     } elsif ($mirror =~ /^\@GNOME\/(.+)$/) {
 		push @mirrors, "https://mirror.csclub.uwaterloo.ca/gnome/sources/$1";
 		push @mirrors, "http://ftp.acc.umu.se/pub/GNOME/sources/$1";
@@ -305,4 +320,3 @@ while (!-f "$target/$filename") {
 }
 
 $SIG{INT} = \&cleanup;
-
