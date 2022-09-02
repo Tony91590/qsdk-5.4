@@ -77,11 +77,10 @@ jobs:
           CONFIG_TARGET_ipq807x=y
           CONFIG_TARGET_ipq807x_generic=y
           CONFIG_TARGET_ipq807x_generic_DEVICE_xiaomi_ax3600=y
-          CONFIG_KERNEL_IPQ_MEM_PROFILE=0
+          CONFIG_KERNEL_IPQ_MEM_PROFILE=512
           CONFIG_TARGET_ipq807x_generic_QSDK_512=y
           CONFIG_TARGET_ARCH_PACKAGES="aarch64_cortex-a53_neon-vfpv4"
           CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe -march=armv8-a -mcpu=cortex-a53+crypto"
-          CONFIG_CPU_TYPE="cortex-a53+neon-vfpv4"
           CONFIG_LINUX_5_4=y
           CONFIG_DEFAULT_aq-fw-download=y
           CONFIG_TARGET_SUBTARGET="generic"
