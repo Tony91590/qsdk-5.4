@@ -11,6 +11,8 @@ PKG_NAME:=miniupnpd
 PKG_VERSION:=2.2.0
 PKG_RELEASE:=5
 
+miniupnpd-2.0.20170421.tar.gz
+
 PKG_SOURCE_URL:=https://miniupnp.tuxfamily.org/files
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_HASH:=f105210a13ed0ebfc649f661ecc59e0a072cc547b04977851f22b5521b4cadff
