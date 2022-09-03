@@ -1,3 +1,6 @@
+* -text
+*.tar.xz filter=lfs diff=lfs merge=lfs -text
+*.tar.gz filter=lfs diff=lfs merge=lfs -text
 dl/libnftnl-1.1.4.tar.bz2 filter=lfs diff=lfs merge=lfs -text
 dl/mcproxy-2017-08-24-93b5ace42268160ebbfff4c61818fb15fa2d9b99.tar.bz2 filter=lfs diff=lfs merge=lfs -text
 dl/mtd-utils-2.1.1.tar.bz2 filter=lfs diff=lfs merge=lfs -text
