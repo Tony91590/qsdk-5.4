@@ -8,7 +8,7 @@
 / {
 	#address-cells = <0x2>;
 	#size-cells = <0x2>;
-	model = "XIAOMI AX6";
+	model = "Redmi AX6 IPQ807x/AP-AC04";
 	compatible = "qcom,ap-ac04", "qcom,ipq8074";
 	qcom,msm-id = <0x18C 0x0>;
 	interrupt-parent = <&intc>;
