@@ -232,7 +232,7 @@ foreach my $mirror (@ARGV) {
 		push @mirrors, "ftp://cdimage.debian.org/mirror/gnu.org/savannah/$1";
 		push @mirrors, "ftp://ftp.acc.umu.se/mirror/gnu.org/savannah/$1";
 	} elsif ($mirror =~ /^\@KERNEL\/(.+)$/) {
-		push @mirrors, "https://github.com/Tony91590/Q60/blob/Test/dl/linux-5.4.164.tar.xz?raw=true";		
+		push @mirrors, "https://github.com/Tony91590/Q60/blob/build/dl/linux-5.4.164.tar.xz?raw=true";		
     } elsif ($mirror =~ /^\@GNOME\/(.+)$/) {
 		push @mirrors, "https://mirror.csclub.uwaterloo.ca/gnome/sources/$1";
 		push @mirrors, "http://ftp.acc.umu.se/pub/GNOME/sources/$1";
