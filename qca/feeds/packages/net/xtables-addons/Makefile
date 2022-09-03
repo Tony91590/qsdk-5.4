@@ -10,10 +10,10 @@ include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=xtables-addons
 PKG_VERSION:=2.14
-PKG_RELEASE:=10
+PKG_RELEASE:=9
 PKG_HASH:=d215a9a8b8e66aae04b982fa2e1228e8a71e7dfe42320df99e34e5000cbdf152
 
-PKG_SOURCE:=xtables-addons-2.14.tar.xz
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.xz
 PKG_SOURCE_URL:=@SF/xtables-addons
 PKG_BUILD_DEPENDS:=iptables
 PKG_INSTALL:=1
