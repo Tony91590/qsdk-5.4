@@ -9,8 +9,8 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=xtables-addons
-PKG_VERSION:=2.15
-PKG_RELEASE:=9
+PKG_VERSION:=2.14
+PKG_RELEASE:=10
 PKG_HASH:=d215a9a8b8e66aae04b982fa2e1228e8a71e7dfe42320df99e34e5000cbdf152
 
 PKG_SOURCE:=xtables-addons-2.14.tar.xz
