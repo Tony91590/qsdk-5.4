@@ -97,13 +97,13 @@ ifneq (, $(findstring $(subtarget), "ipq95xx" "ipq95xx_32"))
     QCASSDK_CONFIG_OPTS+= CHIP_TYPE=APPE
 endif
 
-ifneq (, $(findstring ipq807x_64, "ipq60xx" "ipq60xx_64" "ipq807x" "ipq807x_64"))
-    QCASSDK_CONFIG_OPTS+= PTP_FEATURE=enable
+ifneq (, $(findstring $(subtarget), "ipq60xx" "ipq60xx_64" "ipq807x" "ipq807x_64"))
+    QCASSDK_CONFIG_OPTS+= PTP_FEATURE=disable SWCONFIG_FEATURE=disable
 endif
 
 ifneq (, $(findstring $(CONFIG_KERNEL_IPQ_MEM_PROFILE), 256 512)$(CONFIG_LOWMEM_FLASH))
 	QCASSDK_CONFIG_OPTS+= MINI_SSDK=enable
-	ifneq (, $(findstring ipq807x_64, "ipq807x" "ipq807x_64"))
+	ifneq (, $(findstring $(subtarget), "ipq807x" "ipq807x_64"))
 		QCASSDK_CONFIG_OPTS+= CHIP_TYPE=HPPE
 	else ifneq (, $(findstring $(subtarget), "ipq60xx" "ipq60xx_64"))
 		QCASSDK_CONFIG_OPTS+= CHIP_TYPE=CPPE
