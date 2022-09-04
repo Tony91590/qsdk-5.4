@@ -3,9 +3,6 @@ config GCC_VERSION_7
 	bool
 
 config GCC_VERSION_5
-        default y if TARGET_ipq807x_generic
-	default y if GCC_USE_VERSION_5
-
 	bool
 
 config GCC_VERSION_8
