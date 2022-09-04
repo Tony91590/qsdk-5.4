@@ -12,7 +12,7 @@ name: OpenWrt-CI
 on:
   push:
     branches: 
-      - bolo3
+      - bolo4
 
   # schedule:
   #   - cron: 0 20 * * *
