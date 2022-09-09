@@ -9,7 +9,7 @@ PKG_LABEL:=$(shell echo $(PKG_VERSION) | cut -d'-' -f2)
 PKG_SPIN:=$(shell echo $(PKG_VERSION) | cut -d'-' -f4)
 
 PKG_SOURCE:=qca-wifi-fw-QCA8074_v1.0-WLAN.HK.2.5.r4-00745-QCAHKSWPL_SILICONZ-1.tar.bz2
-PKG_SOURCE_URL:=http://qcawebsrvr.qualcomm.com/cnss_win/santaclara/dev01/WLAN.HK.2.5.r4/$(PKG_VERSION)
+PKG_SOURCE_URL:=https://github.com/efsg/ipq8074/blob/master/WLAN.HK.2.0/wlan_proc_hwv2/src/components/qca-wifi-fw-src-component-cmn-WLAN.HK.2.0-01576-QCAHKSWPL_SILICONZ-1.tgz?raw=true
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 PKG_MD5SUM:=skip
 
