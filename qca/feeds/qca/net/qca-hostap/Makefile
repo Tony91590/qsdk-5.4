@@ -7,6 +7,7 @@ PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=ssh://qca-git01.qualcomm.com:29418/wifi/$(PKG_NAME).git
 PKG_BRANCH:=master
 PKG_RELEASE:=1
+LOCAL_SRC:=$(TOPDIR)/qca/src/qca-hostap
 PATCH_DIR:=$(TOPDIR)/qca/src/$(PKG_NAME)/qca-patches
 
 include $(INCLUDE_DIR)/local-development.mk
