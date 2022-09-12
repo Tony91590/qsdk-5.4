@@ -22,13 +22,6 @@ ifeq ($(DUMP)$(PKG_VERSION),)
   PKG_REV:=$(shell git ls-remote $(PKG_SOURCE_URL) $(PKG_BRANCH) | cut -b -7)
   PKG_VERSION:=g$(PKG_REV)
 endif
-CUSTOM_DIRECTORY?=0
-ifeq ($(CUSTOM_DIRECTORY),1)
-  PKG_BUILD_DIR:=$(KERNEL_BUILD_DIR)/$(PKG_NAME)-$(BUILD_VARIANT)/$(PKG_NAME)
-else
-  PKG_BUILD_DIR:=$(KERNEL_BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)-$(BUILD_VARIANT)/$(PKG_NAME)-$(PKG_VERSION)
-endif
-PKG_ASLR_PIE:=0
 
 COPY_TO_BUILD_DIR:=$(shell cp -fpR -u --verbose $(LOCAL_SRC)/* $(PKG_BUILD_DIR)/)
 include $(INCLUDE_DIR)/package.mk
