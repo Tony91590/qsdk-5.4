@@ -8,6 +8,7 @@ PKG_SOURCE_URL:=ssh://qca-git01.qualcomm.com:29418/wifi/$(PKG_NAME).git
 PKG_BRANCH:=master
 PKG_RELEASE:=1
 
+LOCAL_SRC:=$(TOPDIR)/qca/src/qca-wifi
 DRIVER_PATH:=$(TOPDIR)/qca/src/qca-wifi
 # legacy and hawkeye header files.
 FW_INCLUDE_PATH:=$(TOPDIR)/dl/include
