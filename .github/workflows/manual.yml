@@ -61,7 +61,6 @@ jobs:
 
       - name: Update feeds
         run: |
-           make clean
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
