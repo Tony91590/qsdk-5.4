@@ -152,17 +152,6 @@ CONFIG_DEFAULT_openvpn-openssl=y
 CONFIG_DEFAULT_opkg=y
 CONFIG_DEFAULT_pm-utils=y
 CONFIG_DEFAULT_ppp=y
-CONFIG_DEFAULT_ppp-mod-pppoe=y
-CONFIG_DEFAULT_ppp-mod-pptp=y
-CONFIG_DEFAULT_profilerd=y
-CONFIG_DEFAULT_qca-acfg=y
-CONFIG_DEFAULT_qca-cfg80211=y
-CONFIG_DEFAULT_qca-cfg80211tool=y
-CONFIG_DEFAULT_qca-cnss-daemon=y
-CONFIG_DEFAULT_qca-diag=y
-CONFIG_DEFAULT_qca-ezmesh=y
-CONFIG_DEFAULT_qca-ezmesh-agent=y
-CONF
 CONFIG_HAS_FPU=y
 CONFIG_AUDIO_SUPPORT=y
 CONFIG_GPIO_SUPPORT=y
