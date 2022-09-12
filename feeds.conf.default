@@ -1,4 +1,5 @@
 src-link packages ../qca/feeds/packages
+src-link lte-cm ../qca/feeds/lte-cm
 src-link ieee1905-security ../qca/feeds/ieee1905-security
 src-git luci https://git.openwrt.org/project/luci.git;openwrt-19.07
 src-git telephony https://git.openwrt.org/feed/telephony.git;openwrt-19.07
