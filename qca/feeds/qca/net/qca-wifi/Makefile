@@ -23,7 +23,16 @@ ifeq ($(DUMP)$(PKG_VERSION),)
   PKG_VERSION:=g$(PKG_REV)
 endif
 
-COPY_TO_BUILD_DIR:=$(shell cp -fpR -u --verbose $(LOCAL_SRC)/* $(PKG_BUILD_DIR)/)
+LOCAL_TYPE=$(strip \
+		$(if $(findstring supplicant,$(BUILD_VARIANT)),supplicant, \
+		wifi \
+	))
+
+LOCAL_VARIANT=$(patsubst supplicant-%,%,$(BUILD_VARIANT))
+
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(BUILD_VARIANT)/$(PKG)-$(PKG_VERSION)
+
+
 include $(INCLUDE_DIR)/package.mk
 
 FW_10_2_4:=qca-wifi-fw-10.2.4
