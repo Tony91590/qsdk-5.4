@@ -27,3 +27,5 @@ src-link wlan-hostapd ../qca/feeds/wlan-hostapd
 src-link wlan-iw ../qca/feeds/wlan-iw
 src-link wlan-open ../qca/feeds/wlan-open
 src-link wlan_utils ../qca/feeds/wlan_utils
+src-link qsdk-package ../qsdk-package
+
