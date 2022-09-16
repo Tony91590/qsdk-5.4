@@ -43,14 +43,9 @@ subtarget:=$(CONFIG_TARGET_BOARD)
 endif
 
 NSS_DP_HAL_DIR:=$(PKG_BUILD_DIR)/hal
-ifneq (, $(findstring _64, $(subtarget)))
-hal_arch:=$(subst _64,,$(subtarget))
-else
-hal_arch:=$(subtarget)
-endif
 
 define Build/Configure
-	$(LN) $(NSS_DP_HAL_DIR)/arch/$(hal_arch)/nss_$(hal_arch).h \
+	$(LN) $(NSS_DP_HAL_DIR)/arch/$(BOARD)/nss_$(BOARD).h \
 		$(PKG_BUILD_DIR)/exports/nss_dp_arch.h
 endef
 
@@ -59,7 +54,7 @@ define Build/Compile
 		CROSS_COMPILE="$(TARGET_CROSS)" \
 		ARCH="$(LINUX_KARCH)" \
 		M="$(PKG_BUILD_DIR)" \
-		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" SoC="$(subtarget)" \
+		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" SoC="$(BOARD)_64" \
 		modules
 endef
 
