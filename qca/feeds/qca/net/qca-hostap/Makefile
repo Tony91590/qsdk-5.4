@@ -61,7 +61,7 @@ endef
 define Package/$(PKG_NAME)-macsec
   $(call Package/$(PKG_NAME))
   TITLE:=Hostap authenticator (MACSEC)
-  DEPENDS+= @TARGET_ipq806x||TARGET_ipq||TARGET_ipq807x||TARGET_ipq60xx||TARGET_ipq50xx +kmod-qca-nss-macsec
+  DEPENDS+= @TARGET_ipq806x||TARGET_ipq||TARGET_ipq807x||TARGET_ipq60xx||TARGET_ipq50xx +@kmod-qca-nss-macsec
   VARIANT:=macsec
 endef
 
