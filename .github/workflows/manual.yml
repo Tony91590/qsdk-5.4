@@ -12,7 +12,7 @@ name: OpenWrt-CI
 on:
   push:
     branches: 
-      - bolo4
+      - Vla
 
   # schedule:
   #   - cron: 0 20 * * *
@@ -34,7 +34,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
         with:
-          ref: Master
+          ref: Vla
 
       - name: Space cleanup
         env:
@@ -44,7 +44,7 @@ jobs:
           sudo rm -rf /usr/share/dotnet /etc/mysql /etc/php /etc/apt/sources.list.d /usr/local/lib/android
           sudo -E apt-get -y purge azure-cli ghc* zulu* hhvm llvm* firefox google* dotnet* powershell openjdk* adoptopenjdk* mysql* php* mongodb* dotnet* moby* snapd* || true
           sudo -E apt-get update
-          sudo -E apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev patch python3 unzip zlib1g-dev lib32gcc1 libc6-dev-i386 subversion flex uglifyjs gcc-multilib g++-multilib p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler antlr3 gperf swig libtinfo5
+          sudo -E apt-get -y install build-essential openssl-dev sharutils asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev patch python3 unzip zlib1g-dev lib32gcc1 libc6-dev-i386 subversion flex uglifyjs gcc-multilib g++-multilib p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler antlr3 gperf swig libtinfo5
           sudo -E apt-get -y autoremove --purge
           sudo -E apt-get clean
 
@@ -61,8 +61,8 @@ jobs:
 
       - name: Update feeds
         run: |
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
+          ./scripts/feeds update -f
+          ./scripts/feeds install -f
 
       - name: Generate configuration file
         run: |
@@ -77,18 +77,64 @@ jobs:
           CONFIG_TARGET_ipq807x=y
           CONFIG_TARGET_ipq807x_generic=y
           CONFIG_TARGET_ipq807x_generic_DEVICE_xiaomi_ax3600=y
-          CONFIG_KERNEL_IPQ_MEM_PROFILE=0
+          CONFIG_KERNEL_IPQ_MEM_PROFILE=512
           CONFIG_TARGET_ipq807x_generic_QSDK_512=y
-          CONFIG_TARGET_ARCH_PACKAGES="aarch64_cortex-a53_neon-vfpv4"
-          CONFIG_DEFAULT_TARGET_OPTIMIZATION="-Os -pipe -march=armv8-a -mcpu=cortex-a53+crypto"
-          CONFIG_CPU_TYPE="cortex-a53+neon-vfpv4"
           CONFIG_LINUX_5_4=y
+          CONFIG_GCC_VERSION="7.5.0"
           CONFIG_DEFAULT_aq-fw-download=y
           CONFIG_TARGET_SUBTARGET="generic"
           CONFIG_TARGET_PROFILE="QSDK_512"
-          CONFIG_GCC_VERSION="7.5.0
           CONFIG_KERNEL_BUILD_USER="OpenWrt-CI"
           CONFIG_KERNEL_BUILD_DOMAIN="Azure"
+          CONFIG_PACKAGE_kmod-ifb=y
+          CONFIG_PACKAGE_kmod-macvlan=y
+          CONFIG_PACKAGE_kmod-qca-nss-cfi-cryptoapi=y
+          CONFIG_PACKAGE_kmod-qca-nss-crypto=y
+          CONFIG_PACKAGE_kmod-qca-nss-dp=y
+          CONFIG_PACKAGE_kmod-qca-nss-drv=y
+          CONFIG_PACKAGE_kmod-qca-nss-drv-bridge-mgr=y
+          CONFIG_PACKAGE_kmod-qca-nss-drv-gre=y
+          CONFIG_PACKAGE_kmod-qca-nss-drv-ipsecmgr=y
+          CONFIG_PACKAGE_kmod-qca-nss-drv-ipsecmgr-xfrm=y
+          CONFIG_PACKAGE_kmod-qca-nss-drv-lag-mgr=y
+          CONFIG_PACKAGE_kmod-qca-nss-drv-map-t=y
+          CONFIG_PACKAGE_kmod-qca-nss-drv-match=y
+          CONFIG_PACKAGE_kmod-qca-nss-drv-netlink=y
+          CONFIG_PACKAGE_kmod-qca-nss-drv-ovpn-mgr=y
+          CONFIG_PACKAGE_kmod-qca-nss-drv-ovpn-link=y
+          CONFIG_PACKAGE_kmod-qca-nss-drv-pppoe=y
+          CONFIG_PACKAGE_kmod-qca-nss-drv-tun6rd=y
+          CONFIG_PACKAGE_kmod-qca-nss-drv-tunipip6=y
+          CONFIG_PACKAGE_kmod-qca-nss-drv-vlan-mgr=y
+          CONFIG_PACKAGE_kmod-qca-nss-drv-vxlanmgr=y
+          CONFIG_PACKAGE_kmod-qca-nss-macsec=y
+          CONFIG_PACKAGE_kmod-qca-ovsmgr=y
+          CONFIG_PACKAGE_kmod-qca-ssdk-nohnat=y
+          CONFIG_PACKAGE_kmod-bonding=y
+          CONFIG_PACKAGE_kmod-ipsec=y
+          CONFIG_PACKAGE_kmod-ipsec4=y
+          CONFIG_PACKAGE_kmod-ipsec6=y
+          CONFIG_PACKAGE_kmod-iptunnel=y
+          CONFIG_PACKAGE_kmod-iptunnel4=y
+          CONFIG_PACKAGE_kmod-iptunnel6=y
+          CONFIG_PACKAGE_kmod-qca-nss-sfe=y
+          CONFIG_PACKAGE_kmod-rmnet-core=y
+          CONFIG_PACKAGE_kmod-rmnet-ctl=y
+          CONFIG_PACKAGE_kmod-rmnet-nss=y
+          CONFIG_PACKAGE_kmod-sched=y
+          CONFIG_PACKAGE_kmod-sched-connmark=y
+          CONFIG_PACKAGE_kmod-sched-core=y
+          CONFIG_PACKAGE_kmod-shortcut-fe=y
+          CONFIG_PACKAGE_kmod-shortcut-fe-drv=y
+          CONFIG_PACKAGE_kmod-sit=y
+          CONFIG_PACKAGE_kmod-slhc=y
+          CONFIG_PACKAGE_kmod-tcp-bbr=y
+          CONFIG_PACKAGE_kmod-tun=y
+          CONFIG_PACKAGE_kmod-udptunnel4=y
+          CONFIG_PACKAGE_kmod-udptunnel6=y
+          CONFIG_PACKAGE_kmod-vxlan=y
+          CONFIG_PACKAGE_kmod-bootconfig=y
+          CONFIG_PACKAGE_kmod-gpio-button-hotplug=y
           EOF
 
           
