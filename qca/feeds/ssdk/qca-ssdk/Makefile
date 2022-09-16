@@ -7,8 +7,19 @@ PKG_SOURCE_PROTO:=git
 PKG_BRANCH:=master
 PKG_RELEASE:=1
 
-hal_arch:=$(BOARD)
+ifeq ($(CONFIG_TARGET_ipq),y)
+	subtarget:=$(SUBTARGET)
+else
+	subtarget:=$(CONFIG_TARGET_BOARD)
+endif
 
+ifneq (, $(findstring _64, $(subtarget)))
+	hal_arch:=$(subst _64,,$(subtarget))
+else ifneq (, $(findstring _32, $(subtarget)))
+	hal_arch:=$(subst _32,,$(subtarget))
+else
+	hal_arch:=$(subtarget)
+endif
 
 include $(INCLUDE_DIR)/local-development.mk
 ifeq ($(DUMP)$(PKG_VERSION),)
