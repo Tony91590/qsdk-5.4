@@ -61,9 +61,8 @@ jobs:
 
       - name: Update feeds
         run: |
-           make dirclean
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
+          ./scripts/feeds update -f
+          ./scripts/feeds install -f
 
       - name: Generate configuration file
         run: |
