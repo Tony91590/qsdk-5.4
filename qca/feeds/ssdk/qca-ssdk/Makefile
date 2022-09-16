@@ -1,19 +1,24 @@
+
 include $(TOPDIR)/rules.mk
+include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=qca-ssdk
+PKG_SOURCE_PROTO:=git
+PKG_BRANCH:=master
 PKG_RELEASE:=1
 
-PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://source.codeaurora.org/quic/qsdk/oss/lklm/qca-ssdk
-PKG_SOURCE_DATE:=2021-04-28
-PKG_SOURCE_VERSION:=c9bc3bc34eaaac78083573524097356e2dcc1b66
-PKG_MIRROR_HASH:=29db78529be32427b8b96fcbfec22a016a243676781ec96d9d65b810944fa405
+ifeq ($(CONFIG_TARGET_ipq),y)
+  subtarget:=$(SUBTARGET)
+else
+  subtarget:=$(CONFIG_TARGET_BOARD)
+endif
 
-PKG_BUILD_PARALLEL:=1
+include $(INCLUDE_DIR)/local-development.mk
+ifeq ($(DUMP)$(PKG_VERSION),)
+  PKG_VERSION:=$(shell git ls-remote $(PKG_SOURCE_URL) $(PKG_BRANCH) | cut -b -7)
+endif
 
 LOCAL_VARIANT=$(patsubst qca-ssdk-%,%,$(patsubst qca-ssdk-%,%,$(BUILD_VARIANT)))
-
-include $(INCLUDE_DIR)/kernel.mk
 include $(INCLUDE_DIR)/package.mk
 
 define KernelPackage/qca-ssdk/default-nohnat
@@ -28,8 +33,17 @@ endef
 
 define KernelPackage/qca-ssdk-nohnat
 $(call KernelPackage/qca-ssdk/default-nohnat)
-  DEPENDS:=@(TARGET_ipq806x||TARGET_ipq807x)
+  DEPENDS:=@!(TARGET_ipq_ipq40xx||TARGET_ipq40xx)||TARGET_ar71xx
   VARIANT:=nohnat
+
+  ifneq (, $(findstring $(subtarget), "ipq50xx" "ipq50xx_64"))
+    ifeq (, $(CONFIG_LOWMEM_FLASH))
+      ifneq ($(LINUX_VERSION),$(filter 5.4%,$(LINUX_VERSION)))
+      DEPENDS+=kmod-ipt-filter +kmod-ppp
+      QCASSDK_CONFIG_OPTS+= HNAT_FEATURE=enable
+      endif
+    endif
+  endif
 endef
 
 define KernelPackage/qca-ssdk-nohnat/Description
@@ -38,8 +52,7 @@ endef
 
 define KernelPackage/qca-ssdk-hnat
 $(call KernelPackage/qca-ssdk/default-nohnat)
-  DEPENDS:=@TARGET_ipq40xx +kmod-ipt-extra +kmod-ipt-filter \
-	+kmod-ppp +TARGET_ipq40xx:kmod-qca-rfs
+  DEPENDS:=@TARGET_ipq_ipq40xx||TARGET_ipq40xx||TARGET_ar71xx||TARGET_ipq806x +kmod-ipt-extra +kmod-ipt-filter +(TARGET_ipq806x||TARGET_ipq):kmod-qca-rfs +kmod-ppp
   TITLE+= (hnat)
   VARIANT:=hnat
 endef
@@ -48,37 +61,68 @@ define KernelPackage/qca-ssdk-hnat/Description
 This package contains a qca-ssdk-hnat driver for QCA chipset
 endef
 
-ifdef CONFIG_TOOLCHAIN_BIN_PATH
-TOOLCHAIN_BIN_PATH=$(CONFIG_TOOLCHAIN_BIN_PATH)
-else
-TOOLCHAIN_BIN_PATH=$(TOOLCHAIN_DIR)/bin
+GCC_VERSION=$(shell echo "$(CONFIG_GCC_VERSION)" | sed 's/[^0-9.]*\([0-9.]*\).*/\1/')
+ifeq ($(GCC_VERSION), 4.8)
+	GCC_VERSION=4.8.3
 endif
 
+ifdef CONFIG_TOOLCHAIN_BIN_PATH
+	TOOLCHAIN_BIN_PATH=$(CONFIG_TOOLCHAIN_BIN_PATH)
+else
+	TOOLCHAIN_BIN_PATH=$(TOOLCHAIN_DIR)/bin
+endif
+
+ifdef CONFIG_TARGET_NAME
 QCASSDK_CONFIG_OPTS+= \
-	TOOL_PATH=$(TOOLCHAIN_BIN_PATH) \
-	SYS_PATH=$(LINUX_DIR) \
-	TOOLPREFIX=$(TARGET_CROSS) \
-	KVER=$(LINUX_VERSION) \
-	ARCH=$(LINUX_KARCH) \
-	TARGET_SUFFIX=$(CONFIG_TARGET_SUFFIX) \
-	GCC_VERSION=$(GCC_VERSION) \
-	CFLAGS=-I$(STAGING_DIR)/usr/include
+		      TARGET_NAME=$(CONFIG_TARGET_NAME)
+endif
+
+QCASSDK_CONFIG_OPTS+= TOOL_PATH=$(TOOLCHAIN_BIN_PATH) \
+                SYS_PATH=$(LINUX_DIR) \
+                TOOLPREFIX=$(TARGET_CROSS) \
+                KVER=$(LINUX_VERSION) \
+                ARCH=$(LINUX_KARCH) \
+		TARGET_SUFFIX=$(CONFIG_TARGET_SUFFIX) \
+		GCC_VERSION=$(GCC_VERSION) \
+		CFLAGS=-I$(STAGING_DIR)/usr/include
 
 ifeq ($(LOCAL_VARIANT),hnat)
     QCASSDK_CONFIG_OPTS+= HNAT_FEATURE=enable
+    ifeq ($(CONFIG_TARGET_ar71xx),)
+    	QCASSDK_CONFIG_OPTS+= RFS_FEATURE=enable
+    endif
 endif
 
-ifeq ($(BOARD),ipq40xx)
+ifneq (, $(findstring $(subtarget), "ipq95xx" "ipq95xx_32"))
+    QCASSDK_CONFIG_OPTS+= CHIP_TYPE=APPE
+endif
+
+ifneq (, $(findstring $(subtarget), "ipq60xx" "ipq60xx_64" "ipq807x" "ipq807x_64"))
+    QCASSDK_CONFIG_OPTS+= PTP_FEATURE=enable
+endif
+
+ifneq (, $(findstring $(CONFIG_KERNEL_IPQ_MEM_PROFILE), 256 512)$(CONFIG_LOWMEM_FLASH))
+	QCASSDK_CONFIG_OPTS+= MINI_SSDK=enable
+	ifneq (, $(findstring $(subtarget), "ipq807x" "ipq807x_64"))
+		QCASSDK_CONFIG_OPTS+= CHIP_TYPE=HPPE
+	else ifneq (, $(findstring $(subtarget), "ipq60xx" "ipq60xx_64"))
+		QCASSDK_CONFIG_OPTS+= CHIP_TYPE=CPPE
+	else ifneq (, $(findstring $(subtarget), "ipq50xx" "ipq50xx_64"))
+		QCASSDK_CONFIG_OPTS+= ISISC_ENABLE=enable
+		QCASSDK_CONFIG_OPTS+= CHIP_TYPE=MP
+
+		ifeq (, $(CONFIG_LOWMEM_FLASH))
+			ifeq (, $(findstring $(CONFIG_KERNEL_IPQ_MEM_PROFILE), 256))
+				QCASSDK_CONFIG_OPTS+= MINI_SSDK=disable
+			endif
+		endif
+	endif
+	QCASSDK_CONFIG_OPTS+= PTP_FEATURE=disable
+endif
+
+ifeq ($(CONFIG_TARGET_ipq806x_QSDK_Standard),)
     QCASSDK_CONFIG_OPTS+= HK_CHIP=enable
-else ifeq ($(BOARD),ipq60xx)
-    QCASSDK_CONFIG_OPTS+= CHIP_TYPE=CPPE PTP_FEATURE=disable SWCONFIG_FEATURE=disable
-else ifeq ($(BOARD),ipq807x)
-    QCASSDK_CONFIG_OPTS+= CHIP_TYPE=HPPE PTP_FEATURE=disable SWCONFIG_FEATURE=disable
 endif
-
-define Build/Compile
-	$(MAKE) -C $(PKG_BUILD_DIR) $(strip $(QCASSDK_CONFIG_OPTS))
-endef
 
 define Build/InstallDev
 	$(INSTALL_DIR) $(1)/usr/include/qca-ssdk
@@ -104,6 +148,11 @@ define Build/InstallDev
 	$(CP) -rf $(PKG_BUILD_DIR)/include/common/*.h $(1)/usr/include/qca-ssdk
 	$(CP) -rf $(PKG_BUILD_DIR)/include/sal/os/linux/*.h $(1)/usr/include/qca-ssdk
 	$(CP) -rf $(PKG_BUILD_DIR)/include/sal/os/*.h $(1)/usr/include/qca-ssdk
+
+endef
+
+define Build/Compile
+	$(MAKE) -C $(PKG_BUILD_DIR) $(strip $(QCASSDK_CONFIG_OPTS))
 endef
 
 define KernelPackage/qca-ssdk-nohnat/install
