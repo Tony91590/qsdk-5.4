@@ -25,7 +25,7 @@ define Package/iw
   CATEGORY:=Network
   TITLE:=cfg80211 interface configuration utility
   URL:=http://wireless.kernel.org/en/users/Documentation/iw
-  DEPENDS:= +libnl-tiny
+  DEPENDS:= +libnl-tiny +kmod-qca-ssdk-nohnat
   VARIANT:=tiny
 endef
 
