@@ -82,7 +82,7 @@ jobs:
           CONFIG_LINUX_5_4=y
           CONFIG_GCC_VERSION="7.5.0"
           CONFIG_DEFAULT_aq-fw-download=y
-          CONFIG_TARGET_SUBTARGET="ipq807x_64"
+          CONFIG_TARGET_SUBTARGET="generic"
           CONFIG_TARGET_PROFILE="QSDK_512"
           CONFIG_KERNEL_BUILD_USER="OpenWrt-CI"
           CONFIG_KERNEL_BUILD_DOMAIN="Azure"
