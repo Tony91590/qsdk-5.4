@@ -18,7 +18,7 @@ ifneq (, $(findstring _64, $(subtarget)))
 else ifneq (, $(findstring _32, $(subtarget)))
 	hal_arch:=$(subst _32,,$(subtarget))
 else
-	hal_arch:=$(subtarget)
+	hal_arch:=$(BOARD)
 endif
 
 include $(INCLUDE_DIR)/local-development.mk
