@@ -113,7 +113,7 @@ DRV_MAKE_OPTS+=NSS_DRV_C2C_ENABLE=n \
 endif
 
 define Build/Configure
-	$(LN) arch/nss_$(subtarget).h $(PKG_BUILD_DIR)/exports/nss_arch.h
+	$(LN) arch/nss_$(BOARD)_64.h $(PKG_BUILD_DIR)/exports/nss_arch.h
 endef
 
 define Build/Compile
@@ -121,7 +121,7 @@ define Build/Compile
 		CROSS_COMPILE="$(TARGET_CROSS)" \
 		ARCH="$(LINUX_KARCH)" \
 		M="$(PKG_BUILD_DIR)" \
-		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" SoC="$(subtarget)" \
+		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" SoC="$(BOARD)_64" \
 		modules
 endef
 
