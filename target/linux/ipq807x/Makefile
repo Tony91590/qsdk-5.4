@@ -34,7 +34,7 @@ endif
 include $(INCLUDE_DIR)/target.mk
 DEFAULT_PACKAGES += \
 	uboot-envtools kmod-leds-gpio kmod-gpio-button-hotplug kmod-button-hotplug \
-	kmod-ata-core kmod-ata-ahci kmod-ata-ahci-platform kmod-usb3 swconfig \
+	kmod-ata-core kmod-ata-ahci kmod-ata-ahci-platform kmod-usb3 swconfig kmod-shortcut-fe-drv \
 	kmod-usb-phy-ipq807x kmod-usb-dwc3-qcom-internal kmod-qca-ssdk-nohnat
 
 $(eval $(call BuildTarget))
