@@ -25,7 +25,7 @@ jobs:
 
     name: Build OpenWrt firmware
 
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
 
     if: github.event.repository.owner.id == github.event.sender.id
 
@@ -40,9 +40,13 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo add-apt-repository -y ppa:avsm/ppa
-          sudo apt update
-          sudo apt-get install -y opam ocaml-nox git zip subversion build-essential flex wget gawk unzip man file zlib1g-dev libssl-dev libncurses5-dev
+          docker rmi `docker images -q`
+          sudo rm -rf /usr/share/dotnet /etc/mysql /etc/php /etc/apt/sources.list.d /usr/local/lib/android
+          sudo -E apt-get -y purge azure-cli ghc* zulu* hhvm llvm* firefox google* dotnet* powershell openjdk* adoptopenjdk* mysql* php* mongodb* dotnet* moby* snapd* || true
+          sudo -E apt-get update
+          sudo -E apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev patch python3 unzip zlib1g-dev lib32gcc1 libc6-dev-i386 subversion flex uglifyjs gcc-multilib g++-multilib p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler antlr3 gperf swig libtinfo5
+          sudo -E apt-get -y autoremove --purge
+          sudo -E apt-get clean
 
           # sudo mkdir -p -m 777 /mnt/openwrt/bin /mnt/openwrt/build_dir/host /mnt/openwrt/build_dir/hostpkg /mnt/openwrt/dl /mnt/openwrt/feeds /mnt/openwrt/staging_dir
           # ln -s /mnt/openwrt/bin ./bin
@@ -53,16 +57,12 @@ jobs:
           # ln -s /mnt/openwrt/feeds ./feeds
           # ln -s /mnt/openwrt/staging_dir ./staging_dir
 
+          df -h
+
       - name: Update feeds
         run: |
-           opam init
-           eval `opam env`
-           opam switch create 4.02.3
-           eval `opam env`
-           opam install -y ocamlfind camlp4
-           
-           ./scripts/feeds update -a
-           ./scripts/feeds install -a
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
 
       - name: Generate configuration file
         run: |
@@ -76,9 +76,11 @@ jobs:
           cat >> .config <<EOF
           CONFIG_TARGET_ipq807x=y
           CONFIG_TARGET_ipq807x_generic=y
+          CONFIG_TARGET_ipq807x_generic_DEVICE_xiaomi_ax3600=y
           CONFIG_KERNEL_IPQ_MEM_PROFILE=512
           CONFIG_TARGET_ipq807x_generic_QSDK_512=y
           CONFIG_LINUX_5_4=y
+          CONFIG_GCC_VERSION="7.5.0"
           CONFIG_DEFAULT_aq-fw-download=y
           CONFIG_TARGET_SUBTARGET="generic"
           CONFIG_TARGET_PROFILE="QSDK_512"
@@ -107,7 +109,7 @@ jobs:
           CONFIG_PACKAGE_kmod-qca-nss-drv-vxlanmgr=y
           CONFIG_PACKAGE_kmod-qca-nss-macsec=y
           CONFIG_PACKAGE_kmod-qca-ovsmgr=y
-          CONFIG_PACKAGE_kmod-qca-ssdk=y
+          CONFIG_PACKAGE_kmod-qca-ssdk-nohnat=y
           CONFIG_PACKAGE_kmod-bonding=y
           CONFIG_PACKAGE_kmod-ipsec=y
           CONFIG_PACKAGE_kmod-ipsec4=y
@@ -150,7 +152,7 @@ jobs:
 
       - name: Compile firmware
         run: |
-          make -j1 || make -j1 V=s
+          make -j$(nproc) || make -j1 V=s
           echo "======================="
           echo "Space usage:"
           echo "======================="
