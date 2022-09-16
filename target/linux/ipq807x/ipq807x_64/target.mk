@@ -1,5 +1,5 @@
 
-SUBTARGET:=generic
+SUBTARGET:=ipq807x_64
 BOARDNAME:=QCA IPQ807x(64bit) based boards
 CPU_TYPE:=cortex-a53
 KERNELNAME:=Image dtbs
