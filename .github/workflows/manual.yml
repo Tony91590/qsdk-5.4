@@ -68,7 +68,7 @@ jobs:
       - name: Generate configuration file
         run: |
 
-          wget https://raw.githubusercontent.com/felix-fly/router-map/main/ipq6000.config -O .config
+          wget https://raw.githubusercontent.com/Tony91590/qsdk-5.4/Repairv2/config-ax3600-512M.config -O .config
 
           make defconfig
 
