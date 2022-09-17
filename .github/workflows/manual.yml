@@ -62,7 +62,6 @@ jobs:
 
       - name: Update feeds
         run: |
-           echo -e "src-git passwall https://github.com/xiaorouji/openwrt-passwall" >> feeds.conf
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
