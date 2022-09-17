@@ -19,7 +19,6 @@ src-link qca-hk ../qca/feeds/qca-hk
 src-link routing ../qca/feeds/routing
 src-link shortcut-fe ../qca/feeds/shortcut-fe
 src-link sigma-dut-open ../qca/feeds/sigma-dut-open
-src-link ssdk ../qca/feeds/ssdk
 src-link weave ../qca/feeds/weave
 src-link whc ../qca/feeds/whc
 src-link wigig-utils-oss ../qca/feeds/wigig-utils-oss
