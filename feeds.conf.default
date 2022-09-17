@@ -1,3 +1,3 @@
-src-git luci https://git.openwrt.org/feed/telephony.git;openwrt-19.07
+src-git luci https://github.com/lh462/luci.git
 src-git telephony https://git.openwrt.org/feed/telephony.git;openwrt-19.07
 src-link feeds ../qca/feeds
