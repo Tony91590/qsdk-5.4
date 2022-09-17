@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018,2020 Qualcomm Innovation Center, Inc.
+ * Copyright (c) 2017-2018 Qualcomm Innovation Center, Inc.
  *
  * All Rights Reserved.
  * Confidential and Proprietary - Qualcomm Innovation Center, Inc.
@@ -1425,7 +1425,7 @@ void ol_if_ratepwr_recv_buf(u_int8_t *ratepwr_tbl, u_int16_t ratepwr_len,
         max_frag_size = ratepwr_len;
     else {
         if ((sizeof(QC98XX_EEPROM_RATETBL) - ratepwr_len) % frag_id != 0) {
-            qdf_nofl_info("%s: invalid frag size\n", __func__);
+            printk("%s: invalid frag size\n", __func__);
             return;
         }
 
@@ -1453,10 +1453,14 @@ void ol_if_ratepwr_recv_buf(u_int8_t *ratepwr_tbl, u_int16_t ratepwr_len,
 
 void ol_if_eeprom_attach(struct ieee80211com *ic)
 {
-    struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(ic->ic_pdev_obj);
+    struct ol_ath_softc_net80211 *scn = OL_ATH_SOFTC_NET80211(ic);
 
-    if (lmac_get_tgt_type(psoc) != TARGET_TYPE_AR9888)
+    if (lmac_get_tgt_type(scn->soc->psoc_obj) != TARGET_TYPE_AR9888) {
+        qdf_info("rate power table override is only supported for AR98XX");
         return;
+    }
 
     OS_MEMSET(&eep_ratepwr_tbl, 0, sizeof(QC98XX_EEPROM_RATETBL));
+
+    return;
 }

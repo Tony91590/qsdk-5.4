@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014,2017-2019 Qualcomm Innovation Center, Inc.
+ * Copyright (c) 2014,2017-2018 Qualcomm Innovation Center, Inc.
  * All Rights Reserved
  * Confidential and Proprietary - Qualcomm Innovation Center, Inc.
  *
@@ -13,12 +13,8 @@
 #include "ol_if_thermal.h"
 #include <i_qdf_mem.h>
 #include <init_deinit_lmac.h>
-#include <target_type.h>
-
 static uint32_t ol_ath_thermal_param_init (struct ol_ath_softc_net80211 *scn)
 {
-    int target_type = lmac_get_tgt_type(scn->soc->psoc_obj);
-
     OS_MEMSET(&(scn->thermal_param.th_stats), 0, sizeof(scn->thermal_param.th_stats));
     OS_MEMSET(&(scn->thermal_param.th_cfg), 0, sizeof(scn->thermal_param.th_cfg));
     OS_MEMSET(&(scn->thermal_param.tmd_cfg), 0, sizeof(scn->thermal_param.tmd_cfg));
@@ -27,62 +23,35 @@ static uint32_t ol_ath_thermal_param_init (struct ol_ath_softc_net80211 *scn)
     scn->thermal_param.th_cfg.dc_per_event = THERMAL_WMI_EVENT_DC;
     scn->thermal_param.th_cfg.log_lvl = TH_DEBUG_LVL1;
 
+    /*
+     *    Level    tmplwm (C)       tmphwm (C)       dcoffpercent (%)
+     *      0         NIL              90                 0
+     *      1         70               110                50
+     *      2         90               125                70
+     *      3         110              MAX                100
+     */
+
     /* thermal level / zone 0 config */
-    if ((target_type == TARGET_TYPE_QCN9000) || (target_type == TARGET_TYPE_QCN6122)) {
-        scn->thermal_param.th_cfg.levelconf[0].tmplwm = THERMAL_CONFIG_TMPLWM0_QCN9000;
-        scn->thermal_param.th_cfg.levelconf[0].tmphwm = THERMAL_CONFIG_TMPHWM0_QCN9000; /* Celsius */
-    } else if (target_type == TARGET_TYPE_QCA5018) {
-        scn->thermal_param.th_cfg.levelconf[0].tmplwm = THERMAL_CONFIG_TMPLWM0_QCA5018;
-        scn->thermal_param.th_cfg.levelconf[0].tmphwm = THERMAL_CONFIG_TMPHWM0_QCA5018; /* Celsius */
-    } else {
-        scn->thermal_param.th_cfg.levelconf[0].tmplwm = THERMAL_CONFIG_TMPLWM0;
-        scn->thermal_param.th_cfg.levelconf[0].tmphwm = THERMAL_CONFIG_TMPHWM0; /* Celsius */
-    }
+    scn->thermal_param.th_cfg.levelconf[0].tmplwm = THERMAL_CONFIG_TMPLWM0;
+    scn->thermal_param.th_cfg.levelconf[0].tmphwm = THERMAL_CONFIG_TMPHWM0; /* Celsius */
     scn->thermal_param.th_cfg.levelconf[0].dcoffpercent = THERMAL_CONFIG_DCOFF0;   /* milli seconds */
     scn->thermal_param.th_cfg.levelconf[0].priority = THERMAL_ALL_UNICAST_DATA_QUEUES;
     scn->thermal_param.th_cfg.levelconf[0].policy = THERMAL_POLICY_QUEUE_PAUSE;
-
     /* thermal level / zone 1 config */
-    if ((target_type == TARGET_TYPE_QCN9000) || (target_type == TARGET_TYPE_QCN6122)) {
-        scn->thermal_param.th_cfg.levelconf[1].tmplwm = THERMAL_CONFIG_TMPLWM1_QCN9000;
-        scn->thermal_param.th_cfg.levelconf[1].tmphwm = THERMAL_CONFIG_TMPHWM1_QCN9000; /* Celsius */
-    } else if (target_type == TARGET_TYPE_QCA5018) {
-        scn->thermal_param.th_cfg.levelconf[1].tmplwm = THERMAL_CONFIG_TMPLWM1_QCA5018;
-        scn->thermal_param.th_cfg.levelconf[1].tmphwm = THERMAL_CONFIG_TMPHWM1_QCA5018; /* Celsius */
-    } else {
-        scn->thermal_param.th_cfg.levelconf[1].tmplwm = THERMAL_CONFIG_TMPLWM1;
-        scn->thermal_param.th_cfg.levelconf[1].tmphwm = THERMAL_CONFIG_TMPHWM1; /* Celsius */
-    }
+    scn->thermal_param.th_cfg.levelconf[1].tmplwm = THERMAL_CONFIG_TMPLWM1;
+    scn->thermal_param.th_cfg.levelconf[1].tmphwm = THERMAL_CONFIG_TMPHWM1; /* Celsius */
     scn->thermal_param.th_cfg.levelconf[1].dcoffpercent = THERMAL_CONFIG_DCOFF1;    /* milli seconds */
     scn->thermal_param.th_cfg.levelconf[1].priority = THERMAL_ALL_UNICAST_DATA_QUEUES;
     scn->thermal_param.th_cfg.levelconf[1].policy = THERMAL_POLICY_QUEUE_PAUSE;
-
     /* thermal level / zone 2 config */
-    if ((target_type == TARGET_TYPE_QCN9000) || (target_type == TARGET_TYPE_QCN6122)) {
-        scn->thermal_param.th_cfg.levelconf[2].tmplwm = THERMAL_CONFIG_TMPLWM2_QCN9000;
-        scn->thermal_param.th_cfg.levelconf[2].tmphwm = THERMAL_CONFIG_TMPHWM2_QCN9000; /* Celsius */
-    } else if (target_type == TARGET_TYPE_QCA5018) {
-        scn->thermal_param.th_cfg.levelconf[2].tmplwm = THERMAL_CONFIG_TMPLWM2_QCA5018;
-        scn->thermal_param.th_cfg.levelconf[2].tmphwm = THERMAL_CONFIG_TMPHWM2_QCA5018; /* Celsius */
-    } else {
-        scn->thermal_param.th_cfg.levelconf[2].tmplwm = THERMAL_CONFIG_TMPLWM2;
-        scn->thermal_param.th_cfg.levelconf[2].tmphwm = THERMAL_CONFIG_TMPHWM2; /* Celsius */
-    }
+    scn->thermal_param.th_cfg.levelconf[2].tmplwm = THERMAL_CONFIG_TMPLWM2;
+    scn->thermal_param.th_cfg.levelconf[2].tmphwm = THERMAL_CONFIG_TMPHWM2; /* Celsius */
     scn->thermal_param.th_cfg.levelconf[2].dcoffpercent = THERMAL_CONFIG_DCOFF2;    /* milli seconds */
     scn->thermal_param.th_cfg.levelconf[2].priority = THERMAL_ALL_UNICAST_DATA_QUEUES;
     scn->thermal_param.th_cfg.levelconf[2].policy = THERMAL_POLICY_QUEUE_PAUSE;
-
     /* thermal level / zone 3 config */
-    if ((target_type == TARGET_TYPE_QCN9000) || (target_type == TARGET_TYPE_QCN6122)) {
-        scn->thermal_param.th_cfg.levelconf[3].tmplwm = THERMAL_CONFIG_TMPLWM3_QCN9000;
-        scn->thermal_param.th_cfg.levelconf[3].tmphwm = THERMAL_CONFIG_TMPHWM3_QCN9000; /* Celsius */
-    } else if (target_type == TARGET_TYPE_QCA5018) {
-        scn->thermal_param.th_cfg.levelconf[3].tmplwm = THERMAL_CONFIG_TMPLWM3_QCA5018;
-        scn->thermal_param.th_cfg.levelconf[3].tmphwm = THERMAL_CONFIG_TMPHWM3_QCA5018; /* Celsius */
-    } else {
-        scn->thermal_param.th_cfg.levelconf[3].tmplwm = THERMAL_CONFIG_TMPLWM3;
-        scn->thermal_param.th_cfg.levelconf[3].tmphwm = THERMAL_CONFIG_TMPHWM3; /* Celsius */
-    }
+    scn->thermal_param.th_cfg.levelconf[3].tmplwm = THERMAL_CONFIG_TMPLWM3;
+    scn->thermal_param.th_cfg.levelconf[3].tmphwm = THERMAL_CONFIG_TMPHWM3; /* Celsius */
     scn->thermal_param.th_cfg.levelconf[3].dcoffpercent = THERMAL_CONFIG_DCOFF3;    /* milli seconds */
     scn->thermal_param.th_cfg.levelconf[3].priority = THERMAL_ALL_UNICAST_DATA_QUEUES;
     scn->thermal_param.th_cfg.levelconf[3].policy = THERMAL_POLICY_QUEUE_PAUSE;
@@ -97,11 +66,11 @@ ol_ath_thermal_stats_event_handler(ol_scn_t sc, u_int8_t *data, u_int32_t datale
     uint8_t i = 0;
     uint32_t pdev_id = 0;
     uint32_t temp = 0;
-    enum thermal_throttle_level level = 0;
+    uint32_t level = 0;
     uint32_t levelcount = 0;
     uint32_t dccount = 0;
     struct ol_ath_softc_net80211 *scn = NULL;
-    struct wmi_unified *wmi_handle;
+    struct common_wmi_handle *wmi_handle;
     struct wlan_objmgr_pdev *pdev;
 
     if (!soc) {
@@ -110,10 +79,6 @@ ol_ath_thermal_stats_event_handler(ol_scn_t sc, u_int8_t *data, u_int32_t datale
     }
 
     wmi_handle = lmac_get_wmi_hdl(soc->psoc_obj);
-    if (!wmi_handle) {
-        qdf_err("wmi_handle is null");
-        return -EINVAL;
-    }
 
     if(wmi_extract_thermal_stats(wmi_handle, data,
                 &temp, &level, &pdev_id)) {
@@ -164,7 +129,7 @@ int32_t ol_ath_config_thermal_mitigation_param(struct ol_ath_softc_net80211 *scn
 {
     struct thermal_mitigation_params param;
     int i = 0;
-    struct wmi_unified *pdev_wmi_handle;
+    struct common_wmi_handle *pdev_wmi_handle;
 
     if (!scn) {
         TH_DEBUG_PRINT(TH_DEBUG_LVL0, scn,"%s: Error invalid scn:\n", __func__);
@@ -183,7 +148,6 @@ int32_t ol_ath_config_thermal_mitigation_param(struct ol_ath_softc_net80211 *scn
     param.enable = scn->thermal_param.th_cfg.enable;
     param.dc = scn->thermal_param.th_cfg.dc;
     param.dc_per_event = scn->thermal_param.th_cfg.dc_per_event;
-    param.num_thermal_conf = THERMAL_LEVELS;
     for (i = 0; i < THERMAL_LEVELS; i++) {
         param.levelconf[i].tmplwm = scn->thermal_param.th_cfg.levelconf[i].tmplwm;
         param.levelconf[i].tmphwm = scn->thermal_param.th_cfg.levelconf[i].tmphwm;

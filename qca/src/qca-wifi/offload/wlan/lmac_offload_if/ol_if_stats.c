@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015,2017-2021 Qualcomm Innovation Center, Inc.
+ * Copyright (c) 2015,2017-2019 Qualcomm Innovation Center, Inc.
  * All Rights Reserved
  * Confidential and Proprietary - Qualcomm Innovation Center, Inc.
  *
@@ -25,8 +25,11 @@
 /*
  * LMAC offload interface functions for UMAC - for power and performance offload model
  */
+#if WLAN_SPECTRAL_ENABLE
+#include "spectral.h"
+#endif
 #include "ol_if_athvar.h"
-#include <ol_if_athpriv.h>
+#include "ol_if_athpriv.h"
 #include "ol_ath.h"
 #include "ol_cfg.h"
 #include "ieee80211_bssload.h"
@@ -42,8 +45,8 @@
 #include <pktlog_ac_api.h>
 #include <pktlog_ac_fmt.h>
 #include <pktlog_ac_i.h>
-#include <ol_if_stats.h>
-#include <ol_if_stats_api.h>
+#include "ol_if_stats.h"
+#include "ol_if_stats_api.h"
 #include "osif_private.h"
 #if QCA_AIRTIME_FAIRNESS
 #include <target_if_atf.h>
@@ -81,21 +84,6 @@
 
 #include <cfg_ucfg_api.h>
 #include <dp_rate_stats.h>
-#include <wlan_utility.h>
-
-#if UNIFIED_SMARTANTENNA
-#include "target_if_sa_api.h"
-#endif
-
-#if WLAN_CFR_ENABLE
-#include <wlan_cfr_utils_api.h>
-#endif
-
-#if ATH_SUPPORT_WRAP
-#if !WLAN_QWRAP_LEGACY
-#include "dp_wrap.h"
-#endif
-#endif
 
 #if ATH_PERF_PWR_OFFLOAD
 
@@ -122,8 +110,8 @@ int num_elements(char *intr_display_strings[])
 
 #define MAX_STRING_IDX num_elements(intr_display_strings)
 
-int ol_ath_wlan_profile_data_event_handler(ol_soc_t sc, uint8_t *data,
-                                           uint32_t datalen)
+int
+ol_ath_wlan_profile_data_event_handler (ol_soc_t sc, u_int8_t *data, u_int32_t datalen)
 {
     ol_ath_soc_softc_t *soc = (ol_ath_soc_softc_t *) sc;
     u_int32_t i;
@@ -131,14 +119,9 @@ int ol_ath_wlan_profile_data_event_handler(ol_soc_t sc, uint8_t *data,
     int32_t stridx = -1;
     wmi_host_wlan_profile_ctx_t profile_ctx;
     wmi_host_wlan_profile_t profile_data;
-    struct wmi_unified *wmi_handle;
+    struct common_wmi_handle *wmi_handle;
 
     wmi_handle = lmac_get_wmi_hdl(soc->psoc_obj);
-    if (!wmi_handle) {
-        qdf_err("wmi_handle is null");
-        return -EINVAL;
-    }
-
     if (wmi_extract_profile_ctx(wmi_handle, data, &profile_ctx)) {
 	qdf_print("Extracting profile ctx failed");
 	return -1;
@@ -153,15 +136,15 @@ int ol_ath_wlan_profile_data_event_handler(ol_soc_t sc, uint8_t *data,
      * On the initial record, print the header.
      */
     if (profile_ctx.tot != 0) {
-    qdf_nofl_info("\n\t PROFILE DATA\n");
-    qdf_nofl_info("Profile duration : %d\n", profile_ctx.tot);
-    qdf_nofl_info("Tx Msdu Count    : %d\n", profile_ctx.tx_msdu_cnt);
-    qdf_nofl_info("Tx Mpdu Count    : %d\n", profile_ctx.tx_mpdu_cnt);
-    qdf_nofl_info("Tx Ppdu Count    : %d\n", profile_ctx.tx_ppdu_cnt);
-    qdf_nofl_info("Rx Msdu Count    : %d\n", profile_ctx.rx_msdu_cnt);
-    qdf_nofl_info("Rx Mpdu Count    : %d\n", profile_ctx.rx_mpdu_cnt);
+    printk("\n\t PROFILE DATA\n");
+    printk("Profile duration : %d\n", profile_ctx.tot);
+    printk("Tx Msdu Count    : %d\n", profile_ctx.tx_msdu_cnt);
+    printk("Tx Mpdu Count    : %d\n", profile_ctx.tx_mpdu_cnt);
+    printk("Tx Ppdu Count    : %d\n", profile_ctx.tx_ppdu_cnt);
+    printk("Rx Msdu Count    : %d\n", profile_ctx.rx_msdu_cnt);
+    printk("Rx Mpdu Count    : %d\n", profile_ctx.rx_mpdu_cnt);
 
-    qdf_nofl_info("Profile ID   Count   Total      Min      Max   hist_intvl  hist[0]   hist[1]   hist[2]\n");
+    printk("Profile ID   Count   Total      Min      Max   hist_intvl  hist[0]   hist[1]   hist[2]\n");
         base = 0;
     } else {
         base = -1;
@@ -178,15 +161,15 @@ int ol_ath_wlan_profile_data_event_handler(ol_soc_t sc, uint8_t *data,
             if (base == -1) {
                 stridx = 0;
                 base = 0;
-                qdf_nofl_info("\n%s\n", intr_display_strings[stridx]);
+                printk("\n%s\n", intr_display_strings[stridx]);
             } else if (((id - base) > 32) && (stridx < MAX_STRING_IDX)) {
                 stridx++;
                 base += 32;
-                qdf_nofl_info("\n%s\n", intr_display_strings[stridx]);
+                printk("\n%s\n", intr_display_strings[stridx]);
             }
         }
 
-        qdf_nofl_info("%8d   %8d %8d %8d %8d     %8d %8d %8d %8d\n", profile_data.id - base,
+        printk("%8d   %8d %8d %8d %8d     %8d %8d %8d %8d\n", profile_data.id - base,
             profile_data.cnt, profile_data.tot,
             profile_data.min, profile_data.max,
             profile_data.hist_intvl, profile_data.hist[0],
@@ -194,7 +177,7 @@ int ol_ath_wlan_profile_data_event_handler(ol_soc_t sc, uint8_t *data,
 
     }
 
-    qdf_nofl_info("\n");
+    printk("\n");
     return 0;
 }
 
@@ -215,27 +198,12 @@ convert_wmi_host_chan_info_to_periodic_chan_stats(
     return EOK;
 }
 
-static inline uint32_t ol_get_wraparound_offset(struct wlan_objmgr_psoc *psoc)
-{
-    /* In Beeliner family chipsets, cycle counters like tx_frame_count,
-     * rx_frame_count and rx_clear_count saturates and starts from 0x7FFFFFFF
-     * when they reach max value of 0xFFFFFFFF.
-     * Whereas in Lithium, cycle counters wraps from 0xFFFFFFFF to 0x0 where
-     * offset to be subrated is 0x0.
-     */
-    if (ol_target_lithium(psoc))
-        return 0;
-    else
-        return (IEEE80211_MAX_32BIT_UNSIGNED_VALUE >> 1); /* 0x7FFFFFFF */
-}
-
 QDF_STATUS ol_find_chan_stats_delta(struct ieee80211com *ic,
                                     periodic_chan_stats_t *pstats,
                                     periodic_chan_stats_t *nstats,
                                     periodic_chan_stats_t *delta)
 {
-    struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(ic->ic_pdev_obj);
-    uint32_t offset;
+    struct ol_ath_softc_net80211 *scn = OL_ATH_SOFTC_NET80211(ic);
 
     /* Peregrine hardware design is such that when cycle counter reaches
      * 0xffffffff, cycle counters along with other counters are right shifted by
@@ -250,7 +218,8 @@ QDF_STATUS ol_find_chan_stats_delta(struct ieee80211com *ic,
      */
 
     /* Drop Peregrine wrap around cases */
-    if (!(lmac_is_target_ar900b(psoc) || ol_target_lithium(psoc)) &&
+    if (!(lmac_is_target_ar900b(scn->soc->psoc_obj) ||
+          ol_target_lithium(scn->soc->psoc_obj)) &&
         (pstats->cycle_count > nstats->cycle_count)) {
         IEEE80211_DPRINTF_IC(ic, IEEE80211_VERBOSE_NORMAL,
                              IEEE80211_MSG_EXTIOCTL_CHANSWITCH,
@@ -264,16 +233,15 @@ QDF_STATUS ol_find_chan_stats_delta(struct ieee80211com *ic,
         return QDF_STATUS_E_INVAL;
     }
 
-    /* We are here it means either it's beeliner/Lithium family or non wrap
-     * aroud case. Calculate different delta counts based on previous mib
-     * counters and new mib counters.
+    /* We are here it means either it's beeliner family or non wrap aroud case.
+     * calculate different delta counts based on previous mib counters and new
+     * mib counters.
      */
-    offset = ol_get_wraparound_offset(psoc);
-
     if (pstats->cycle_count > nstats->cycle_count) {
         delta->cycle_count = (IEEE80211_MAX_32BIT_UNSIGNED_VALUE -
                               pstats->cycle_count) +
-                             (nstats->cycle_count - offset);
+                             (nstats->cycle_count -
+                              (IEEE80211_MAX_32BIT_UNSIGNED_VALUE >> 1));
     } else {
         delta->cycle_count = nstats->cycle_count - pstats->cycle_count;
     }
@@ -281,7 +249,8 @@ QDF_STATUS ol_find_chan_stats_delta(struct ieee80211com *ic,
     if (pstats->rx_clear_count > nstats->rx_clear_count) {
         delta->rx_clear_count = (IEEE80211_MAX_32BIT_UNSIGNED_VALUE -
                                  pstats->rx_clear_count) +
-                                (nstats->rx_clear_count - offset);
+                                (nstats->rx_clear_count -
+                                 (IEEE80211_MAX_32BIT_UNSIGNED_VALUE >> 1));
     } else {
         delta->rx_clear_count = nstats->rx_clear_count - pstats->rx_clear_count;
     }
@@ -289,7 +258,8 @@ QDF_STATUS ol_find_chan_stats_delta(struct ieee80211com *ic,
     if (pstats->tx_frame_count > nstats->tx_frame_count) {
         delta->tx_frame_count = (IEEE80211_MAX_32BIT_UNSIGNED_VALUE -
                                  pstats->tx_frame_count) +
-                                (nstats->tx_frame_count - offset);
+                                (nstats->tx_frame_count -
+                                 (IEEE80211_MAX_32BIT_UNSIGNED_VALUE >> 1));
     } else {
         delta->tx_frame_count = nstats->tx_frame_count - pstats->tx_frame_count;
     }
@@ -306,7 +276,8 @@ QDF_STATUS ol_find_chan_stats_delta(struct ieee80211com *ic,
     if (pstats->rx_frame_count > nstats->rx_frame_count) {
         delta->rx_frame_count = (IEEE80211_MAX_32BIT_UNSIGNED_VALUE -
                                  pstats->rx_frame_count) +
-                                (nstats->rx_frame_count - offset);
+                                (nstats->rx_frame_count -
+                                 (IEEE80211_MAX_32BIT_UNSIGNED_VALUE >> 1));
     } else {
         delta->rx_frame_count = nstats->rx_frame_count - pstats->rx_frame_count;
     }
@@ -314,7 +285,8 @@ QDF_STATUS ol_find_chan_stats_delta(struct ieee80211com *ic,
     if (pstats->rx_clear_ext_count > nstats->rx_clear_ext_count) {
         delta->rx_clear_ext_count = (IEEE80211_MAX_32BIT_UNSIGNED_VALUE -
                                      pstats->rx_clear_ext_count) +
-                                    (nstats->rx_clear_ext_count - offset);
+                                    (nstats->rx_clear_ext_count -
+                                     (IEEE80211_MAX_32BIT_UNSIGNED_VALUE >> 1));
     } else {
         delta->rx_clear_ext_count = nstats->rx_clear_ext_count -
                                     pstats->rx_clear_ext_count;
@@ -369,7 +341,7 @@ int ol_scan_chan_stats_update(struct ieee80211com *ic,
             qdf_spin_unlock_bh(&ic->ic_channel_stats.lock);
             return -EINVAL;
         }
-        for (i = 0; i < NUM_CHANNELS; i++) {
+        for (i = 0; i < MAX_DUAL_BAND_SCAN_CHANS; i++) {
             if ((chan_stats[i].freq == entry_stats->freq) ||
                 (chan_stats[i].freq == 0)) {
                 chan_stats[i].freq = entry_stats->freq;
@@ -398,7 +370,7 @@ ol_ath_chan_info_event_handler(ol_scn_t sc, u_int8_t *data, u_int32_t datalen)
     struct ieee80211com *ic;
     struct ol_ath_softc_net80211 *scn;
     u_int8_t flags;
-    uint16_t ieee_chan_freq;
+    u_int ieee_chan;
     int16_t chan_nf;
     struct ieee80211_chan_stats chan_stats;
     wmi_host_chan_info_event chan_info_ev = {0};
@@ -406,19 +378,13 @@ ol_ath_chan_info_event_handler(ol_scn_t sc, u_int8_t *data, u_int32_t datalen)
     struct external_acs_obj *extacs_handle;
     struct scan_chan_info schan_info;
 #endif
-    struct wmi_unified *wmi_handle;
-    struct wmi_unified *pdev_wmi_handle;
+    struct common_wmi_handle *wmi_handle;
+    struct common_wmi_handle *pdev_wmi_handle;
     struct wlan_objmgr_pdev *pdev;
-    cdp_config_param_type value = {0};
 
     wmi_host_chan_info_event *event = (wmi_host_chan_info_event *)&chan_info_ev;
 
     wmi_handle = lmac_get_wmi_hdl(soc->psoc_obj);
-    if (!wmi_handle) {
-        qdf_err("wmi_handle is null");
-        return -EINVAL;
-    }
-
     if (wmi_extract_chan_info_event(wmi_handle, data, &chan_info_ev) !=
                                      QDF_STATUS_SUCCESS) {
            qdf_print("Failed to extract chan_info event");
@@ -473,7 +439,7 @@ ol_ath_chan_info_event_handler(ol_scn_t sc, u_int8_t *data, u_int32_t datalen)
                    event->chan_tx_pwr_range, event->chan_tx_pwr_tp, event->mac_clk_mhz);
 
     if (event->err_code == 0) {
-       ieee_chan_freq = event->freq;
+       ieee_chan = ol_ath_mhz2ieee(ic, event->freq, 0);
 
        if (wmi_service_enabled(pdev_wmi_handle, wmi_service_chan_load_info)) {
            flags = WMI_CHAN_INFO_FLAG_END_DIFF;
@@ -488,49 +454,40 @@ ol_ath_chan_info_event_handler(ol_scn_t sc, u_int8_t *data, u_int32_t datalen)
        chan_stats.chan_tx_power_range = event->chan_tx_pwr_range;
        chan_stats.chan_tx_power_tput = event->chan_tx_pwr_tp;
        chan_stats.duration_11b_data  = event->rx_11b_mode_data_duration;
-       qdf_mem_copy(chan_stats.perchain_nf, event->per_chain_noise_floor,
-               sizeof(chan_stats.perchain_nf));
 #if ATH_ACS_DEBUG_SUPPORT
        if (ic->ic_acs_debug_support) {
-           acs_debug_add_chan_event_acs(&chan_stats, &chan_nf, ieee_chan_freq, ic->ic_acs);
-           acs_debug_add_bcn(soc, ic, ieee_chan_freq);
+           acs_debug_add_chan_event(&chan_stats, &chan_nf, &ieee_chan, ic->ic_acs);
+           acs_debug_add_bcn(soc, ic);
        }
 #endif
        ol_scan_chan_stats_update(ic, event);
-       ieee80211_acs_stats_update(ic->ic_acs, flags, ieee_chan_freq, chan_nf, &chan_stats);
+       ieee80211_acs_stats_update(ic->ic_acs, flags, ieee_chan, chan_nf, &chan_stats);
        if (flags == WMI_CHAN_INFO_FLAG_BEFORE_END_RESP ||
                 flags == WMI_CHAN_INFO_FLAG_END_DIFF) {
            ol_txrx_soc_handle soc_txrx_handle;
+           struct cdp_pdev *cdp_pdev;
+           cdp_pdev = wlan_pdev_get_dp_handle(scn->sc_pdev);
            soc_txrx_handle = wlan_psoc_get_dp_handle(scn->soc->psoc_obj);
 
            scn->chan_nf = chan_nf;
-           value.cdp_pdev_param_chn_noise_flr = scn->chan_nf;
-           cdp_txrx_set_pdev_param(soc_txrx_handle, wlan_objmgr_pdev_get_pdev_id(pdev),
-                                   CDP_CHAN_NOISE_FLOOR, value);
+           cdp_pdev_set_chan_noise_floor(soc_txrx_handle, cdp_pdev, scn->chan_nf);
        }
 
 #if ATH_SUPPORT_ICM
        if (ic->ic_extacs_obj.icm_active) {
            extacs_handle = &ic->ic_extacs_obj;
-#if ATH_ACS_DEBUG_SUPPORT
-           /* To update the scan channel information for ICM Debug */
-           if (ic->ic_acs_debug_support) {
-               acs_debug_add_chan_event_icm(&chan_stats, &chan_nf,
-                                           ieee_chan_freq, flags, &schan_info);
-           } else
-#endif
-           {
-               schan_info.freq           = event->freq;
-               schan_info.cmd_flag       = flags;
-               schan_info.noise_floor    = event->noise_floor;
-               schan_info.cycle_count    = event->cycle_count;
-               schan_info.rx_clear_count = event->rx_clear_count;
-               schan_info.tx_frame_count = event->tx_frame_cnt;
-               schan_info.clock_freq     = event->mac_clk_mhz;
-               schan_info.tx_power_tput  = event->chan_tx_pwr_tp;
-               schan_info.tx_power_range = event->chan_tx_pwr_range;
-           }
-           ieee80211_extacs_record_schan_info(extacs_handle, &schan_info, wlan_reg_freq_to_chan(ic->ic_pdev_obj, ieee_chan_freq));
+
+           schan_info.freq           = event->freq;
+           schan_info.cmd_flag       = flags;
+           schan_info.noise_floor    = event->noise_floor;
+           schan_info.cycle_count    = event->cycle_count;
+           schan_info.rx_clear_count = event->rx_clear_count;
+           schan_info.tx_frame_count = event->tx_frame_cnt;
+           schan_info.clock_freq     = event->mac_clk_mhz;
+           schan_info.tx_power_tput  = event->chan_tx_pwr_tp;
+           schan_info.tx_power_range = event->chan_tx_pwr_range;
+
+           ieee80211_extacs_record_schan_info(extacs_handle, &schan_info, ieee_chan);
        }
 #endif
     } else {
@@ -550,27 +507,25 @@ static void ol_ath_net80211_set_noise_detection_param(struct ieee80211com *ic, i
     switch(cmd)
     {
         case IEEE80211_ENABLE_NOISE_DETECTION:
-            if (val) {
+            if(val) {
                 scn->sc_enable_noise_detection = val;
                 /* Disabling DCS as soon as we enable noise detection algo */
                 ic->ic_disable_dcscw(ic);
 
                 flush_stats = 1;
-                ol_ath_pdev_set_param(scn->sc_pdev,
-                                      wmi_pdev_param_noise_detection, val);
+                ol_ath_pdev_set_param(scn, wmi_pdev_param_noise_detection, val);
             }
           break;
         case IEEE80211_NOISE_THRESHOLD:
-            if (val) {
-                scn->sc_noise_floor_th = val;
-                ol_ath_pdev_set_param(scn->sc_pdev,
-                                      wmi_pdev_param_noise_threshold, val);
-                flush_stats = 1;
-            }
+          if(val) {
+              scn->sc_noise_floor_th = val;
+              ol_ath_pdev_set_param(scn, wmi_pdev_param_noise_threshold, val);
+              flush_stats = 1;
+          }
           break;
 
         default:
-              qdf_nofl_info("UNKNOWN param %s %d \n",__func__,__LINE__);
+              printk("UNKNOWN param %s %d \n",__func__,__LINE__);
           break;
     }
     if(flush_stats) {
@@ -604,7 +559,7 @@ static void ol_ath_net80211_get_noise_detection_param(struct ieee80211com *ic, i
               *val = 0;
           break;
         default:
-              qdf_nofl_info("UNKNOWN param %s %d \n",__func__,__LINE__);
+              printk("UNKNOWN param %s %d \n",__func__,__LINE__);
           break;
     }
 #undef IEEE80211_ENABLE_NOISE_DETECTION
@@ -619,7 +574,7 @@ ol_ath_channel_hopping_event_handler(ol_scn_t sc, u_int8_t *data,
 {
     ol_ath_soc_softc_t *soc = (ol_ath_soc_softc_t *) sc;
     struct ol_ath_softc_net80211 *scn;
-    struct wmi_unified *wmi_handle;
+    struct common_wmi_handle *wmi_handle;
     struct wlan_objmgr_pdev *pdev;
 
     wmi_host_pdev_channel_hopping_event channel_hopping_event;
@@ -627,11 +582,6 @@ ol_ath_channel_hopping_event_handler(ol_scn_t sc, u_int8_t *data,
             (wmi_host_pdev_channel_hopping_event *) &channel_hopping_event;
 
     wmi_handle = lmac_get_wmi_hdl(soc->psoc_obj);
-    if (!wmi_handle) {
-        qdf_err("wmi_handle is null");
-        return -EINVAL;
-    }
-
     if(wmi_extract_channel_hopping_event(wmi_handle, data, event) !=
                  QDF_STATUS_SUCCESS) {
           qdf_print("Failed to extract channel hopping event");
@@ -686,25 +636,28 @@ ol_ath_soc_chan_info_attach(ol_ath_soc_softc_t *soc)
 
     return;
 }
-
 /*
  * Unregisters WMI event handler for Channel info event
  */
-void ol_ath_soc_chan_info_detach(ol_ath_soc_softc_t *soc)
+void
+ol_ath_chan_info_detach(struct ieee80211com *ic)
 {
-    struct wmi_unified *wmi_handle;
-
-    wmi_handle = lmac_get_wmi_hdl(soc->psoc_obj);
-    /* Unregister ACS event handler */
-    wmi_unified_unregister_event_handler((void *)wmi_handle,
-                                          wmi_chan_info_event_id);
-
-    wmi_unified_unregister_event_handler((void *)wmi_handle,
-                                          wmi_pdev_channel_hopping_event_id);
-
     return;
 }
 
+void
+ol_ath_soc_chan_info_detach(ol_ath_soc_softc_t *soc)
+{
+    struct common_wmi_handle *wmi_handle;
+
+    wmi_handle = lmac_get_wmi_hdl(soc->psoc_obj);
+    /* Unregister ACS event handler */
+    wmi_unified_unregister_event_handler((void *)wmi_handle, wmi_chan_info_event_id);
+
+    wmi_unified_unregister_event_handler((void *)wmi_handle, wmi_pdev_channel_hopping_event_id);
+
+    return;
+}
 /*
  * Prepares and Sends the WMI cmd to retrieve channel info from Target
  */
@@ -779,18 +732,10 @@ void ol_chan_stats_event (struct ieee80211com *ic,
         qdf_err("Unable to derive chan stats delta");
         return;
     }
-
-    /* Sanitize cycle_count value to make sure divide by zero error
-     * is not encountered. Also if cycle count delta is zero, the stats
-     * recorded are not proper. So return here.
-     */
-    if(delta.cycle_count == 0) {
-        return;
-    }
-
     /* Calculate self bss and obss channel utilization
      * based on previous mib counters and new mib counters
      */
+
     /* Calculate total wifi + non wifi channel utilization percentage */
     total_cu = ((delta.rx_clear_count) / (delta.cycle_count / 100));;
     /* Calculate total AP wlan Tx channel utilization percentage */
@@ -839,6 +784,25 @@ void ol_chan_stats_event (struct ieee80211com *ic,
         pdev_chan_stats->dcs_sec_40_util = nstats->rx_clear_ext40_count;
         pdev_chan_stats->dcs_sec_80_util = nstats->rx_clear_ext80_count;
     }
+#else
+    if (num_of_ss == 0 || delta.tx_frame_count == 0)
+        ic->ic_ss_uu = 0;
+    else
+        ic->ic_ss_uu = ((((num_of_ss * delta.rx_clear_count) -
+                           delta.tx_frame_count) /
+                        (num_of_ss * delta.tx_frame_count)) * 255);
+
+    ic->ic_sec_20u = nstats->rx_clear_ext_count;
+    ic->ic_sec_40u = nstats->rx_clear_ext40_count;
+    ic->ic_sec_80u = nstats->rx_clear_ext80_count;
+
+    scn->scn_stats.self_bss_util = self_util;
+    scn->scn_stats.obss_util = obss_util;
+    scn->scn_stats.ap_rx_util = ap_rx_cu;
+    scn->scn_stats.free_medium = (100 - total_cu);
+    scn->scn_stats.ap_tx_util = ap_tx_cu;
+    scn->scn_stats.obss_rx_util = rx_obss_cu;
+    scn->scn_stats.non_wifi_util = non_wifi_cu;
 #endif
 
     qdf_spin_lock_bh(&ic->ic_channel_stats.lock);
@@ -882,21 +846,17 @@ void ol_chan_stats_event (struct ieee80211com *ic,
 
 static void ol_ath_vap_iter_update_chanutil(void *arg, wlan_if_t vap)
 {
-    if (vap->iv_bcn_offload_enable || vap->iv_special_vap_mode || (vap->iv_opmode == IEEE80211_M_MONITOR)) {
+    if (vap->iv_bcn_offload_enable) {
 #if UMAC_SUPPORT_QBSSLOAD
         if (ieee80211_vap_qbssload_is_set(vap) || ieee80211_vap_oce_is_set(vap)) {
-            if (!ieee80211_is_bcca_ongoing_for_any_vap(vap->iv_ic)) {
-                wlan_vdev_beacon_update(vap);
-            }
+            wlan_vdev_beacon_update(vap);
         } else {
             ieee80211_beacon_chanutil_update(vap);
         }
 #elif UMAC_SUPPORT_CHANUTIL_MEASUREMENT
         if (vap->iv_chanutil_enab) {
             if (ieee80211_vap_qbssload_is_set(vap)) {
-                if (!ieee80211_is_bcca_ongoing_for_any_vap(vap->iv_ic)) {
-                    wlan_vdev_beacon_update(vap);
-                }
+                wlan_vdev_beacon_update(vap);
             } else {
                 ieee80211_beacon_chanutil_update(vap);
             }
@@ -912,10 +872,7 @@ static void ol_ath_vap_iter_update_txpow(void *arg, wlan_if_t vap)
     u_int16_t txpowlevel = *((u_int32_t *) arg);
     QDF_STATUS status;
 
-    /*
-     * If VAP delete is in progress, then ignore txpow update
-     */
-    if (vap && !ieee80211_vap_deleted_is_set(vap)) {
+    if (vap) {
         ni = ieee80211vap_get_bssnode(vap);
         if (ni == NULL) {
            return;
@@ -930,7 +887,6 @@ static void ol_ath_vap_iter_update_txpow(void *arg, wlan_if_t vap)
         wlan_objmgr_free_node(ni, WLAN_CP_STATS_ID);
 
         if (txpowlevel != oldTxpow) {
-            wlan_vdev_beacon_update(vap);
             son_send_txpower_change_event(vap->vdev_obj, txpowlevel);
         }
     }
@@ -976,32 +932,21 @@ void ol_ath_sched_ppdu_stats(struct ol_ath_softc_net80211 *scn, struct ieee80211
 
         vap = ol_ath_vap_get(scn, cdp_rx_ppdu->vdev_id);
         if(vap == NULL) {
-          if ((!scn->soc->hw_mode_ctx.is_switch_in_progress) &&
-              (!(scn->soc->hw_mode_ctx.dynamic_hw_mode ==
-                 WMI_HOST_DYNAMIC_HW_MODE_FAST))) {
-                qdf_warn("%s:%d VAP instance is NULL",__func__,__LINE__);
-            }
+            qdf_warn("%s:%d VAP instance in NULL",__func__,__LINE__);
             goto exit;
         }
 
+        ni = ieee80211_find_node(&ic->ic_sta, cdp_rx_ppdu->mac_addr);
+
         if (ieee80211_vap_wnm_is_set(vap) && ieee80211_wnm_bss_is_set(vap->wnm)) {
-            ni = ieee80211_find_node(ic, cdp_rx_ppdu->mac_addr, WLAN_MLME_SB_ID);
             if (ni)
-            {
-                uint8_t fc1 = (cdp_rx_ppdu->frame_ctrl & 0xFF00) >> 8;
-                int secured = 0;
-
-                if(fc1 & IEEE80211_FC1_WEP)
-                    secured = 1;
-
-                ieee80211_wnm_bssmax_updaterx(ni, secured);
-                ieee80211_free_node(ni, WLAN_MLME_SB_ID);
-            }
+                ieee80211_wnm_bssmax_updaterx(ni, 0);
         }
+        if (ni)
+            ieee80211_free_node(ni);
 
         ol_ath_release_vap(vap);
     }
-
 #if  ATH_DATA_TX_INFO_EN
     if (!scn->enable_perpkt_txstats)
 #endif
@@ -1026,198 +971,38 @@ void ol_ath_sched_ppdu_stats(struct ol_ath_softc_net80211 *scn, struct ieee80211
 
     qdf_sched_work(scn->soc->qdf_dev, &ppdu_stats_ctx->work);
 #endif
+
     return;
+
 exit:
-    qdf_nbuf_free(nbuf);
+    if (!scn->sc_ic.ic_debug_sniffer || ((dir == 1) && (scn->sc_ic.ic_debug_sniffer == SNIFFER_TX_CAPTURE_MODE)))
+        qdf_nbuf_free(nbuf);
     return;
 }
-/**
-  * qdf_nbuf_t() - Clone nbuf and returns pointer
-  *
-  * return : nbuf pointer in success & NULL in failure
-  */
-static inline qdf_nbuf_t clone_nbuf(qdf_nbuf_t nbuf)
-{
-    qdf_nbuf_t msg_copy;
-    msg_copy = qdf_nbuf_clone(nbuf);
-    if (!msg_copy) {
-        qdf_warn("Failed to clone nbuf");
-        return NULL;
-    }
-    return msg_copy;
-}
-
-#if UNIFIED_SMARTANTENNA
-/*
- * sa_process_tx_feedback() - Wrapper function for sa_tx_processing.
- * @pdev_obj : wlan_objmgr_pdev
- * @nbuf     : qdf_nbuf_t
- *
- * Process for all user in desc and then free nbuf.
- */
-static inline void sa_process_tx_feedback(struct wlan_objmgr_pdev *pdev_obj,
-                                          qdf_nbuf_t nbuf)
-{
-    uint8_t usr_iter;
-    struct cdp_tx_completion_ppdu *cdp_tx_ppdu =
-        (struct cdp_tx_completion_ppdu *)qdf_nbuf_data(nbuf);
-
-    for (usr_iter = 0; usr_iter < cdp_tx_ppdu->num_users; usr_iter++)
-        target_if_sa_api_process_tx_feedback(pdev_obj, &cdp_tx_ppdu->user[usr_iter]);
-
-    /* free cloned nbuf */
-    qdf_nbuf_free(nbuf);
-}
-
-/*
- * sa_process_rx_feedback() - Wrapper function for sa_rx_processing.
- * @pdev_obj : wlan_objmgr_pdev
- * @nbuf     : qdf_nbuf_t
- */
-static inline void sa_process_rx_feedback(struct wlan_objmgr_pdev *pdev_obj,
-                                          qdf_nbuf_t nbuf)
-{
-    struct cdp_rx_indication_ppdu *cdp_rx_ppdu =
-        (struct cdp_rx_indication_ppdu *)qdf_nbuf_data(nbuf);
-
-    target_if_sa_api_process_rx_feedback(pdev_obj, cdp_rx_ppdu);
-
-    /* free cloned nbuf */
-    qdf_nbuf_free(nbuf);
-}
-#endif
-
-/*
- * ol_ath_process_rate_stats() - Process wlan_peer_update_rate_stats
- * @pdev    : pdev object
- * @event   : WDI_EVENT
- * @peer_id : peer id
- * @status  : htt_cmn_rx_status
- * @nbuf    : qdf_nbuf_t
- *
- * Return: none
- */
-static inline void
-ol_ath_process_rate_stats(struct wlan_objmgr_pdev *pdev,
-                          enum WDI_EVENT event, uint16_t peer_id,
-                          enum htt_cmn_rx_status status, qdf_nbuf_t nbuf)
-{
-    struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(pdev);
-    ol_txrx_soc_handle soc_txrx_handle;
-    void *rate_stats_ctx;
-
-    soc_txrx_handle = wlan_psoc_get_dp_handle(psoc);
-    rate_stats_ctx = cdp_soc_get_rate_stats_ctx(soc_txrx_handle);
-    wlan_peer_update_rate_stats(rate_stats_ctx, event,
-                                (void *)nbuf, peer_id, status);
-}
-
-
-void ol_ath_process_ppdu_stats(void *pdev_hdl, enum WDI_EVENT event,
-                               void *data, uint16_t peer_id,
-                               enum htt_cmn_rx_status status)
+    void
+ol_ath_process_ppdu_stats(void *pdev_hdl, enum WDI_EVENT event,
+        void *data, uint16_t peer_id, enum htt_cmn_rx_status status)
 {
     struct wlan_objmgr_pdev *pdev_obj = (struct wlan_objmgr_pdev *)pdev_hdl;
     struct ieee80211com *ic;
     struct ol_ath_softc_net80211 *scn;
-    qdf_nbuf_t nbuf = (qdf_nbuf_t) data;
-    qdf_nbuf_t msg_copy;
-#if defined(UNIFIED_SMARTANTENNA) || defined(QCA_AIRTIME_FAIRNESS)
-    struct wlan_objmgr_psoc *psoc;
-#endif
-#if defined(WLAN_CFR_ENABLE) && defined(WLAN_ENH_CFR_ENABLE)
-    ol_txrx_soc_handle soc_txrx_handle;
-    uint8_t pdev_id;
-#endif
 
-    if (qdf_unlikely((!pdev_obj || !data))) {
-        qdf_err("Invalid pdev %p or data %p for event %d", pdev_obj, data, event);
-        qdf_nbuf_free(nbuf);
-        return;
-    }
     ic = wlan_pdev_get_mlme_ext_obj(pdev_obj);
-    if (!ic) {
-        qdf_err("Invalid ic %p", ic);
-        qdf_nbuf_free(nbuf);
+    if (!ic)
         return;
-    }
 
-#if defined(UNIFIED_SMARTANTENNA) || defined(QCA_AIRTIME_FAIRNESS)
-    wlan_pdev_obj_lock(pdev_obj);
-    psoc = wlan_pdev_get_psoc(pdev_obj);
-    wlan_pdev_obj_unlock(pdev_obj);
-    if (!psoc) {
-        qdf_err("Invalid Psoc %p", psoc);
-        qdf_nbuf_free(nbuf);
-        return;
-    }
-#endif
     scn = OL_ATH_SOFTC_NET80211(ic);
 
     switch(event) {
         case WDI_EVENT_TX_PPDU_DESC:
-            if ((msg_copy = clone_nbuf(nbuf)))
-                ol_ath_sched_ppdu_stats(scn, ic, (void *)msg_copy, 0);
-
-            if (scn->soc->rdkstats_enabled) {
-                if ((msg_copy = clone_nbuf(nbuf)))
-                    ol_ath_process_rate_stats(pdev_obj, event, peer_id, status,
-                                              msg_copy);
-            }
-            /* process tx ppdu desc if sniffer is enabled */
-            if (scn->sc_ic.ic_debug_sniffer) {
-                if ((msg_copy = clone_nbuf(nbuf)))
-                    ol_ath_process_tx_metadata(ic, (void *)msg_copy);
-            }
-#if UNIFIED_SMARTANTENNA
-            /* smart antenna tx handler */
-            if (target_if_sa_api_is_tx_feedback_enabled(psoc, pdev_obj)) {
-                if ((msg_copy = clone_nbuf(nbuf)))
-                    sa_process_tx_feedback(pdev_obj, msg_copy);
-            }
-#endif
-#if QCA_AIRTIME_FAIRNESS
-            if (target_if_atf_stats_enabled(psoc, pdev_obj)) {
-                if ((msg_copy = clone_nbuf(nbuf))) {
-                    target_if_atf_process_ppdu_stats(psoc, pdev_obj, msg_copy);
-                }
-            }
-#endif
-            qdf_nbuf_free(nbuf);
+            ol_ath_sched_ppdu_stats(scn, ic, data, 0);
+            if (scn->sc_ic.ic_debug_sniffer)
+                ol_ath_process_tx_metadata(ic, data);
             break;
         case WDI_EVENT_RX_PPDU_DESC:
-            if ((msg_copy = clone_nbuf(nbuf)))
-                ol_ath_sched_ppdu_stats(scn, ic, (void *)msg_copy, 1);
-
-            if (scn->soc->rdkstats_enabled) {
-                if ((msg_copy = clone_nbuf(nbuf)))
-                    ol_ath_process_rate_stats(pdev_obj, event, peer_id, status,
-                                              msg_copy);
-            }
-            /* process m_copy if sniffer is enabled */
-            if (ol_ath_is_mcopy_enabled(&scn->sc_ic)) {
-                if ((msg_copy = clone_nbuf(nbuf)))
-                    ol_ath_process_rx_metadata(ic, (void *)msg_copy);
-            }
-#if UNIFIED_SMARTANTENNA
-            /* smart antenna rx handler */
-            if (target_if_sa_api_is_rx_feedback_enabled(psoc, pdev_obj)) {
-                if ((msg_copy = clone_nbuf(nbuf)))
-                    sa_process_rx_feedback(pdev_obj, msg_copy);
-            }
-#endif
-
-#if defined(WLAN_CFR_ENABLE) && defined(WLAN_ENH_CFR_ENABLE)
-            soc_txrx_handle = wlan_psoc_get_dp_handle(scn->soc->psoc_obj);
-            pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev_obj);
-
-            if (cdp_get_cfr_rcc(soc_txrx_handle, pdev_id)) {
-                    if ((msg_copy = clone_nbuf(nbuf)))
-                            wlan_cfr_rx_tlv_process(pdev_obj, (void *)msg_copy);
-            }
-#endif
-
-            qdf_nbuf_free(nbuf);
+            ol_ath_sched_ppdu_stats(scn, ic, data, 1);
+            if (scn->sc_ic.ic_debug_sniffer == SNIFFER_M_COPY_MODE)
+                ol_ath_process_rx_metadata(ic, data);
             break;
         case WDI_EVENT_TX_MSDU_DESC:
             qdf_warn("%s Not supported event %d", __func__, event);
@@ -1249,27 +1034,27 @@ ol_update_peer_stats(struct ieee80211_node *ni,wmi_host_peer_stats *peer_stats)
         scn = OL_ATH_SOFTC_NET80211(ic);
 
         mac_stats =  ( ni == vap->iv_bss ) ? &vap->iv_multicast_stats : &vap->iv_unicast_stats;
-        ni->ni_snr = peer_stats->peer_rssi;
+        ni->ni_rssi = peer_stats->peer_rssi;
 
-        if (ic->ic_min_snr_enable) {
+        if (ic->ic_min_rssi_enable) {
             if (ni != ni->ni_bss_node && vap->iv_opmode == IEEE80211_M_HOSTAP) {
                 /* compare the user provided rssi with peer rssi received */
-                if (ni->ni_associd && ni->ni_snr && (ic->ic_min_snr > ni->ni_snr)) {
+                if (ni->ni_associd && ni->ni_rssi && (ic->ic_min_rssi > ni->ni_rssi)) {
                     /* send de-auth to ni_macaddr */
-                    qdf_nofl_info( "Client %s(snr = %u) de-authed due to insufficient SNR\n",
-                                   ether_sprintf(ni->ni_macaddr), ni->ni_snr);
+                    printk( "Client %s(snr = %u) de-authed due to insufficient SNR\n",
+                                   ether_sprintf(ni->ni_macaddr), ni->ni_rssi);
                     ieee80211_try_mark_node_for_delayed_cleanup(ni);
                     wlan_mlme_deauth_request(vap, ni->ni_macaddr, IEEE80211_REASON_UNSPECIFIED);
                     return -1;
                 }
             }
         }
-        if(ni->ni_snr < ni->ni_snr_min)
-            ni->ni_snr_min = ni->ni_snr;
-        else if (ni->ni_snr > ni->ni_snr_max)
-            ni->ni_snr_max = ni->ni_snr;
+        if(ni->ni_rssi < ni->ni_rssi_min)
+            ni->ni_rssi_min = ni->ni_rssi;
+        else if (ni->ni_rssi > ni->ni_rssi_max)
+            ni->ni_rssi_max = ni->ni_rssi;
 
-        if(!ieee80211_is_phymode_11ax(vap->iv_cur_mode))
+        if(vap->iv_cur_mode < IEEE80211_MODE_11AXA_HE20)
            sgi = vap->iv_data_sgi;
         else
            sgi = vap->iv_he_data_sgi;
@@ -1310,9 +1095,11 @@ ol_update_peer_stats(struct ieee80211_node *ni,wmi_host_peer_stats *peer_stats)
 					peer_stats->peer_tx_rate, sgi , 0, 0);
 	}
 #endif
-            cdp_update_peer_stats(wlan_psoc_get_dp_handle(scn->soc->psoc_obj), wlan_vdev_get_id(vap->vdev_obj), ni->ni_macaddr,
+	if (scn->soc->ol_if_ops->ol_txrx_update_peer_stats) {
+            scn->soc->ol_if_ops->ol_txrx_update_peer_stats(wlan_peer_get_dp_handle(ni->peer_obj),
                                                               peer_stats, last_tx_rate_mcs,
                                                               WMI_HOST_REQUEST_PEER_STAT);
+        }
     }
 
     return 0;
@@ -1333,23 +1120,15 @@ ol_ath_update_stats_event_handler(ol_scn_t sc, u_int8_t *data,
     struct wlan_objmgr_peer *peer = NULL;
 #endif
     A_UINT8 i;
-    u_int8_t c_macaddr[QDF_MAC_ADDR_SIZE];
+    u_int8_t c_macaddr[IEEE80211_ADDR_LEN];
     wmi_host_stats_event stats_param = {0};
-    struct wmi_unified *wmi_handle;
+    struct common_wmi_handle *wmi_handle;
 #ifdef QCA_SUPPORT_CP_STATS
     struct pdev_ic_cp_stats *pdev_cps = NULL;
 #endif
     struct wlan_objmgr_pdev *pdev;
-    cdp_config_param_type value = {0};
-    bool is_mbssid_enable;
-    bool is_ema_enable;
 
     wmi_handle = lmac_get_wmi_hdl(psoc);
-    if (!wmi_handle) {
-        qdf_err("wmi_handle is null");
-        return -EINVAL;
-    }
-
     OS_MEMZERO(&stats_param, sizeof(wmi_host_stats_event));
     if (wmi_extract_stats_param(wmi_handle, data, &stats_param) !=
               QDF_STATUS_SUCCESS) {
@@ -1357,37 +1136,11 @@ ol_ath_update_stats_event_handler(ol_scn_t sc, u_int8_t *data,
                  "Failed to extract stats");
          return -1;
     }
-
-#ifdef QCA_SUPPORT_CP_STATS
-    cp_stats_debug("pdev_id[%d] stats_id[0x%x]",
-                   stats_param.pdev_id, stats_param.stats_id);
-
-    cp_stats_debug("num_pdev_stats[%u] num_pdev_ext_stats[%u] num_vdev_stats[%u] num_peer_stats[%u]",
-                   stats_param.num_pdev_stats, stats_param.num_pdev_ext_stats,
-                   stats_param.num_vdev_stats, stats_param.num_peer_stats);
-    cp_stats_debug("num_peer_extd_stats[%u] num_bcnflt_stats[%u] num_chan_stats[%u] num_bcn_stats[%u]",
-                   stats_param.num_peer_extd_stats,
-                   stats_param.num_bcnflt_stats,
-                   stats_param.num_chan_stats, stats_param.num_bcn_stats);
-    cp_stats_debug("num_rssi_stats[%u] num_peer_adv_stats[%u] num_mib_stats[%u] num_mib_extd_stats[%u]",
-                   stats_param.num_rssi_stats, stats_param.num_peer_adv_stats,
-                   stats_param.num_mib_stats, stats_param.num_mib_extd_stats);
-    cp_stats_debug("num_peer_stats_info_ext[%u] num_vdev_extd_stats[%u] last_event[%u]",
-                   stats_param.num_peer_stats_info_ext,
-                   stats_param.num_vdev_extd_stats,
-                   stats_param.last_event);
-#endif
-
     pdev = wlan_objmgr_get_pdev_by_id(psoc, PDEV_UNIT(stats_param.pdev_id), WLAN_MLME_SB_ID);
     if (pdev == NULL) {
          qdf_print("%s: pdev object (id: %d) is NULL ", __func__, PDEV_UNIT(stats_param.pdev_id));
          return -1;
     }
-
-    is_mbssid_enable = wlan_pdev_nif_feat_cap_get(pdev,
-                                                  WLAN_PDEV_F_MBSS_IE_ENABLE);
-    is_ema_enable =
-           wlan_pdev_nif_feat_ext_cap_get(pdev, WLAN_PDEV_FEXT_EMA_AP_ENABLE);
 
     scn = lmac_get_pdev_feature_ptr(pdev);
     if (scn == NULL) {
@@ -1401,7 +1154,6 @@ ol_ath_update_stats_event_handler(ol_scn_t sc, u_int8_t *data,
     pdev_cps = wlan_get_pdev_cp_stats_ref(ic->ic_pdev_obj);
     if (!pdev_cps) {
          qdf_print("Failed to get pdev cp stats reference");
-         wlan_objmgr_pdev_release_ref(pdev, WLAN_MLME_SB_ID);
          return -1;
     }
 #endif
@@ -1411,6 +1163,8 @@ ol_ath_update_stats_event_handler(ol_scn_t sc, u_int8_t *data,
 
         for (i = 0; i < stats_param.num_pdev_stats; i++) {
             ol_txrx_soc_handle soc_txrx_handle;
+            struct cdp_pdev *cdp_pdev;
+            cdp_pdev = wlan_pdev_get_dp_handle(scn->sc_pdev);
             soc_txrx_handle = wlan_psoc_get_dp_handle(scn->soc->psoc_obj);
             qdf_mem_set(pdev_stats, sizeof(wmi_host_pdev_stats), 0);
 
@@ -1419,12 +1173,7 @@ ol_ath_update_stats_event_handler(ol_scn_t sc, u_int8_t *data,
                 scn->cur_hw_nf = pdev_stats->chan_nf;
             else
                 scn->chan_nf = scn->cur_hw_nf = pdev_stats->chan_nf;
-
-            value.cdp_pdev_param_chn_noise_flr = scn->chan_nf;
-            cdp_txrx_set_pdev_param(soc_txrx_handle,
-                                    wlan_objmgr_pdev_get_pdev_id(scn->sc_pdev),
-                                    CDP_CHAN_NOISE_FLOOR,
-                                    value);
+            cdp_pdev_set_chan_noise_floor(soc_txrx_handle, cdp_pdev, scn->chan_nf);
             scn->mib_cycle_cnts.tx_frame_count = pdev_stats->tx_frame_count;
             scn->mib_cycle_cnts.rx_frame_count = pdev_stats->rx_frame_count;
             scn->mib_cycle_cnts.rx_clear_count = pdev_stats->rx_clear_count;
@@ -1458,7 +1207,7 @@ ol_ath_update_stats_event_handler(ol_scn_t sc, u_int8_t *data,
             pdev_cps->stats.cs_rx_phy_err = scn->ath_stats.rx.phy_errs;
 #endif
             cdp_update_pdev_host_stats(wlan_psoc_get_dp_handle(psoc),
-                                       wlan_objmgr_pdev_get_pdev_id(ic->ic_pdev_obj),
+                                       wlan_pdev_get_dp_handle(ic->ic_pdev_obj),
                                        &pdev_stats->pdev_stats,
                                        WMI_HOST_REQUEST_PDEV_STAT);
 
@@ -1484,7 +1233,7 @@ ol_ath_update_stats_event_handler(ol_scn_t sc, u_int8_t *data,
 
 #define HOST_PDEV_EXTD_STATS 0x100
             cdp_update_pdev_host_stats(wlan_psoc_get_dp_handle(psoc),
-                                       wlan_objmgr_pdev_get_pdev_id(ic->ic_pdev_obj),
+                                       wlan_pdev_get_dp_handle(ic->ic_pdev_obj),
                                        pdev_ext_stats,
                                        HOST_PDEV_EXTD_STATS);
     }
@@ -1510,33 +1259,25 @@ ol_ath_update_stats_event_handler(ol_scn_t sc, u_int8_t *data,
             wmi_extract_peer_stats(wmi_handle, data, i, peer_stats);
 
             WMI_HOST_MAC_ADDR_TO_CHAR_ARRAY(&peer_stats->peer_macaddr, c_macaddr);
-            ni = ieee80211_find_node(ic, c_macaddr, WLAN_MLME_SB_ID);
+            ni = ieee80211_find_node(&ic->ic_sta, c_macaddr);
 #if ATH_SUPPORT_WRAP
-#if WLAN_QWRAP_LEGACY
             if(ni && ni->ni_vap && wlan_is_psta(ni->ni_vap)) {
-#else
-            if(ni && ni->ni_vap && dp_wrap_vdev_is_psta(ni->ni_vap->vdev_obj)) {
-#endif
                 struct ieee80211vap *tmpvap = NULL;
                 struct ieee80211_node *tmp_bss_ni = NULL;
 
                 if(!peer_stats->peer_rssi) {
-                    ieee80211_free_node(ni, WLAN_MLME_SB_ID);
+                    ieee80211_free_node(ni);
                     //temp += sizeof(wmi_peer_stats);
                     continue;
                 }
 
                 TAILQ_FOREACH(tmpvap, &ic->ic_vaps, iv_next) {
-#if WLAN_QWRAP_LEGACY
                     if((ni->ni_vap != tmpvap) && wlan_is_psta(tmpvap)) {
-#else
-                    if((ni->ni_vap != tmpvap) && dp_wrap_vdev_is_psta(tmpvap->vdev_obj)) {
-#endif
-                        tmp_bss_ni = ieee80211_try_ref_bss_node(tmpvap, WLAN_MLME_SB_ID);
+                        tmp_bss_ni = ieee80211_try_ref_bss_node(tmpvap);
 
                         if(tmp_bss_ni) {
                             ol_update_peer_stats(tmp_bss_ni,peer_stats);
-                            ieee80211_free_node(tmp_bss_ni, WLAN_MLME_SB_ID);
+                            ieee80211_free_node(tmp_bss_ni);
                             tmp_bss_ni = NULL;
                         }
                     }
@@ -1546,12 +1287,12 @@ ol_ath_update_stats_event_handler(ol_scn_t sc, u_int8_t *data,
 
             if (ni) {
                 if(ol_update_peer_stats(ni,peer_stats)) {
-                    ieee80211_free_node(ni, WLAN_MLME_SB_ID);
+                    ieee80211_free_node(ni);
                     //temp += sizeof(wmi_peer_stats);
                     continue;
                 }
 
-                ieee80211_free_node(ni, WLAN_MLME_SB_ID);
+                ieee80211_free_node(ni);
             }
         }
     }
@@ -1569,11 +1310,13 @@ ol_ath_update_stats_event_handler(ol_scn_t sc, u_int8_t *data,
 
                 WMI_HOST_MAC_ADDR_TO_CHAR_ARRAY(&peer_extd_stats->peer_macaddr, c_macaddr);
 
-                ni = ieee80211_find_node(ic, c_macaddr, WLAN_MLME_SB_ID);
+                ni = ieee80211_find_node(&ic->ic_sta, c_macaddr);
                 if (ni) {
-                    cdp_update_peer_stats(wlan_psoc_get_dp_handle(scn->soc->psoc_obj),
-                                            wlan_vdev_get_id(ni->ni_vap->vdev_obj), ni->ni_macaddr,
-                                            peer_extd_stats, last_tx_rate_mcs, WMI_HOST_REQUEST_PEER_EXTD_STAT);
+                    if (scn->soc->ol_if_ops->ol_txrx_update_peer_stats)
+                        scn->soc->ol_if_ops->ol_txrx_update_peer_stats(
+                               wlan_peer_get_dp_handle(ni->peer_obj), peer_extd_stats,
+                                                       last_tx_rate_mcs,
+                                                       WMI_HOST_REQUEST_PEER_EXTD_STAT);
 #if QCA_AIRTIME_FAIRNESS
                     if (target_if_atf_get_mode(psoc)) {
                         peer = wlan_objmgr_get_peer(psoc, stats_param.pdev_id, c_macaddr, WLAN_ATF_ID);
@@ -1586,7 +1329,7 @@ ol_ath_update_stats_event_handler(ol_scn_t sc, u_int8_t *data,
                         }
                     }
 #endif
-                    ieee80211_free_node(ni, WLAN_MLME_SB_ID);
+                    ieee80211_free_node(ni);
                 }
 //                temp += sizeof(wmi_peer_extd_stats);
             }
@@ -1609,100 +1352,18 @@ ol_ath_update_stats_event_handler(ol_scn_t sc, u_int8_t *data,
         for (i = 0; i < stats_param.num_bcn_stats; i++) {
             struct ieee80211vap *vap;
             wmi_host_bcn_stats vdev_bcn_stats;
-
             wmi_extract_bcn_stats(wmi_handle, data, i, &vdev_bcn_stats);
             vap = ol_ath_vap_get(scn, vdev_bcn_stats.vdev_id);
-
-            if (!is_mbssid_enable) {
-                if (!vap)
-                    continue;
-#ifdef QCA_SUPPORT_CP_STATS
-                    vdev_cp_stats_tx_bcn_outage_update(vap->vdev_obj,
-                                              vdev_bcn_stats.tx_bcn_outage_cnt);
-                    vdev_cp_stats_tx_bcn_success_update(vap->vdev_obj,
-                                              vdev_bcn_stats.tx_bcn_succ_cnt);
-#endif
-            } else {
-                struct ieee80211vap *temp_vap;
-                bool is_non_tx_vap;
-
-                if (!vap)
-                    continue;
-
-                is_non_tx_vap = IEEE80211_VAP_IS_MBSS_NON_TRANSMIT_ENABLED(vap);
-                if (is_non_tx_vap) {
-                    QDF_TRACE(QDF_MODULE_ID_CP_STATS, QDF_TRACE_LEVEL_INFO,
-                              "VAP from fw is not a tx vap. vdevid given = %d",
-                              vdev_bcn_stats.vdev_id);
-                    ol_ath_release_vap(vap);
-                    continue;
-                }
-
-                TAILQ_FOREACH(temp_vap, &ic->ic_vaps, iv_next) {
-                    if (ieee80211_mbss_is_beaconing_ap(temp_vap)) {
-#ifdef QCA_SUPPORT_CP_STATS
-                        vdev_cp_stats_tx_bcn_outage_update(temp_vap->vdev_obj,
-                                              vdev_bcn_stats.tx_bcn_outage_cnt);
-                        vdev_cp_stats_tx_bcn_success_update(temp_vap->vdev_obj,
-                                              vdev_bcn_stats.tx_bcn_succ_cnt);
-#endif
-                    }
-                }
-            }
-            qdf_atomic_inc(&(vap->vap_bcn_event));
-            vap->vap_bcn_stats_time = OS_GET_TICKS();
-            ol_ath_release_vap(vap);
-        }
-    }
-
-
-    if (stats_param.stats_id & WMI_HOST_REQUEST_VDEV_PRB_FILS_STAT) {
-        struct ieee80211vap *vap;
-        struct ieee80211vap *temp_vap;
-        struct wmi_host_vdev_prb_fils_stats vdev_prb_fils_stats = {0};
-
-        ic = &scn->sc_ic;
-        for (i = 0; i < stats_param.num_vdev_extd_stats; i++) {
-            wmi_extract_vdev_prb_fils_stats(wmi_handle, data, i,
-                                       &vdev_prb_fils_stats);
-
-            vap = ol_ath_vap_get(scn, vdev_prb_fils_stats.vdev_id);
-
-            qdf_debug("scn: %p, i: %d, num_stats: %d, vap: %p, vdev_id: %d FD_S:%d FD_F:%d UN_PRB_S:%d UN_PRB_F:%d\n",
-                      scn, i, stats_param.num_vdev_extd_stats, vap,
-                      vdev_prb_fils_stats.vdev_id,
-                      vdev_prb_fils_stats.fd_succ_cnt,
-                      vdev_prb_fils_stats.fd_fail_cnt,
-                      vdev_prb_fils_stats.unsolicited_prb_succ_cnt,
-                      vdev_prb_fils_stats.unsolicited_prb_fail_cnt);
-
-            if (vap && vap->iv_opmode != IEEE80211_M_HOSTAP) {
-                ol_ath_release_vap(vap);
-                continue;
-            }
-
             if (vap) {
 #ifdef QCA_SUPPORT_CP_STATS
-                vdev_cp_stats_tx_offload_prb_resp_succ_cnt_update(
-                            vap->vdev_obj,
-                            vdev_prb_fils_stats.unsolicited_prb_succ_cnt);
-                vdev_cp_stats_tx_offload_prb_resp_fail_cnt_update(
-                            vap->vdev_obj,
-                            vdev_prb_fils_stats.unsolicited_prb_fail_cnt);
-                if (is_mbssid_enable && (IEEE80211_IS_CHAN_6GHZ(ic->ic_curchan))
-                    && !IEEE80211_VAP_IS_MBSS_NON_TRANSMIT_ENABLED(vap)) {
-                    TAILQ_FOREACH(temp_vap, &ic->ic_vaps, iv_next) {
-                        vdev_cp_stats_fils_frames_sent_update(temp_vap->vdev_obj,
-                                               vdev_prb_fils_stats.fd_succ_cnt);
-                        vdev_cp_stats_fils_frames_sent_fail_update(temp_vap->vdev_obj,
-                                               vdev_prb_fils_stats.fd_fail_cnt);
-		    }
-                }
+                vdev_cp_stats_tx_bcn_outage_update(vap->vdev_obj,
+                                               vdev_bcn_stats.tx_bcn_outage_cnt);
+                vdev_cp_stats_tx_bcn_success_update(vap->vdev_obj,
+                                               vdev_bcn_stats.tx_bcn_succ_cnt);
 #endif
-                qdf_atomic_inc(&(vap->vap_prb_fils_event));
+                qdf_atomic_inc(&(vap->vap_bcn_event));
                 ol_ath_release_vap(vap);
             }
-
         }
     }
 
@@ -1720,20 +1381,14 @@ ol_ath_update_stats_event_handler(ol_scn_t sc, u_int8_t *data,
         struct ieee80211vap *vap = 0;
         char nullmac[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
         struct wmi_host_vdev_nac_rssi_event nac_rssi_stats;
-        struct wmi_unified *pdev_wmi_handle;
+        struct common_wmi_handle *pdev_wmi_handle;
 
         pdev_wmi_handle = lmac_get_pdev_wmi_handle(scn->sc_pdev);
-
-        if (!pdev_wmi_handle) {
-            qdf_debug("Pdev WMI handle is NULL");
-            goto esc_nac_rssi;
-        }
-
         wmi_extract_vdev_nac_rssi_stats(pdev_wmi_handle, data,  &nac_rssi_stats);
         vap = ol_ath_vap_get(scn, nac_rssi_stats.vdev_id);
         if (vap) {
-            if ((IEEE80211_ADDR_EQ(vap->iv_nac_rssi.bssid_mac, nullmac)) ||
-                (IEEE80211_ADDR_EQ(vap->iv_nac_rssi.client_mac, nullmac))) {
+            if ((IEEE80211_ADDR_EQ(vap->iv_nac_rssi.bssid_mac, nullmac)) &&
+                (IEEE80211_ADDR_EQ(vap->iv_nac_rssi.bssid_mac, nullmac))) {
                 qdf_print("Extract NAC_RSSI Wrong VAP%d", nac_rssi_stats.vdev_id);
                 ol_ath_release_vap(vap);
                 return 0;
@@ -1745,7 +1400,6 @@ ol_ath_update_stats_event_handler(ol_scn_t sc, u_int8_t *data,
             ol_ath_release_vap(vap);
         }
     }
-esc_nac_rssi:
 #endif
     if (stats_param.stats_id & WMI_HOST_REQUEST_PEER_RETRY_STAT) {
        if(stats_param.num_peer_stats  > 0) {
@@ -1756,14 +1410,14 @@ esc_nac_rssi:
                 struct wmi_host_peer_retry_stats *peer_retry_stats = &st_peer_retry_stats;
                 wmi_extract_peer_retry_stats(wmi_handle, data, i, peer_retry_stats);
                 WMI_HOST_MAC_ADDR_TO_CHAR_ARRAY(&peer_retry_stats->peer_macaddr, c_macaddr);
-                ni = ieee80211_find_node(ic, c_macaddr, WLAN_MLME_SB_ID);
+                ni = ieee80211_find_node(&ic->ic_sta, c_macaddr);
                 if (ni) {
-                    cdp_update_peer_stats(wlan_psoc_get_dp_handle(scn->soc->psoc_obj),
-                                          wlan_vdev_get_id(ni->ni_vap->vdev_obj), ni->ni_macaddr,
-                                          peer_retry_stats,
-                                          last_tx_rate_mcs,
-                                          WMI_HOST_REQUEST_PEER_RETRY_STAT);
-                    ieee80211_free_node(ni, WLAN_MLME_SB_ID);
+                    if (scn->soc->ol_if_ops->ol_txrx_update_peer_stats)
+                        scn->soc->ol_if_ops->ol_txrx_update_peer_stats(
+                               wlan_peer_get_dp_handle(ni->peer_obj), peer_retry_stats,
+                                                       last_tx_rate_mcs,
+                                                       WMI_HOST_REQUEST_PEER_RETRY_STAT);
+                    ieee80211_free_node(ni);
                 }
             }
         }
@@ -1818,14 +1472,10 @@ ol_ath_bss_chan_info_event_handler(ol_scn_t sc, u_int8_t *data, u_int32_t datale
     };
 
     const struct hw_params *target;
-    struct wmi_unified *wmi_handle;
+    struct common_wmi_handle *wmi_handle;
     struct wlan_objmgr_pdev *pdev;
 
     wmi_handle = lmac_get_wmi_hdl(soc->psoc_obj);
-    if (!wmi_handle) {
-        qdf_err("wmi_handle is null");
-        return -EINVAL;
-    }
 
     if (wmi_extract_bss_chan_info_event(wmi_handle, data, &bss_chan_info) !=
                    QDF_STATUS_SUCCESS) {
@@ -1934,16 +1584,11 @@ ol_ath_rssi_cb(ol_scn_t sc,
     struct wlan_objmgr_peer *peer_obj = NULL;
     wmi_host_inst_stats_resp inst_rssi_resp;
     wmi_host_inst_stats_resp *ev = &inst_rssi_resp;
-    u_int8_t c_macaddr[QDF_MAC_ADDR_SIZE];
-    struct wmi_unified *wmi_handle;
+    u_int8_t c_macaddr[IEEE80211_ADDR_LEN];
+    struct common_wmi_handle *wmi_handle;
     struct ieee80211_node *ni = NULL;
 
     wmi_handle = lmac_get_wmi_hdl(soc->psoc_obj);
-    if (!wmi_handle) {
-        qdf_err("wmi_handle is null");
-        return -EINVAL;
-    }
-
     if (wmi_extract_inst_rssi_stats_event(wmi_handle, data,
                     &inst_rssi_resp) != QDF_STATUS_SUCCESS) {
          qdf_print("Unable to extract inst rssi event");
@@ -1977,7 +1622,6 @@ ol_ath_rssi_cb(ol_scn_t sc,
     ni = wlan_peer_get_mlme_ext_obj(peer_obj);
     if (!ni) {
         qdf_info("Unable to find ni");
-        wlan_objmgr_peer_release_ref(peer_obj, WLAN_MLME_SB_ID);
         return -1;
     }
 
@@ -1986,46 +1630,40 @@ ol_ath_rssi_cb(ol_scn_t sc,
     return 0;
 }
 
-static int32_t ol_ath_send_rssi(struct ieee80211com *ic,
-                                uint8_t *macaddr, struct ieee80211vap *vap)
+static int32_t
+ol_ath_send_rssi(struct ieee80211com *ic,
+                u_int8_t *macaddr, struct ieee80211vap *vap)
 {
+    struct ol_ath_softc_net80211 *scn = OL_ATH_SOFTC_NET80211(ic);
     struct stats_request_params param = {0};
     wmi_unified_t pdev_wmi_handle;
-    QDF_STATUS qdf_status;
 
-    pdev_wmi_handle = lmac_get_pdev_wmi_unified_handle(ic->ic_pdev_obj);
-    param.vdev_id = wlan_vdev_get_id(vap->vdev_obj);
+    pdev_wmi_handle = lmac_get_pdev_wmi_unified_handle(scn->sc_pdev);
+    param.vdev_id = (OL_ATH_VAP_NET80211(vap))->av_if_id;
     param.stats_id = WMI_HOST_REQUEST_INST_STAT;
 
     if (pdev_wmi_handle) {
-        qdf_status = wmi_unified_stats_request_send(pdev_wmi_handle, macaddr,
-                                                    &param);
-        return qdf_status_to_os_return(qdf_status);
+        return wmi_unified_stats_request_send(pdev_wmi_handle, macaddr, &param);
     } else {
-        qdf_err("WMI handle is NULL");
-        return -EINVAL;
+        qdf_err("WMI handle is NULL\n");
+        return QDF_STATUS_E_FAILURE;
     }
 }
 
 static int32_t
 ol_ath_bss_chan_info_request_stats(struct ieee80211com *ic, int param)
 {
+    struct ol_ath_softc_net80211 *scn = OL_ATH_SOFTC_NET80211(ic);
     struct bss_chan_info_request_params chan_info_param;
-    struct wmi_unified *pdev_wmi_handle;
-    QDF_STATUS qdf_status;
+    struct common_wmi_handle *pdev_wmi_handle;
 
-    pdev_wmi_handle = lmac_get_pdev_wmi_handle(ic->ic_pdev_obj);
-    if (!pdev_wmi_handle) {
-        qdf_debug("Pdev WMI handle is NULL");
-        return -EINVAL;
-    }
-
+    pdev_wmi_handle = lmac_get_pdev_wmi_handle(scn->sc_pdev);
     qdf_mem_set(&chan_info_param, sizeof(chan_info_param), 0);
     chan_info_param.param = param;
 
-    qdf_status = wmi_unified_bss_chan_info_request_cmd_send(pdev_wmi_handle,
-                                                            &chan_info_param);
-    return qdf_status_to_os_return(qdf_status);
+    return wmi_unified_bss_chan_info_request_cmd_send(pdev_wmi_handle,
+            &chan_info_param);
+    return 0;
 }
 
 void
@@ -2033,12 +1671,15 @@ reset_node_stat(void *arg, wlan_node_t node)
 {
     struct ieee80211_node *ni = node;
     struct wlan_objmgr_psoc *psoc;
+    struct cdp_peer *peer_dp_handle;
 
     psoc = wlan_pdev_get_psoc(ni->ni_ic->ic_pdev_obj);
+    peer_dp_handle = wlan_peer_get_dp_handle(ni->peer_obj);
+    if (!peer_dp_handle)
+        return;
 
     cdp_host_reset_peer_stats(wlan_psoc_get_dp_handle(psoc),
-                              wlan_objmgr_pdev_get_pdev_id(ni->ni_ic->ic_pdev_obj),
-                              ni->ni_macaddr);
+                              peer_dp_handle);
     return;
 }
 
@@ -2065,21 +1706,22 @@ static int ol_ath_enable_ap_stats(struct ieee80211com *ic, u_int8_t stats_cmd)
     uint32_t types = 0;
     uint32_t param_value = 0;
     ol_txrx_soc_handle soc_txrx_handle;
-    struct wmi_unified *pdev_wmi_handle;
+    ol_txrx_pdev_handle pdev_txrx_handle;
+    struct common_wmi_handle *pdev_wmi_handle;
 #if defined(CONFIG_AR900B_SUPPORT) || defined(CONFIG_AR9888_SUPPORT)
     uint32_t pdev_idx = lmac_get_pdev_idx(ic->ic_pdev_obj);
 #endif
 #ifdef QCA_SUPPORT_CP_STATS
     uint32_t assert_count;
 #endif
-    struct wlan_objmgr_psoc *psoc = wlan_pdev_get_psoc(ic->ic_pdev_obj);
 
-    soc_txrx_handle = wlan_psoc_get_dp_handle(psoc);
+    soc_txrx_handle = wlan_psoc_get_dp_handle(wlan_pdev_get_psoc(ic->ic_pdev_obj));
+    pdev_txrx_handle = wlan_pdev_get_dp_handle(ic->ic_pdev_obj);
 
     pdev_wmi_handle = lmac_get_pdev_wmi_handle(scn->sc_pdev);
-    h_sc = lmac_get_ol_hif_hdl(psoc);
-    if (!h_sc) {
-        qdf_info("Invalid h_sc");
+    h_sc = lmac_get_ol_hif_hdl(scn->soc->psoc_obj);
+    if(!h_sc) {
+        qdf_print("Invalid h_sc in %s", __func__);
         return A_ERROR;
     }
 
@@ -2092,21 +1734,19 @@ static int ol_ath_enable_ap_stats(struct ieee80211com *ic, u_int8_t stats_cmd)
 #endif
 
         ol_ath_subscribe_ppdu_desc_info(scn, PPDU_DESC_ENHANCED_STATS);
-        if (lmac_is_target_ar900b(psoc)) {
+        if (lmac_is_target_ar900b(scn->soc->psoc_obj)) {
             param_value = cdp_fw_supported_enh_stats_version(
-                soc_txrx_handle, wlan_objmgr_pdev_get_pdev_id(ic->ic_pdev_obj));
-            if (ol_ath_pdev_set_param(ic->ic_pdev_obj,
-                                      wmi_pdev_param_en_stats, param_value))
+                soc_txrx_handle,
+                (void *) pdev_txrx_handle);
+            if(ol_ath_pdev_set_param(scn,
+                        wmi_pdev_param_en_stats, param_value)) {
                 return A_ERROR;
-        } else if (!ol_target_lithium(psoc)) {
+            }
+        } else if (!ol_target_lithium(scn->soc->psoc_obj)) {
                 types |= (WMI_HOST_PKTLOG_EVENT_TX | WMI_HOST_PKTLOG_EVENT_RCU);
 
 #if defined(CONFIG_AR900B_SUPPORT) || defined(CONFIG_AR9888_SUPPORT)
             if (types) {
-                if (!pdev_wmi_handle) {
-                    qdf_debug("Pdev WMI Handle is NULL");
-                    return A_ERROR;
-                }
                 /*enabling the pktlog for stats*/
                 if(wmi_unified_packet_log_enable_send(pdev_wmi_handle, types,
                                         pdev_idx)) {
@@ -2118,7 +1758,7 @@ static int ol_ath_enable_ap_stats(struct ieee80211com *ic, u_int8_t stats_cmd)
 #ifdef QCA_SUPPORT_CP_STATS
         pdev_cp_stats_ap_stats_tx_cal_enable_update(ic->ic_pdev_obj, 1);
 #endif
-        cdp_enable_enhanced_stats(soc_txrx_handle,  wlan_objmgr_pdev_get_pdev_id(ic->ic_pdev_obj));
+        cdp_enable_enhanced_stats(soc_txrx_handle, (struct cdp_pdev *)pdev_txrx_handle);
 
 #ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
         if (ic->nss_radio_ops) {
@@ -2136,26 +1776,24 @@ static int ol_ath_enable_ap_stats(struct ieee80211com *ic, u_int8_t stats_cmd)
         /* store the assert count and restore after memzero */
 #ifdef QCA_SUPPORT_CP_STATS
         assert_count = pdev_cp_stats_tgt_asserts_get(ic->ic_pdev_obj);
-        pdev_cp_stats_reset(ic->ic_pdev_obj);
+	pdev_cp_stats_reset(ic->ic_pdev_obj);
         pdev_cp_stats_tgt_asserts_update(ic->ic_pdev_obj, assert_count);
         pdev_cp_stats_ap_stats_tx_cal_enable_update(ic->ic_pdev_obj, 0);
 #endif
-        cdp_disable_enhanced_stats(soc_txrx_handle, wlan_objmgr_pdev_get_pdev_id(ic->ic_pdev_obj));
+        cdp_disable_enhanced_stats(soc_txrx_handle,
+                (struct cdp_pdev *)pdev_txrx_handle);
 
-        if (lmac_is_target_ar900b(psoc)) {
-            if (ol_ath_pdev_set_param(ic->ic_pdev_obj,
-                                      wmi_pdev_param_en_stats, 0) != EOK)
+        if (lmac_is_target_ar900b(scn->soc->psoc_obj)) {
+            if(ol_ath_pdev_set_param(scn,
+                        wmi_pdev_param_en_stats, 0) != EOK ) {
                 return A_ERROR;
+            }
         }
 
         ol_ath_unsubscribe_ppdu_desc_info(scn, PPDU_DESC_ENHANCED_STATS);
 
 #if defined(CONFIG_AR900B_SUPPORT) || defined(CONFIG_AR9888_SUPPORT)
-        if (!(lmac_is_target_ar900b(psoc) || ol_target_lithium(psoc))) {
-            if (!pdev_wmi_handle) {
-                qdf_debug("Pdev WMI Handle is NULL");
-                return A_ERROR;
-            }
+        if (!(lmac_is_target_ar900b(scn->soc->psoc_obj)|| ol_target_lithium(scn->soc->psoc_obj))) {
             if(wmi_unified_packet_log_disable_send(pdev_wmi_handle,
                         pdev_idx)) {
                 return A_ERROR;
@@ -2177,9 +1815,10 @@ static int ol_ath_enable_ap_stats(struct ieee80211com *ic, u_int8_t stats_cmd)
 
 #define IEEE80211_DEFAULT_CHAN_STATS_PERIOD     (1000)
 
-void ol_ath_stats_soc_attach(ol_ath_soc_softc_t *soc)
+    void
+ol_ath_stats_soc_attach(ol_ath_soc_softc_t *soc)
 {
-    struct wmi_unified *wmi_handle;
+    struct common_wmi_handle *wmi_handle;
 
     wmi_handle = lmac_get_wmi_hdl(soc->psoc_obj);
     /* register target stats event handler */
@@ -2190,11 +1829,12 @@ void ol_ath_stats_soc_attach(ol_ath_soc_softc_t *soc)
             ol_ath_rssi_cb, WMI_RX_UMAC_CTX);
     wmi_unified_register_event_handler((void *)wmi_handle, wmi_pdev_bss_chan_info_event_id,
             ol_ath_bss_chan_info_event_handler, WMI_RX_UMAC_CTX);
+
+
 }
 
 void process_rx_ppdu_stats(void *context)
 {
-    int i;
 #if  ATH_DATA_TX_INFO_EN
     struct ol_ath_txrx_ppdu_info_ctx *ppdu_stats_ctx =
         (struct ol_ath_txrx_ppdu_info_ctx *) context;
@@ -2221,73 +1861,38 @@ void process_rx_ppdu_stats(void *context)
         cdp_rx_ppdu = (struct cdp_rx_indication_ppdu *)nbuf->data;
 
 #if  ATH_DATA_TX_INFO_EN
-        qdf_info("****** Rx ppdu stats for %s ******", scn->netdev->name);
+        qdf_warn("****** Rx ppdu stats for %s ******", scn->netdev->name);
 #endif
-        qdf_info("ppdu_id              :%d ", cdp_rx_ppdu->ppdu_id);
-        qdf_info("channel              :%u ", cdp_rx_ppdu->channel);
-        qdf_info("timestamp            :%llu ", cdp_rx_ppdu->timestamp);
-        qdf_info("duration             :%u ", cdp_rx_ppdu->duration);
-        qdf_info("lsig_a               :%u ", cdp_rx_ppdu->lsig_a);
-        qdf_info("bw                   :%d ", cdp_rx_ppdu->u.bw);
-        qdf_info("mcs                  :%d ", cdp_rx_ppdu->u.mcs);
-        qdf_info("nss                  :%d ", cdp_rx_ppdu->u.nss);
-        qdf_info("num_mpdu             :%d ", cdp_rx_ppdu->num_mpdu);
-        qdf_info("num_msdu             :%d ", cdp_rx_ppdu->num_msdu);
-        qdf_info("rssi :               :%d ", cdp_rx_ppdu->rssi);
-        qdf_info("ppdu_length          :%d ", cdp_rx_ppdu->length);
-        qdf_info("rate_info            :0x%x ", cdp_rx_ppdu->u.rate_info);
-        qdf_info("ltf_size             :%u ", cdp_rx_ppdu->u.ltf_size);
-        qdf_info("stbc                 :%u ", cdp_rx_ppdu->u.stbc);
-        qdf_info("he_re                :%u ", cdp_rx_ppdu->u.he_re);
-        qdf_info("gi                   :%u ", cdp_rx_ppdu->u.gi);
-        qdf_info("dcm                  :%u ", cdp_rx_ppdu->u.dcm);
-        qdf_info("ldpc                 :%u ", cdp_rx_ppdu->u.ldpc);
-        qdf_info("ppdu_type            :%u ", cdp_rx_ppdu->u.ppdu_type);
+        qdf_warn("mac_addr             :%pM ", cdp_rx_ppdu->mac_addr);
+        qdf_warn("rssi :               :%d ", cdp_rx_ppdu->rssi);
+        qdf_warn("ppdu_id              :%d ", cdp_rx_ppdu->ppdu_id);
+        qdf_warn("duration             :%u ", cdp_rx_ppdu->duration);
+        qdf_warn("tid                  :%d ", cdp_rx_ppdu->tid);
+        qdf_warn("first_data_seq_ctrl  :%d ", cdp_rx_ppdu->first_data_seq_ctrl);
+        qdf_warn("bw                   :%d ", cdp_rx_ppdu->u.bw);
+        qdf_warn("mcs                  :%d ", cdp_rx_ppdu->u.mcs);
+        qdf_warn("nss                  :%d ", cdp_rx_ppdu->u.nss);
+        qdf_warn("preamble             :%d ", cdp_rx_ppdu->u.preamble);
+        qdf_warn("channel              :%u ", cdp_rx_ppdu->channel);
+        qdf_warn("timestamp            :%llu ", cdp_rx_ppdu->timestamp);
+        qdf_warn("lsig_a               :%u ", cdp_rx_ppdu->lsig_a);
+        qdf_warn("is_ampdu             :%d ", cdp_rx_ppdu->is_ampdu);
+        qdf_warn("num_mpdu             :%d ", cdp_rx_ppdu->num_mpdu);
+        qdf_warn("num_msdu             :%d ", cdp_rx_ppdu->num_msdu);
+        qdf_warn("rate_info            :0x%x ", cdp_rx_ppdu->u.rate_info);
+        qdf_warn("ltf_size             :%u ", cdp_rx_ppdu->u.ltf_size);
+        qdf_warn("stbc                 :%u ", cdp_rx_ppdu->u.stbc);
+        qdf_warn("he_re                :%u ", cdp_rx_ppdu->u.he_re);
+        qdf_warn("gi                   :%u ", cdp_rx_ppdu->u.gi);
+        qdf_warn("dcm                  :%u ", cdp_rx_ppdu->u.dcm);
+        qdf_warn("ldpc                 :%u ", cdp_rx_ppdu->u.ldpc);
+        qdf_warn("ppdu_type            :%u ", cdp_rx_ppdu->u.ppdu_type);
 
         if (cdp_rx_ppdu->u.ppdu_type < (sizeof(ppdu_type)/sizeof(ppdu_type[0]))) {
-            qdf_info("ppdu_type_str        :%s ", ppdu_type[cdp_rx_ppdu->u.ppdu_type]);
+            qdf_warn("ppdu_type_str        :%s ", ppdu_type[cdp_rx_ppdu->u.ppdu_type]);
         }
 
-        for (i = 0; i < cdp_rx_ppdu->num_users; i++) {
-            struct cdp_rx_stats_ppdu_user *rx_stats_peruser;
-            rx_stats_peruser = &(cdp_rx_ppdu->user[i]);
-
-            qdf_info("USER : %d ", i);
-            qdf_info("    mac_addr            :%pM ",
-                        rx_stats_peruser->mac_addr);
-            qdf_info("    tid                 :%d ", rx_stats_peruser->tid);
-            qdf_info("    first_data_seq_ctrl :0x%x ",
-                        rx_stats_peruser->first_data_seq_ctrl);
-            qdf_info("    sequence number     :%d ",
-                        (rx_stats_peruser->first_data_seq_ctrl >> 4) & 0xFFFF);
-            qdf_info("    frame_control       :%d ",
-                        rx_stats_peruser->frame_control);
-            qdf_info("    preamble            :%d ",
-                        rx_stats_peruser->preamble_type);
-            qdf_info("    is_ampdu            :%d ",
-                        rx_stats_peruser->is_ampdu);
-	    qdf_info("    mpdu success        :%d ",
-                        rx_stats_peruser->mpdu_cnt_fcs_ok);
-	    qdf_info("    mpdu failed         :%d ",
-                        rx_stats_peruser->mpdu_cnt_fcs_err);
-	    qdf_info("    mpdu ok byte count  :%d ",
-                        rx_stats_peruser->mpdu_ok_byte_count);
-	    qdf_info("    mpdu err byte count  :%d ",
-                        rx_stats_peruser->mpdu_err_byte_count);
-            qdf_info("    retries             :%d ",
-                        rx_stats_peruser->retries);
-            if (rx_stats_peruser->mu_ul_info_valid) {
-                qdf_info("    RU index            :%d ",
-                        rx_stats_peruser->ofdma_ru_start_index);
-                qdf_info("    RU width            :%d ",
-                        rx_stats_peruser->ofdma_ru_width);
-                qdf_info("    NSS                 :%d ",
-                        rx_stats_peruser->nss);
-                qdf_info("    MCS                 :%d ",
-                        rx_stats_peruser->mcs);
-            }
-        }
-
+        qdf_warn("ppdu_length          :%d ", cdp_rx_ppdu->length);
 
         qdf_nbuf_free(nbuf);
 
@@ -2326,19 +1931,19 @@ void process_tx_ppdu_stats(void *context)
         ppdu_desc = (struct cdp_tx_completion_ppdu *) qdf_nbuf_data(nbuf);
 
 #if  ATH_DATA_TX_INFO_EN
-        qdf_info("****** Tx ppdu stats for %s ******", scn->netdev->name);
+        qdf_warn("****** Tx ppdu stats for %s ******", scn->netdev->name);
 #endif
-        qdf_info("PPDU Id      : %u", ppdu_desc->ppdu_id);
-        qdf_info("MPDU count   : %d", ppdu_desc->num_mpdu);
-        qdf_info("MSDU count   : %d", ppdu_desc->num_msdu);
-        qdf_info("Channel      : %u", ppdu_desc->channel);
-        qdf_info("Start TSF    : %llu End TSF     : %llu",
+        qdf_warn("PPDU Id      : %u", ppdu_desc->ppdu_id);
+        qdf_warn("MPDU count   : %d", ppdu_desc->num_mpdu);
+        qdf_warn("MSDU count   : %d", ppdu_desc->num_msdu);
+        qdf_warn("Channel      : %u", ppdu_desc->channel);
+        qdf_warn("Start TSF    : %u End TSF     : %u",
                 ppdu_desc->ppdu_start_timestamp, ppdu_desc->ppdu_end_timestamp);
-        qdf_info("Duration     : %u", ppdu_desc->tx_duration);
-        qdf_info("Ack TSF      : %llu", ppdu_desc->ack_timestamp);
-        qdf_info("Ack RSSI     : %u", ppdu_desc->ack_rssi);
-        qdf_info("Frame_type   : %u", ppdu_desc->frame_type);
-        qdf_info("Num users    : %u", ppdu_desc->num_users);
+        qdf_warn("Duration     : %u", ppdu_desc->tx_duration);
+        qdf_warn("Ack TSF      : %u", ppdu_desc->ack_timestamp);
+        qdf_warn("Ack RSSI     : %u", ppdu_desc->ack_rssi);
+        qdf_warn("Frame_type   : %u", ppdu_desc->frame_type);
+        qdf_warn("Num users    : %u", ppdu_desc->num_users);
 
         for (i = 0; i < ppdu_desc->num_users; i++) {
 
@@ -2357,42 +1962,41 @@ void process_tx_ppdu_stats(void *context)
              * TID > 8 is set only for multicast data and management/ctrl packets
              * Stats print are required only for multicast data packets
              */
-            if ((ppdu_user_desc->tid) > 8 && !ppdu_user_desc->is_mcast &&
-                ppdu_user_desc->tid != 16)
+            if ((ppdu_user_desc->tid) > 8 && !ppdu_user_desc->is_mcast)
                     continue;
 
-            qdf_info(" User     : %d", i);
-            qdf_info("    mac_addr        : %pM ", ppdu_user_desc->mac_addr);
-            qdf_info("    peer_id         : %d ", ppdu_user_desc->peer_id);
-            qdf_info("    tid             : %d ", ppdu_user_desc->tid);
-            qdf_info("    is_ampdu        : %d ", ppdu_user_desc->is_ampdu);
-            qdf_info("    mpdu_tried_mcast: %d ", ppdu_user_desc->mpdu_tried_mcast);
-            qdf_info("    mpdu_tried_ucast: %d ", ppdu_user_desc->mpdu_tried_ucast);
-            qdf_info("    mpdu_success    : %d ", ppdu_user_desc->mpdu_success);
-            qdf_info("    mpdu_failed     : %d ", ppdu_user_desc->mpdu_failed);
-            qdf_info("    long_retries    : %d ", ppdu_user_desc->long_retries);
-            qdf_info("    short_retries   : %d ", ppdu_user_desc->short_retries);
-            qdf_info("    success_msdus   : %d ", ppdu_user_desc->success_msdus);
-            qdf_info("    retry_msdus     : %d ", ppdu_user_desc->retry_msdus);
-            qdf_info("    failed_msdus    : %d ", ppdu_user_desc->failed_msdus);
-            qdf_info("    success_bytes   : %u ", ppdu_user_desc->success_bytes);
-            qdf_info("    retry_bytes     : %d ", ppdu_user_desc->retry_bytes);
-            qdf_info("    bw              : %d ", ppdu_user_desc->bw);
-            qdf_info("    nss             : %d ", (ppdu_user_desc->nss + 1));
-            qdf_info("    mcs             : %d ", ppdu_user_desc->mcs);
-            qdf_info("    preamble        : %d ", ppdu_user_desc->preamble);
-            qdf_info("    gi              : %d ", ppdu_user_desc->gi);
-            qdf_info("    dcm             : %d ", ppdu_user_desc->dcm);
-            qdf_info("    ldpc            : %d ", ppdu_user_desc->ldpc);
-            qdf_info("    ppdu_type       : %d ", ppdu_user_desc->ppdu_type);
+            qdf_warn(" User     : %d", i);
+            qdf_warn("    mac_addr        : %pM ", ppdu_user_desc->mac_addr);
+            qdf_warn("    peer_id         : %d ", ppdu_user_desc->peer_id);
+            qdf_warn("    tid             : %d ", ppdu_user_desc->tid);
+            qdf_warn("    is_ampdu        : %d ", ppdu_user_desc->is_ampdu);
+            qdf_warn("    mpdu_tried_mcast: %d ", ppdu_user_desc->mpdu_tried_mcast);
+            qdf_warn("    mpdu_tried_ucast: %d ", ppdu_user_desc->mpdu_tried_ucast);
+            qdf_warn("    mpdu_success    : %d ", ppdu_user_desc->mpdu_success);
+            qdf_warn("    mpdu_failed     : %d ", ppdu_user_desc->mpdu_failed);
+            qdf_warn("    long_retries    : %d ", ppdu_user_desc->long_retries);
+            qdf_warn("    short_retries   : %d ", ppdu_user_desc->short_retries);
+            qdf_warn("    success_msdus   : %d ", ppdu_user_desc->success_msdus);
+            qdf_warn("    retry_msdus     : %d ", ppdu_user_desc->retry_msdus);
+            qdf_warn("    failed_msdus    : %d ", ppdu_user_desc->failed_msdus);
+            qdf_warn("    success_bytes   : %u ", ppdu_user_desc->success_bytes);
+            qdf_warn("    retry_bytes     : %d ", ppdu_user_desc->retry_bytes);
+            qdf_warn("    bw              : %d ", ppdu_user_desc->bw);
+            qdf_warn("    nss             : %d ", (ppdu_user_desc->nss + 1));
+            qdf_warn("    mcs             : %d ", ppdu_user_desc->mcs);
+            qdf_warn("    preamble        : %d ", ppdu_user_desc->preamble);
+            qdf_warn("    gi              : %d ", ppdu_user_desc->gi);
+            qdf_warn("    dcm             : %d ", ppdu_user_desc->dcm);
+            qdf_warn("    ldpc            : %d ", ppdu_user_desc->ldpc);
+            qdf_warn("    ppdu_type       : %d ", ppdu_user_desc->ppdu_type);
 
             if (ppdu_user_desc->ppdu_type < (sizeof(ppdu_type)/sizeof(ppdu_type[0])))
-                qdf_info("    ppdu_type_str   : %s ", ppdu_type[ppdu_user_desc->ppdu_type]);
+                qdf_warn("    ppdu_type_str   : %s ", ppdu_type[ppdu_user_desc->ppdu_type]);
 
-            qdf_info("    ltf_size        : %d ", ppdu_user_desc->ltf_size);
-            qdf_info("    stbc            : %d ", ppdu_user_desc->stbc);
-            qdf_info("    he_re           : %d ", ppdu_user_desc->he_re);
-            qdf_info("    txbf            : %d ", ppdu_user_desc->txbf);
+            qdf_warn("    ltf_size        : %d ", ppdu_user_desc->ltf_size);
+            qdf_warn("    stbc            : %d ", ppdu_user_desc->stbc);
+            qdf_warn("    he_re           : %d ", ppdu_user_desc->he_re);
+            qdf_warn("    txbf            : %d ", ppdu_user_desc->txbf);
         }
 
         qdf_nbuf_free(nbuf);
@@ -2406,14 +2010,9 @@ ol_ath_stats_attach(struct ieee80211com *ic)
 {
     struct ol_ath_softc_net80211 *scn = OL_ATH_SOFTC_NET80211(ic);
     struct ol_ath_txrx_ppdu_info_ctx *ppdu_stats_ctx;
-	struct wmi_unified *wmi_handle;
+	struct common_wmi_handle *wmi_handle;
 
 	wmi_handle = lmac_get_wmi_hdl(scn->soc->psoc_obj);
-    if (!wmi_handle) {
-        qdf_err("wmi_handle is null");
-        return;
-    }
-
     scn->periodic_chan_stats = wmi_service_enabled(wmi_handle,
                                      wmi_service_periodic_chan_stat_support);
     qdf_info("periodic_chan_stats: %d",
@@ -2429,18 +2028,20 @@ ol_ath_stats_attach(struct ieee80211com *ic)
 
     if (!ol_target_lithium(scn->soc->psoc_obj)) {
         /* enable the pdev stats event */
-        ol_ath_pdev_set_param(scn->sc_pdev,
-                              wmi_pdev_param_pdev_stats_update_period,
-                              PDEV_DEFAULT_STATS_UPDATE_PERIOD);
+        ol_ath_pdev_set_param(scn,
+                wmi_pdev_param_pdev_stats_update_period,
+                PDEV_DEFAULT_STATS_UPDATE_PERIOD);
 
-        /* enable the vdev stats event */
-        ol_ath_pdev_set_param(scn->sc_pdev,
-                              wmi_pdev_param_vdev_stats_update_period,
-                              VDEV_DEFAULT_STATS_UPDATE_PERIOD);
-        /* enable the peer stats event */
-        ol_ath_pdev_set_param(scn->sc_pdev,
-                              wmi_pdev_param_peer_stats_update_period,
-                              PEER_DEFAULT_STATS_UPDATE_PERIOD);
+        /* enable the pdev stats event */
+        ol_ath_pdev_set_param(scn,
+                wmi_pdev_param_vdev_stats_update_period,
+                VDEV_DEFAULT_STATS_UPDATE_PERIOD);
+        /* enable the pdev stats event */
+        ol_ath_pdev_set_param(scn,
+                wmi_pdev_param_peer_stats_update_period,
+                PEER_DEFAULT_STATS_UPDATE_PERIOD);
+
+
     }
 
     /* enable periodic chan stats event */
@@ -2483,39 +2084,48 @@ ol_ath_stats_attach(struct ieee80211com *ic)
         qdf_nbuf_queue_init(&scn->rx_ppdu_stats_ctx->nbufq);
         qdf_spinlock_create(&scn->rx_ppdu_stats_ctx->lock);
 #ifdef QCA_SUPPORT_RDK_STATS
-    if (scn->soc->rdkstats_enabled) {
+    if (scn->soc->wlanstats_enabled) {
         void *rate_stats_ctx;
         ol_txrx_soc_handle soc_txrx_handle;
-        uint8_t pdev_id = wlan_objmgr_pdev_get_pdev_id(ic->ic_pdev_obj);
+        ol_txrx_pdev_handle pdev_txrx_handle;
 
         soc_txrx_handle = wlan_psoc_get_dp_handle(scn->soc->psoc_obj);
+        pdev_txrx_handle = wlan_pdev_get_dp_handle(ic->ic_pdev_obj);
         rate_stats_ctx = cdp_soc_get_rate_stats_ctx(soc_txrx_handle);
 
-        ol_ath_subscribe_ppdu_desc_info(scn, PPDU_DESC_RDK_STATS);
+        scn->dp_rate_tx_stats_subscriber.callback = wlan_peer_update_rate_stats;
+        scn->dp_rate_tx_stats_subscriber.context = rate_stats_ctx;
+        cdp_wdi_event_sub(soc_txrx_handle, (void *) pdev_txrx_handle,
+           &scn->dp_rate_tx_stats_subscriber, WDI_EVENT_TX_PPDU_DESC);
+
+        scn->dp_rate_rx_stats_subscriber.callback = wlan_peer_update_rate_stats;
+        scn->dp_rate_rx_stats_subscriber.context = rate_stats_ctx;
+        cdp_wdi_event_sub(soc_txrx_handle, (void *) pdev_txrx_handle,
+            &scn->dp_rate_rx_stats_subscriber, WDI_EVENT_RX_PPDU_DESC);
 
         scn->sojourn_stats_subscriber.callback = wlan_peer_update_rate_stats;
         scn->sojourn_stats_subscriber.context = rate_stats_ctx;
-        cdp_wdi_event_sub(soc_txrx_handle, pdev_id,
+        cdp_wdi_event_sub(soc_txrx_handle, (void *) pdev_txrx_handle,
             &scn->sojourn_stats_subscriber, WDI_EVENT_TX_SOJOURN_STAT);
 
         scn->peer_create_subscriber.callback = wlan_peer_create_event_handler;
-        scn->peer_create_subscriber.context = rate_stats_ctx;
-        cdp_wdi_event_sub(soc_txrx_handle, pdev_id,
+        scn->peer_create_subscriber.context = pdev_txrx_handle;
+        cdp_wdi_event_sub(soc_txrx_handle, (void *) pdev_txrx_handle,
             &scn->peer_create_subscriber, WDI_EVENT_PEER_CREATE);
 
         scn->peer_destroy_subscriber.callback = wlan_peer_destroy_event_handler;
         scn->peer_destroy_subscriber.context = rate_stats_ctx;
-        cdp_wdi_event_sub(soc_txrx_handle, pdev_id,
+        cdp_wdi_event_sub(soc_txrx_handle, (void *) pdev_txrx_handle,
             &scn->peer_destroy_subscriber, WDI_EVENT_PEER_DESTROY);
 
         scn->peer_flush_rate_stats_sub.callback = wlan_cfg80211_flush_rate_stats;
         scn->peer_flush_rate_stats_sub.context = ic->ic_pdev_obj;
-        cdp_wdi_event_sub(soc_txrx_handle, pdev_id,
+        cdp_wdi_event_sub(soc_txrx_handle, (void *) pdev_txrx_handle,
             &scn->peer_flush_rate_stats_sub, WDI_EVENT_PEER_FLUSH_RATE_STATS);
 
         scn->flush_rate_stats_req_sub.callback = wlan_peer_rate_stats_flush_req;
         scn->flush_rate_stats_req_sub.context = rate_stats_ctx;
-        cdp_wdi_event_sub(soc_txrx_handle, pdev_id,
+        cdp_wdi_event_sub(soc_txrx_handle, (void *) pdev_txrx_handle,
             &scn->flush_rate_stats_req_sub, WDI_EVENT_FLUSH_RATE_STATS_REQ);
     }
 #endif
@@ -2537,11 +2147,6 @@ void
 ol_ath_stats_detach(struct ieee80211com *ic)
 {
     struct ol_ath_softc_net80211 *scn = OL_ATH_SOFTC_NET80211(ic);
-#if defined(QCA_SUPPORT_RDK_STATS) || (defined(WLAN_CFR_ENABLE) && defined(WLAN_ENH_CFR_ENABLE))
-    ol_txrx_soc_handle soc_txrx_handle;
-
-    soc_txrx_handle = wlan_psoc_get_dp_handle(scn->soc->psoc_obj);
-#endif
 
     ic->ic_get_cur_chan_stats = NULL;
     ic->ic_ath_request_stats = NULL;
@@ -2549,12 +2154,9 @@ ol_ath_stats_detach(struct ieee80211com *ic)
     ic->ic_ath_send_rssi = NULL;
     ic->ic_ath_enable_ap_stats = NULL;
     /* disable target stats event */
-    ol_ath_pdev_set_param(scn->sc_pdev,
-                          wmi_pdev_param_pdev_stats_update_period, 0);
-    ol_ath_pdev_set_param(scn->sc_pdev,
-                          wmi_pdev_param_vdev_stats_update_period, 0);
-    ol_ath_pdev_set_param(scn->sc_pdev,
-                          wmi_pdev_param_peer_stats_update_period, 0);
+    ol_ath_pdev_set_param(scn, wmi_pdev_param_pdev_stats_update_period, 0);
+    ol_ath_pdev_set_param(scn, wmi_pdev_param_vdev_stats_update_period, 0);
+    ol_ath_pdev_set_param(scn, wmi_pdev_param_peer_stats_update_period, 0);
     /* disable periodic chan stats event */
     ol_ath_periodic_chan_stats_config(scn, false, IEEE80211_DEFAULT_CHAN_STATS_PERIOD);
 
@@ -2572,116 +2174,48 @@ ol_ath_stats_detach(struct ieee80211com *ic)
         qdf_mem_free(scn->rx_ppdu_stats_ctx);
     }
 #ifdef QCA_SUPPORT_RDK_STATS
-    if (scn->soc->rdkstats_enabled) {
-        uint8_t pdev_id = wlan_objmgr_pdev_get_pdev_id(scn->sc_pdev);
+    if (scn->soc->wlanstats_enabled) {
+
         ol_txrx_soc_handle soc_txrx_handle;
+        ol_txrx_pdev_handle pdev_txrx_handle;
 
         soc_txrx_handle = wlan_psoc_get_dp_handle(scn->soc->psoc_obj);
-        if (soc_txrx_handle) {
-            ol_ath_unsubscribe_ppdu_desc_info(scn, PPDU_DESC_RDK_STATS);
-            cdp_wdi_event_unsub(soc_txrx_handle, pdev_id,
+        pdev_txrx_handle = wlan_pdev_get_dp_handle(scn->sc_pdev);
+
+        if (soc_txrx_handle && pdev_txrx_handle) {
+
+            cdp_wdi_event_unsub(soc_txrx_handle, (void *) pdev_txrx_handle,
+                &scn->dp_rate_tx_stats_subscriber, WDI_EVENT_TX_PPDU_DESC);
+            cdp_wdi_event_unsub(soc_txrx_handle, (void *) pdev_txrx_handle,
+                &scn->dp_rate_rx_stats_subscriber, WDI_EVENT_RX_PPDU_DESC);
+            cdp_wdi_event_unsub(soc_txrx_handle, (void *) pdev_txrx_handle,
                 &scn->sojourn_stats_subscriber, WDI_EVENT_TX_SOJOURN_STAT);
-            cdp_wdi_event_unsub(soc_txrx_handle, pdev_id,
+            cdp_wdi_event_unsub(soc_txrx_handle, (void *) pdev_txrx_handle,
                 &scn->peer_create_subscriber, WDI_EVENT_PEER_CREATE);
-            cdp_wdi_event_unsub(soc_txrx_handle, pdev_id,
+            cdp_wdi_event_unsub(soc_txrx_handle, (void *) pdev_txrx_handle,
                 &scn->peer_destroy_subscriber, WDI_EVENT_PEER_DESTROY);
-            cdp_wdi_event_unsub(soc_txrx_handle, pdev_id,
+            cdp_wdi_event_unsub(soc_txrx_handle, (void *) pdev_txrx_handle,
                 &scn->peer_flush_rate_stats_sub, WDI_EVENT_PEER_FLUSH_RATE_STATS);
-            cdp_wdi_event_unsub(soc_txrx_handle, pdev_id,
+            cdp_wdi_event_unsub(soc_txrx_handle, (void *) pdev_txrx_handle,
                 &scn->flush_rate_stats_req_sub, WDI_EVENT_FLUSH_RATE_STATS_REQ);
         }
     }
 #endif
-
-#if defined(WLAN_CFR_ENABLE) && defined(WLAN_ENH_CFR_ENABLE)
-    if (cdp_get_cfr_rcc(soc_txrx_handle,
-                        wlan_objmgr_pdev_get_pdev_id(ic->ic_pdev_obj))) {
-            ol_ath_unsubscribe_ppdu_desc_info(scn, PPDU_DESC_CFR_RCC);
-            cdp_set_cfr_rcc(soc_txrx_handle,
-                            wlan_objmgr_pdev_get_pdev_id(ic->ic_pdev_obj),
-                            false);
-    }
-#endif
 }
 #endif
-
-void ol_ath_soc_rate_stats_attach(ol_ath_soc_softc_t *soc)
-{
-#ifdef QCA_SUPPORT_RDK_STATS
-    struct wlan_soc_rate_stats_ctx *rate_stats_ctx = NULL;
-    ol_txrx_soc_handle soc_txrx_handle;
-    cdp_config_param_type val = {0};
-    enum rdk_stats_version stats_ver;
-    uint8_t is_lithium = ol_target_lithium(soc->psoc_obj);
-
-    stats_ver = cfg_get(soc->psoc_obj, CFG_OL_PEER_RATE_STATS);
-
-    if (!is_lithium && stats_ver > RDK_RATE_STATS) {
-        qdf_err("stats version 2 and 3 not supported for non-lithium platforms");
-        return;
-    }
-
-    if (stats_ver != RDK_STATS_DISABLED) {
-        soc_txrx_handle = wlan_psoc_get_dp_handle(soc->psoc_obj);
-
-        rate_stats_ctx = qdf_mem_malloc(sizeof(*rate_stats_ctx));
-        if (!rate_stats_ctx) {
-            qdf_err("failed to allocate rate stats context");
-            cdp_txrx_set_psoc_param(soc_txrx_handle, CDP_ENABLE_RATE_STATS, val);
-             return;
-        }
-
-        soc->rdkstats_enabled = 1;
-        rate_stats_ctx->is_lithium = is_lithium;
-
-        val.cdp_psoc_param_en_rate_stats = 1;
-        cdp_txrx_set_psoc_param(soc_txrx_handle, CDP_ENABLE_RATE_STATS, val);
-        rate_stats_ctx->soc = soc_txrx_handle;
-        rate_stats_ctx->stats_ver = stats_ver;
-        STATS_CTX_LOCK_CREATE(&rate_stats_ctx->tx_ctx_lock);
-        STATS_CTX_LOCK_CREATE(&rate_stats_ctx->rx_ctx_lock);
-        cdp_soc_set_rate_stats_ctx(soc_txrx_handle, rate_stats_ctx);
-        qdf_info("enable rdk stats %d soc: %p ", soc->rdkstats_enabled, soc);
-    }
-#endif
-}
-
-void ol_ath_soc_rate_stats_detach(ol_ath_soc_softc_t *soc)
-{
-#ifdef QCA_SUPPORT_RDK_STATS
-    void *rate_stats_hdl;
-    struct wlan_soc_rate_stats_ctx *rate_stats_ctx = NULL;
-    ol_txrx_soc_handle soc_txrx_handle;
-    cdp_config_param_type val = {0};
-
-    if (cfg_get(soc->psoc_obj, CFG_OL_PEER_RATE_STATS)) {
-        soc->rdkstats_enabled = 0;
-        soc_txrx_handle = wlan_psoc_get_dp_handle(soc->psoc_obj);
-        cdp_txrx_set_psoc_param(soc_txrx_handle, CDP_ENABLE_RATE_STATS, val);
-        rate_stats_hdl = cdp_soc_get_rate_stats_ctx(soc_txrx_handle);
-        if (rate_stats_hdl) {
-            rate_stats_ctx = (struct wlan_soc_rate_stats_ctx *)rate_stats_hdl;
-            STATS_CTX_LOCK_DESTROY(&rate_stats_ctx->tx_ctx_lock);
-            STATS_CTX_LOCK_DESTROY(&rate_stats_ctx->rx_ctx_lock);
-            qdf_mem_free(rate_stats_hdl);
-        }
-        cdp_soc_set_rate_stats_ctx(soc_txrx_handle, NULL);
-        qdf_warn("disable rdk stats");
-    }
-#endif
-}
 
 int
 ol_get_tx_free_desc(struct ol_ath_softc_net80211 *scn)
 {
-    uint64_t total;
-    cdp_config_param_type val = {0};
+    int total;
+    int used = 0;
+    ol_txrx_pdev_handle pdev = wlan_pdev_get_dp_handle(scn->sc_pdev);
     ol_txrx_soc_handle psoc = wlan_psoc_get_dp_handle(scn->soc->psoc_obj);
 
     total = ol_cfg_target_tx_credit((ol_soc_handle)scn->soc->psoc_obj);
-    cdp_txrx_get_pdev_param(psoc, wlan_objmgr_pdev_get_pdev_id(scn->sc_pdev), CDP_TX_PENDING, &val);
+    used = cdp_get_tx_pending(psoc, (void *) pdev);
 
-    return (total - val.cdp_pdev_param_tx_pending);
+    return (total - used);
 }
 
 extern int wlan_update_pdev_cp_stats(struct ieee80211com *ic,

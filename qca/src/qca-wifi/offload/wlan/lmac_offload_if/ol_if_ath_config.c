@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2021 Qualcomm Innovation Center, Inc.
+ * Copyright (c) 2017-2019 Qualcomm Innovation Center, Inc.
  * All Rights Reserved
  * Confidential and Proprietary - Qualcomm Innovation Center, Inc.
  *
@@ -23,14 +23,11 @@
 #include "ol_if_athvar.h"
 #include "ol_if_txrx_handles.h"
 #include "ol_if_athpriv.h"
+#include "ath_ald.h"
 #include "dbglog_host.h"
 #include "fw_dbglog_api.h"
 #include "ol_ath_ucfg.h"
 #include <target_if.h>
-#include <wlan_rnr.h>
-#ifdef QCA_CBT_INSTRUMENTATION
-#include "qdf_func_tracker.h"
-#endif
 #define IF_ID_OFFLOAD (1)
 #if ATH_PERF_PWR_OFFLOAD
 #if WLAN_SPECTRAL_ENABLE
@@ -43,8 +40,6 @@
 #include "osif_nss_wifiol_vdev_if.h"
 #endif
 #include <ieee80211_ioctl_acfg.h>
-#include <ieee80211_api.h>
-#include <ieee80211_var.h>
 #if QCA_AIRTIME_FAIRNESS
 #include <target_if_atf.h>
 #endif /* QCA_AIRTIME_FAIRNESS */
@@ -52,16 +47,11 @@
 #include "cdp_txrx_cmn_struct.h"
 #include <wlan_lmac_if_api.h>
 #include <init_deinit_lmac.h>
+#include "dp_txrx.h"
 #include "target_type.h"
 #include <wlan_utility.h>
 #include <ol_regdomain_common.h>
 #include <wlan_reg_ucfg_api.h>
-#include <ieee80211_mlme_dfs_dispatcher.h>
-#include <ol_if_pdev.h>
-#include <ieee80211_api.h>
-#if DBDC_REPEATER_SUPPORT
-#include "qca_multi_link.h"
-#endif
 /*The value of the threshold is compared against the OBSS RSSI in dB.
 * It is a 8-bit value whose
 * range is -128 to 127 (after two's complement operation).
@@ -69,6 +59,8 @@
 * allow spatial reuse if the RSSI detected from other BSS
 * is below -10 dB.
 */
+#define AP_OBSS_PD_LOWER_THRESH 0
+#define AP_OBSS_PD_UPPER_THRESH 255
 #ifdef QCA_SUPPORT_CP_STATS
 #include <wlan_cp_stats_ic_utils_api.h>
 #endif
@@ -82,26 +74,13 @@
 #include "../../../cmn_dev/umac/dfs/core/src/dfs_zero_cac.h"
 #endif
 
-#include "qdf_platform.h"
 #if WLAN_CFR_ENABLE
 #include <wlan_cfr_ucfg_api.h>
 #endif
 
 #include "cfg_ucfg_api.h"
-#include "pld_common.h"
-#include "dp_txrx.h"
 
-#if ATH_SUPPORT_WRAP
-#if !WLAN_QWRAP_LEGACY
-#include "dp_wrap.h"
-extern struct ieee80211vap *wlan_get_vap(struct wlan_objmgr_vdev *vdev);
-#endif
-#endif
-
-#include <wlan_son_pub.h>
-#include <ol_if_dcs.h>
-
-#if ATH_SUPPORT_HYFI_ENHANCEMENTS && ATH_SUPPORT_DSCP_OVERRIDE
+#if ATH_SUPPORT_HYFI_ENHANCEMENTS || ATH_SUPPORT_DSCP_OVERRIDE
 /* Do we need to move these to some appropriate header */
 void ol_ath_set_hmmc_tid(struct ieee80211com *ic , u_int32_t tid);
 void ol_ath_set_hmmc_dscp_override(struct ieee80211com *ic , u_int32_t val);
@@ -114,9 +93,13 @@ u_int32_t ol_ath_get_hmmc_dscp_override(struct ieee80211com *ic);
 void ol_ath_reset_vap_stat(struct ieee80211com *ic);
 uint32_t promisc_is_active (struct ieee80211com *ic);
 
-extern ol_ath_soc_softc_t *ol_global_soc[GLOBAL_SOC_SIZE];
-extern int ol_num_global_soc;
 extern int ol_ath_target_start(ol_ath_soc_softc_t *soc);
+
+void ol_pdev_set_tid_override_queue_mapping(ol_txrx_pdev_handle pdev, int value);
+int ol_pdev_get_tid_override_queue_mapping(ol_txrx_pdev_handle pdev);
+
+void ol_ath_wlan_n_cw_interference_handler(struct ol_ath_softc_net80211 *scn,
+                                           A_UINT32 interference_type);
 
 static u_int32_t ol_ath_net80211_get_total_per(struct ieee80211com *ic)
 {
@@ -129,21 +112,20 @@ static u_int32_t ol_ath_net80211_get_total_per(struct ieee80211com *ic)
     return (total_per);
 }
 
+#ifndef QCA_WIFI_QCA8074_VP
 bool ol_ath_validate_chainmask(struct ol_ath_softc_net80211 *scn,
         uint32_t chainmask, int direction, int phymode)
 {
     struct wlan_objmgr_psoc *psoc = scn->soc->psoc_obj;
     struct wlan_psoc_host_service_ext_param *ext_param;
     struct target_psoc_info *tgt_hdl;
-    struct target_pdev_info *tgt_pdev;
-    uint8_t phy_idx;
+    uint8_t pdev_idx;
     struct wlan_psoc_host_mac_phy_caps *mac_phy_cap = NULL;
     struct wlan_psoc_host_mac_phy_caps *mac_phy_cap_arr = NULL;
     struct wlan_psoc_host_chainmask_table *table = NULL;
     struct wlan_psoc_host_chainmask_capabilities *capability = NULL;
 #if QCA_SUPPORT_AGILE_DFS
-    struct wlan_objmgr_pdev *pdev = scn->sc_pdev;
-    bool is_agile_precac_enabled;
+    struct wlan_objmgr_pdev *pdev = NULL;
 #endif
     int j = 0;
     bool is_2g_band_supported = false;
@@ -151,7 +133,7 @@ bool ol_ath_validate_chainmask(struct ol_ath_softc_net80211 *scn,
     uint32_t table_id = 0;
     enum ieee80211_cwm_width ch_width;
 
-    tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+    tgt_hdl = (struct target_psoc_info *)wlan_psoc_get_tgt_if_handle(psoc);
     if (!tgt_hdl) {
     	qdf_info("%s: psoc target_psoc_info is null", __func__);
     	return false;
@@ -159,27 +141,12 @@ bool ol_ath_validate_chainmask(struct ol_ath_softc_net80211 *scn,
 
     ext_param = &(tgt_hdl->info.service_ext_param);
 
-    tgt_pdev = (struct target_pdev_info *)wlan_pdev_get_tgt_if_handle(scn->sc_pdev);
-    phy_idx = target_pdev_get_phy_idx(tgt_pdev);
+    pdev_idx = lmac_get_pdev_idx(scn->sc_pdev);
     mac_phy_cap_arr = target_psoc_get_mac_phy_cap(tgt_hdl);
-    if (mac_phy_cap_arr) {
-        uint8_t i, num_radios;
+    mac_phy_cap = &mac_phy_cap_arr[pdev_idx];
 
-        num_radios = target_psoc_get_num_radios_for_mode(tgt_hdl,
-                                  tgt_hdl->info.preferred_hw_mode);
-        for(i = 0; i < num_radios; i++) {
-            if(phy_idx == mac_phy_cap_arr[i].phy_id) {
-
-                /* Get mac_phy caps for the phy_id. */
-                mac_phy_cap = &mac_phy_cap_arr[i];
-                /* get table ID for a given pdev */
-                table_id = mac_phy_cap->chainmask_table_id;
-                break;
-            }
-       }
-    } else {
-        qdf_err("%s: mac phy cap arr is NULL", __func__);
-    }
+    /* get table ID for a given pdev */
+    table_id = mac_phy_cap->chainmask_table_id;
 
     /* table */
     table =  &(ext_param->chainmask_table[table_id]);
@@ -218,12 +185,6 @@ bool ol_ath_validate_chainmask(struct ol_ath_softc_net80211 *scn,
                     "\t chain_mask_rx: %u \n", capability->chain_mask_rx);
             QDF_TRACE(QDF_MODULE_ID_ANY, QDF_TRACE_LEVEL_INFO_LOW,
                     "\t supports_aDFS: %u \n",  capability->supports_aDFS);
-            QDF_TRACE(QDF_MODULE_ID_ANY, QDF_TRACE_LEVEL_INFO_LOW,
-                    "\t supports_aSpectral: %u \n",  capability->supports_aSpectral);
-            QDF_TRACE(QDF_MODULE_ID_ANY, QDF_TRACE_LEVEL_INFO_LOW,
-                    "\t supports_aDFS_160: %u \n",  capability->supports_aDFS_160);
-            QDF_TRACE(QDF_MODULE_ID_ANY, QDF_TRACE_LEVEL_INFO_LOW,
-                    "\t supports_aSpectral_160: %u \n",  capability->supports_aSpectral_160);
             break;
         }
     }
@@ -259,18 +220,14 @@ bool ol_ath_validate_chainmask(struct ol_ath_softc_net80211 *scn,
         }
     }
 
-    if (mac_phy_cap) {
-        if ((mac_phy_cap->supported_bands & WMI_HOST_WLAN_2G_CAPABILITY) &&
-                capability->chain_mask_2G) {
-            is_2g_band_supported = true;
-        }
-        if ((mac_phy_cap->supported_bands & WMI_HOST_WLAN_5G_CAPABILITY) &&
-                capability->chain_mask_5G) {
-            is_5g_band_supported = true;
-        }
+    if ((mac_phy_cap->supported_bands & WMI_HOST_WLAN_2G_CAPABILITY) && capability->chain_mask_2G) {
+        is_2g_band_supported = true;
+    }
+    if ((mac_phy_cap->supported_bands & WMI_HOST_WLAN_5G_CAPABILITY) && capability->chain_mask_5G) {
+        is_5g_band_supported = true;
     }
 
-    if (ieee80211_is_phymode_auto(phymode)) {
+    if (phymode == IEEE80211_MODE_AUTO) {
         if (!is_2g_band_supported && !is_5g_band_supported)
             return false;
         else
@@ -278,7 +235,7 @@ bool ol_ath_validate_chainmask(struct ol_ath_softc_net80211 *scn,
     }
 
     /* check BAND for a given chain mask */
-    if (ieee80211_is_phymode_2g(phymode)) {
+    if (is_phymode_2G(phymode)) {
         if (!capability->chain_mask_2G) {
             QDF_TRACE(QDF_MODULE_ID_ANY, QDF_TRACE_LEVEL_INFO_LOW,
                     "%s: Invalid chain mask for mode: %d 2.4G band not supported\n", __func__, phymode);
@@ -286,7 +243,7 @@ bool ol_ath_validate_chainmask(struct ol_ath_softc_net80211 *scn,
         }
     }
 
-    if (ieee80211_is_phymode_5g_or_6g(phymode)) {
+    if (is_phymode_5G(phymode)) {
         if (!capability->chain_mask_5G) {
             QDF_TRACE(QDF_MODULE_ID_ANY, QDF_TRACE_LEVEL_INFO_LOW,
                     "%s: Invalid chain mask for mode: %d 5G band not supported\n", __func__, phymode);
@@ -339,19 +296,32 @@ bool ol_ath_validate_chainmask(struct ol_ath_softc_net80211 *scn,
     }
 
 #if QCA_SUPPORT_AGILE_DFS
-        ucfg_dfs_get_agile_precac_enable(pdev, &is_agile_precac_enabled);
-        if (is_agile_precac_enabled) {
+
+    pdev = scn->sc_pdev;
+    if (is_phymode_5G(phymode)) {
+
+        int is_precac_enabled;
+        ucfg_dfs_get_precac_enable(pdev, &is_precac_enabled);
+        if (is_precac_enabled) {
             if (!capability->supports_aDFS) {
-                QDF_TRACE(QDF_MODULE_ID_ANY, QDF_TRACE_LEVEL_ERROR,
-                          "%s:FW does not support aDFS, disabling in host. chainmask = 0x%08x\n",
-			  __func__, capability->chainmask);
-                ucfg_dfs_set_precac_enable(pdev, 0);
+                QDF_TRACE(QDF_MODULE_ID_ANY, QDF_TRACE_LEVEL_INFO_LOW,
+                          "%s:Invalid chain mask for mode: %d aDFS not supported\n", __func__,phymode);
+                return false;
             }
         }
+    }
+
 #endif
 
     return true;
 }
+#else
+bool ol_ath_validate_chainmask(struct ol_ath_softc_net80211 *scn,
+        uint32_t chainmask, int direction, int phymode)
+{
+       return true;
+}
+#endif
 
 void
 ol_ath_dump_chainmaks_tables(struct ol_ath_softc_net80211 *scn)
@@ -365,284 +335,98 @@ ol_ath_dump_chainmaks_tables(struct ol_ath_softc_net80211 *scn)
     struct wlan_psoc_host_mac_phy_caps *mac_phy_cap = NULL;
     int j = 0, table_id = 0;
 
-    tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+    tgt_hdl = (struct target_psoc_info *)wlan_psoc_get_tgt_if_handle(psoc);
     if(!tgt_hdl) {
     	qdf_info("%s: psoc target_psoc_info is null", __func__);
     	return;
     }
 
     mac_phy_cap_arr = target_psoc_get_mac_phy_cap(tgt_hdl);
-    ext_param       = target_psoc_get_service_ext_param(tgt_hdl);
-    pdev_idx        = lmac_get_pdev_idx(scn->sc_pdev);
+    pdev_idx = lmac_get_pdev_idx(scn->sc_pdev);
+    mac_phy_cap = &mac_phy_cap_arr[pdev_idx];
+    ext_param = target_psoc_get_service_ext_param(tgt_hdl);
 
-    if(mac_phy_cap_arr) {
-        mac_phy_cap = &mac_phy_cap_arr[pdev_idx];
-        /* get table ID for a given pdev */
-        table_id    = mac_phy_cap->chainmask_table_id;
-    } else {
-        qdf_err("%s: mac_phy_cap_arr is NULL!", __func__);
+    /* get table ID for a given pdev */
+    table_id = mac_phy_cap->chainmask_table_id;
+
+    table =  &(ext_param->chainmask_table[table_id]);
+    qdf_info("------------- table ID: %d --------------- ", table->table_id);
+    qdf_info("num valid chainmasks: %d ", table->num_valid_chainmasks);
+    for (j = 0; j < table->num_valid_chainmasks; j++) {
+        qdf_info("chainmask num %d: 0x%08x ",j, table->cap_list[j].chainmask);
+        qdf_info("\t supports_chan_width_20: %u ", table->cap_list[j].supports_chan_width_20);
+        qdf_info("\t supports_chan_width_40: %u ", table->cap_list[j].supports_chan_width_40);
+        qdf_info("\t supports_chan_width_80: %u ", table->cap_list[j].supports_chan_width_80);
+        qdf_info("\t supports_chan_width_160: %u ", table->cap_list[j].supports_chan_width_160);
+        qdf_info("\t supports_chan_width_80P80: %u ", table->cap_list[j].supports_chan_width_80P80);
+        qdf_info("\t chain_mask_2G: %u ", table->cap_list[j].chain_mask_2G);
+        qdf_info("\t chain_mask_5G: %u ", table->cap_list[j].chain_mask_5G);
+        qdf_info("\t chain_mask_tx: %u ", table->cap_list[j].chain_mask_tx);
+        qdf_info("\t chain_mask_rx: %u ", table->cap_list[j].chain_mask_rx);
+        qdf_info("\t supports_aDFS: %u ",  table->cap_list[j].supports_aDFS);
     }
-
-    if (ext_param) {
-        table =  &(ext_param->chainmask_table[table_id]);
-        if (table) {
-            qdf_info("------------- table ID: %d --------------- ",
-                    table->table_id);
-            qdf_info("num valid chainmasks: %d ", table->num_valid_chainmasks);
-            for (j = 0; j < table->num_valid_chainmasks; j++) {
-                qdf_info("chainmask num %d: 0x%08x ",
-                        j, table->cap_list[j].chainmask);
-                qdf_info("\t supports_chan_width_20: %u ",
-                        table->cap_list[j].supports_chan_width_20);
-                qdf_info("\t supports_chan_width_40: %u ",
-                        table->cap_list[j].supports_chan_width_40);
-                qdf_info("\t supports_chan_width_80: %u ",
-                        table->cap_list[j].supports_chan_width_80);
-                qdf_info("\t supports_chan_width_160: %u ",
-                        table->cap_list[j].supports_chan_width_160);
-                qdf_info("\t supports_chan_width_80P80: %u ",
-                        table->cap_list[j].supports_chan_width_80P80);
-                qdf_info("\t chain_mask_2G: %u ",
-                        table->cap_list[j].chain_mask_2G);
-                qdf_info("\t chain_mask_5G: %u ",
-                        table->cap_list[j].chain_mask_5G);
-                qdf_info("\t chain_mask_tx: %u ",
-                        table->cap_list[j].chain_mask_tx);
-                qdf_info("\t chain_mask_rx: %u ",
-                        table->cap_list[j].chain_mask_rx);
-                qdf_info("\t supports_aDFS: %u ",
-                        table->cap_list[j].supports_aDFS);
-                qdf_info("\t supports_aSpectral: %u ",
-                        table->cap_list[j].supports_aSpectral);
-                qdf_info("\t supports_aDFS_160: %u ",
-                        table->cap_list[j].supports_aDFS_160);
-                qdf_info("\t supports_aSpectral_160: %u ",
-                        table->cap_list[j].supports_aSpectral_160);
-            } /* end for */
-        } /* end if (table) */
-    } /* end if (ext_param) */
 }
+
 
 int config_txchainmask(struct ieee80211com *ic, struct ieee80211_ath_channel *chan)
 {
-    struct ol_ath_softc_net80211 *scn = OL_ATH_SOFTC_NET80211(ic);
+        struct ol_ath_softc_net80211 *scn = OL_ATH_SOFTC_NET80211(ic);
     struct wlan_vdev_mgr_cfg mlme_cfg;
     int retval = 0;
     uint32_t iv_nss;
 
-    retval = ol_ath_pdev_set_param(scn->sc_pdev, wmi_pdev_param_tx_chain_mask,
-                                   scn->user_config_txval);
+    retval = ol_ath_pdev_set_param(scn, wmi_pdev_param_tx_chain_mask,
+                                   scn->user_config_val);
+
     if (retval == EOK) {
         u_int8_t  nss;
         struct ieee80211vap *tmpvap = NULL;
         /* Update the ic_chainmask */
-        ieee80211com_set_tx_chainmask(ic, (u_int8_t)(scn->user_config_txval));
-        /* Update num chains for preferred streams */
-        ieee80211com_set_num_tx_chain(ic,
-                              num_chain_from_chain_mask(ic->ic_tx_chainmask));
+        ieee80211com_set_tx_chainmask(ic, (u_int8_t)(scn->user_config_val));
         /* Get nss from configured tx chainmask */
         nss = ieee80211_getstreams(ic, ic->ic_tx_chainmask);
 
         TAILQ_FOREACH(tmpvap, &ic->ic_vaps, iv_next) {
             u_int8_t retv;
-            /* On changing chain mask, per VAP's vht_mcs map should be computed
-             * with newly configured chain mask. Mark iv_set_vht_mcsmap as
-             * false so that ieee80211_setup_vht() gets latest chainmask from
-             * ic till iv_vhtcap_max_mcs is computed freshly
-             * from latest chainmask in ieee80211_set_vhtrates().
-             */
-            tmpvap->iv_set_vht_mcsmap = false;
             /* Update the iv_nss before restart the vap by sending WMI CMD to FW
                to configure the NSS */
-            if (ic->ic_vap_set_param) {
-                retv = wlan_set_param(tmpvap,IEEE80211_FIXED_NSS,nss);
-                if (retv == EOK) {
-                    mlme_cfg.value = nss;
-                    ucfg_wlan_vdev_mgr_set_param(tmpvap->vdev_obj, WLAN_MLME_CFG_NSS,
-                                                 mlme_cfg);
-                } else {
-                    ucfg_wlan_vdev_mgr_get_param(tmpvap->vdev_obj, WLAN_MLME_CFG_NSS,
-                                                 &iv_nss);
-                    qdf_info("vap %d :%pK Failed to configure NSS from %d to %d ",
-                              tmpvap->iv_unit, tmpvap, iv_nss, nss);
+            if(ic->ic_is_mode_offload(ic)) {
+                if (ic->ic_vap_set_param) {
+                    retv = wlan_set_param(tmpvap,IEEE80211_FIXED_NSS,nss);
+                    if (retv == EOK) {
+                        mlme_cfg.value = nss;
+                        ucfg_wlan_vdev_mgr_set_param(tmpvap->vdev_obj, WLAN_MLME_CFG_NSS,
+                                    mlme_cfg);
+                    } else {
+                        ucfg_wlan_vdev_mgr_get_param(tmpvap->vdev_obj, WLAN_MLME_CFG_NSS,
+					                                    &iv_nss);
+                        qdf_info("%s: vap %d :%pK Failed to configure NSS from %d to %d ",
+                                __func__,tmpvap->iv_unit,tmpvap,iv_nss,nss);
+                    }
                 }
             }
-            mlme_cfg.value = ic->ic_num_tx_chain;
-            ucfg_wlan_vdev_mgr_set_param(tmpvap->vdev_obj, WLAN_MLME_CFG_TX_STREAMS,
-                                         mlme_cfg);
         }
     }
+
     return 0;
 }
 
 int config_rxchainmask(struct ieee80211com *ic, struct ieee80211_ath_channel *chan)
 {
     struct ol_ath_softc_net80211 *scn = OL_ATH_SOFTC_NET80211(ic);
-    struct ieee80211vap *tmpvap = NULL;
-    struct wlan_vdev_mgr_cfg mlme_cfg;
     int retval = 0;
 
-    retval = ol_ath_pdev_set_param(scn->sc_pdev, wmi_pdev_param_rx_chain_mask,
-                                   scn->user_config_rxval);
+
+    retval = ol_ath_pdev_set_param(scn, wmi_pdev_param_rx_chain_mask,
+                                   scn->user_config_val);
+
     if (retval == EOK) {
-        ol_ath_update_fw_adfs_support(ic, scn->user_config_rxval);
         /* Update the ic_chainmask */
-        ieee80211com_set_rx_chainmask(ic, scn->user_config_rxval);
-        /* Update the ic_num_rx_chain */
-        ieee80211com_set_num_rx_chain(ic,
-                              num_chain_from_chain_mask(ic->ic_rx_chainmask));
-
-        /* On changing chain mask, per VAP's vht_mcs map should be computed
-         * with newly configured chain mask. Mark iv_set_vht_mcsmap as
-         * false so that ieee80211_setup_vht() gets latest chainmask from
-         * ic till iv_vhtcap_max_mcs is computed freshly
-         * from latest chainmask in ieee80211_set_vhtrates().
-         */
-
-        TAILQ_FOREACH(tmpvap, &ic->ic_vaps, iv_next) {
-            tmpvap->iv_set_vht_mcsmap = false;
-            mlme_cfg.value = ic->ic_num_rx_chain;
-            ucfg_wlan_vdev_mgr_set_param(tmpvap->vdev_obj, WLAN_MLME_CFG_RX_STREAMS,
-                                         mlme_cfg);
-        }
+        ieee80211com_set_rx_chainmask(ic, (u_int8_t)(scn->user_config_val));
     }
+
     return 0;
 }
-
-void ol_ath_pdev_config_update(struct ieee80211com *ic)
-{
-    uint8_t restart_reason = ic->ic_restart_reason;
-
-    if (!restart_reason)
-        return;
-
-    if (restart_reason & PDEV_CFG_TXCHAINMASK) {
-        qdf_info("Updating TX chainmask");
-        config_txchainmask(ic, NULL);
-    }
-
-    if (restart_reason & PDEV_CFG_RXCHAINMASK) {
-        qdf_info("Updating RX chainmask");
-        config_rxchainmask(ic, NULL);
-    }
-
-    ic->ic_restart_reason = 0;
-}
-
-void wmi_dis_dump (void *psoc,enum qdf_hang_reason reason,
-                   const char *func, const uint32_t line)
-{
-    qdf_err("WMI disconnect assert called wait for target to assert !!!!\n");
-}
-
-enum _dp_param_t ol_ath_param_to_dp_param(enum _ol_ath_param_t param)
-{
-    switch(param) {
-        case OL_ATH_PARAM_MSDU_TTL:
-            return DP_PARAM_MSDU_TTL;
-        case OL_ATH_PARAM_TOTAL_Q_SIZE_RANGE0:
-            return DP_PARAM_TOTAL_Q_SIZE_RANGE0;
-        case OL_ATH_PARAM_TOTAL_Q_SIZE_RANGE1:
-            return DP_PARAM_TOTAL_Q_SIZE_RANGE1;
-        case OL_ATH_PARAM_TOTAL_Q_SIZE_RANGE2:
-            return DP_PARAM_TOTAL_Q_SIZE_RANGE2;
-        case OL_ATH_PARAM_TOTAL_Q_SIZE_RANGE3:
-            return DP_PARAM_TOTAL_Q_SIZE_RANGE3;
-        case OL_ATH_PARAM_VIDEO_DELAY_STATS_FC:
-            return DP_PARAM_VIDEO_DELAY_STATS_FC;
-        case OL_ATH_PARAM_QFLUSHINTERVAL:
-            return DP_PARAM_QFLUSHINTERVAL;
-        case OL_ATH_PARAM_TOTAL_Q_SIZE:
-            return DP_PARAM_TOTAL_Q_SIZE;
-        case OL_ATH_PARAM_MIN_THRESHOLD:
-            return DP_PARAM_MIN_THRESHOLD;
-        case OL_ATH_PARAM_MAX_Q_LIMIT:
-            return DP_PARAM_MAX_Q_LIMIT;
-        case OL_ATH_PARAM_MIN_Q_LIMIT:
-            return DP_PARAM_MIN_Q_LIMIT;
-        case OL_ATH_PARAM_CONG_CTRL_TIMER_INTV:
-            return DP_PARAM_CONG_CTRL_TIMER_INTV;
-        case OL_ATH_PARAM_STATS_TIMER_INTV:
-            return DP_PARAM_STATS_TIMER_INTV;
-        case OL_ATH_PARAM_ROTTING_TIMER_INTV:
-            return DP_PARAM_ROTTING_TIMER_INTV;
-        case OL_ATH_PARAM_LATENCY_PROFILE:
-            return DP_PARAM_LATENCY_PROFILE;
-        case OL_ATH_PARAM_HOSTQ_DUMP:
-            return DP_PARAM_HOSTQ_DUMP;
-        case OL_ATH_PARAM_TIDQ_MAP:
-            return DP_PARAM_TIDQ_MAP;
-        case OL_ATH_PARAM_VIDEO_STATS_FC:
-            return DP_PARAM_VIDEO_STATS_FC;
-        case OL_ATH_PARAM_STATS_FC:
-            return DP_PARAM_STATS_FC;
-        default:
-            return DP_PARAM_MAX;
-    }
-}
-
-/* PPDU max time limit for JAPAN country code is 4 ms */
-#define PPDU_MAX_4MS_TIME_LIMIT_US_JPN 4000
-
-/* PPDU max time limit is 5.4 ms (applicable to all the country codes other
- * than JAPAN country code).
- */
-#define PPDU_MAX_TIME_LIMIT_US 5400
-
-static uint16_t get_max_ppdu_duration(struct ieee80211com *ic)
-{
-    uint8_t ctry_iso[REG_ALPHA2_LEN + 1];
-
-    ieee80211_getCurrentCountryISO(ic, ctry_iso);
-
-    if (qdf_mem_cmp(ctry_iso, "JP", REG_ALPHA2_LEN) == 0)
-        return PPDU_MAX_4MS_TIME_LIMIT_US_JPN;
-
-    return PPDU_MAX_TIME_LIMIT_US;
-}
-
-
-void ol_ath_set_fw_recovery(struct ol_ath_softc_net80211 *scn, int value)
-{
-	int target_type = 0, soc_idx;
-	ol_ath_soc_softc_t *temp_soc = NULL;
-	void *dev;
-
-	if (value < RECOVERY_DISABLE || value > RECOVERY_ENABLE_SSR_ONLY) {
-		qdf_info("Please enter: 0 = Disable,  1 = Enable (auto recover), 2 = Enable (wait for user) 3 = Enable SSR only");
-		return;
-	}
-
-	target_type  = lmac_get_tgt_type(scn->soc->psoc_obj);
-
-	switch (target_type) {
-	case TARGET_TYPE_QCA5018:
-	case TARGET_TYPE_QCN6122:
-		if (value == RECOVERY_ENABLE_AUTO) {
-			/* Unlink UserPD assert from RootPD assert */
-			ol_ath_pdev_set_param(scn->sc_pdev,
-					      wmi_pdev_param_mpd_userpd_ssr,
-					      1);
-		} else if (value == RECOVERY_DISABLE) {
-			/* Link UserPD assert to cause a RootPD assert */
-			ol_ath_pdev_set_param(scn->sc_pdev,
-					      wmi_pdev_param_mpd_userpd_ssr,
-					      0);
-		}
-		/* fallthrough */
-	default:
-		for (soc_idx = 0; soc_idx < ol_num_global_soc; soc_idx++) {
-			temp_soc = ol_global_soc[soc_idx];
-			if (temp_soc) {
-				temp_soc->recovery_enable =  value;
-				dev = temp_soc->sc_osdev->device;
-				pld_set_recovery_enabled(dev, !(value == RECOVERY_DISABLE));
-			}
-		}
-		break;
-	}
-}
-
 #define MAX_ANTENNA_GAIN 30
 int
 ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
@@ -652,21 +436,17 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
     u_int32_t value = *(u_int32_t *)buff, param_id;
     struct ieee80211com *ic = &scn->sc_ic;
     struct ieee80211vap *tmp_vap = NULL;
-    struct target_psoc_info *tgt_psoc_info = NULL;
-#if QCA_SUPPORT_SON
-    int thresh = 0;
+#if ATH_SUPPORT_HYFI_ENHANCEMENTS
+	int thresh = 0;
 #endif
 #if DBDC_REPEATER_SUPPORT
     struct ieee80211com *tmp_ic = NULL;
 #ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
     struct ol_ath_softc_net80211 *tmp_scn = NULL;
+    u_int32_t nss_soc_cfg;
 #endif
     int i = 0;
     struct ieee80211com *fast_lane_ic;
-    struct wiphy *primary_wiphy = NULL;
-#endif
-#ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
-    u_int32_t nss_soc_cfg;
 #endif
 #if ATH_SUPPORT_WRAP && QCA_NSS_WIFI_OFFLOAD_SUPPORT
     osif_dev *osd = NULL;
@@ -680,26 +460,22 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
 
 #if ATH_SUPPORT_DFS
     struct wlan_lmac_if_dfs_rx_ops *dfs_rx_ops;
-#if ATH_SUPPORT_STA_DFS
-    struct wlan_lmac_if_tx_ops *tx_ops;
-    struct wlan_lmac_if_dfs_tx_ops *dfs_tx_ops;
-    bool prev_stadfs_en = false, cur_stadfs_en = false;
 #endif
-#endif
-    struct wlan_lmac_if_reg_rx_ops *reg_rx_ops;
 
+#ifdef OBSS_PD
     struct ieee80211_vap_opmode_count vap_opmode_count;
+#endif
     target_resource_config *tgt_cfg;
+    ol_txrx_pdev_handle pdev_txrx_handle;
     ol_txrx_soc_handle soc_txrx_handle;
     struct wlan_psoc_host_hal_reg_capabilities_ext *reg_cap;
-    uint8_t pdev_idx, pdev_id;
+    uint8_t pdev_idx;
     ol_ath_soc_softc_t *soc = scn->soc;
-    struct wmi_unified *wmi_handle;
-    struct wmi_unified *pdev_wmi_handle;
-    cdp_config_param_type val = {0};
-    bool is_mbssid_enabled = wlan_pdev_nif_feat_cap_get(ic->ic_pdev_obj,
-                                WLAN_PDEV_F_MBSS_IE_ENABLE);
-
+    struct common_wmi_handle *wmi_handle;
+    struct common_wmi_handle *pdev_wmi_handle;
+#ifdef OBSS_PD
+    struct ieee80211vap *vap = NULL;
+#endif
     wmi_handle = lmac_get_wmi_hdl(scn->soc->psoc_obj);
     pdev_wmi_handle = lmac_get_pdev_wmi_handle(scn->sc_pdev);
     pdev = ic->ic_pdev_obj;
@@ -715,32 +491,22 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
         return -1;
     }
 
-    pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
     soc_txrx_handle = wlan_psoc_get_dp_handle(psoc);
+    pdev_txrx_handle = wlan_pdev_get_dp_handle(pdev);
     tgt_cfg = lmac_get_tgt_res_cfg(psoc);
     if (!tgt_cfg) {
         qdf_info("%s: psoc target res cfg is null", __func__);
         return -1;
     }
-#if ATH_SUPPORT_DFS
+#if ATH_SUPPORT_ZERO_CAC_DFS
     dfs_rx_ops = wlan_lmac_if_get_dfs_rx_ops(psoc);
-#if ATH_SUPPORT_STA_DFS
-    tx_ops = wlan_psoc_get_lmac_if_txops(psoc);
-    if (!tx_ops) {
-        qdf_err("tx_ops is NULL");
-        return -1;
-    }
-    dfs_tx_ops = &tx_ops->dfs_tx_ops;
-#endif
 #endif
 
-    tgt_psoc_info = wlan_psoc_get_tgt_if_handle(psoc);
     reg_cap = ucfg_reg_get_hal_reg_cap(psoc);
     pdev_idx = lmac_get_pdev_idx(pdev);
     qdf_assert_always(restart_vaps != NULL);
 
-    if (qdf_atomic_test_bit(SOC_RESET_IN_PROGRESS_BIT,
-                            &scn->soc->reset_in_progress)) {
+    if (atomic_read(&scn->soc->reset_in_progress)) {
         qdf_info("Reset in progress, return");
         return -1;
     }
@@ -759,8 +525,6 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
         {
             u_int8_t cur_mask = ieee80211com_get_tx_chainmask(ic);
             enum ieee80211_phymode phymode = IEEE80211_MODE_AUTO;
-            OS_MEMZERO(&vap_opmode_count, sizeof(struct ieee80211_vap_opmode_count));
-            ieee80211_get_vap_opmode_count(ic, &vap_opmode_count);
 
             if (!value) {
                 /* value is 0 - set the chainmask to be the default
@@ -769,19 +533,8 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
                 if (cur_mask == tgt_cfg->tx_chain_mask){
                     break;
                 }
-                scn->user_config_txval = tgt_cfg->tx_chain_mask;
-                /*
-                 * If any sta vap is found to be part of this pdev, or if there
-                 * are no vaps on radio, then use the default stop_start path
-                 * i.e osif_restart_for_config to update the config.
-                 * Else use the optimized multi-vdev restart path
-                 */
-                if (vap_opmode_count.sta_count || !vap_opmode_count.total_vaps) {
-                    osif_restart_for_config(ic, config_txchainmask, NULL);
-                } else {
-                    ic->ic_restart_reason |= PDEV_CFG_TXCHAINMASK;
-                    osif_pdev_restart_vaps(ic);
-                }
+                scn->user_config_val = tgt_cfg->tx_chain_mask;
+                osif_restart_for_config(ic, config_txchainmask, NULL);
             } else if (cur_mask != value) {
                 /* Update chainmask only if the current chainmask is different */
 
@@ -810,13 +563,8 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
                             tgt_cfg->tx_chain_mask);
                     return -1;
                 }
-                scn->user_config_txval = value;
-                if (vap_opmode_count.sta_count || !vap_opmode_count.total_vaps) {
-                    osif_restart_for_config(ic, config_txchainmask, NULL);
-                } else {
-                    ic->ic_restart_reason |= PDEV_CFG_TXCHAINMASK;
-                    osif_pdev_restart_vaps(ic);
-                }
+                scn->user_config_val = value;
+                osif_restart_for_config(ic, config_txchainmask, NULL);
             }
         }
         break;
@@ -836,8 +584,6 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
 #if WLAN_SPECTRAL_ENABLE
             u_int8_t spectral_rx_chainmask;
 #endif
-            OS_MEMZERO(&vap_opmode_count, sizeof(struct ieee80211_vap_opmode_count));
-            ieee80211_get_vap_opmode_count(ic, &vap_opmode_count);
             if (!value) {
                 /* value is 0 - set the chainmask to be the default
                  * supported rx_chain_mask value
@@ -845,19 +591,8 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
                 if (cur_mask == tgt_cfg->rx_chain_mask){
                     break;
                 }
-                scn->user_config_rxval = tgt_cfg->rx_chain_mask;
-                /*
-                 * If any sta vap is found to be part of this pdev, or if there
-                 * are no vaps on radio, then use the default stop_start path
-                 * i.e osif_restart_for_config to update the config.
-                 * Else use the optimized multi-vdev restart path
-                 */
-                if (vap_opmode_count.sta_count || !vap_opmode_count.total_vaps) {
-                    osif_restart_for_config(ic, config_rxchainmask, NULL);
-                } else {
-                    ic->ic_restart_reason |= PDEV_CFG_RXCHAINMASK;
-                    osif_pdev_restart_vaps(ic);
-                }
+                scn->user_config_val = tgt_cfg->rx_chain_mask;
+                osif_restart_for_config(ic, config_rxchainmask, NULL);
             } else if (cur_mask != value) {
                 /* Update chainmask only if the current chainmask is different */
 
@@ -877,7 +612,7 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
                     }
 
                     if (!ol_ath_validate_chainmask(scn, value, VALIDATE_RX_CHAINMASK, phymode)) {
-                        qdf_info("Invalid RX chain mask: %d for phymode %d", value, phymode);
+                        qdf_info("Invalid RX chain mask: %d for phymode ", value, phymode);
                         return -1;
                     }
                 } else if (value > tgt_cfg->rx_chain_mask) {
@@ -885,13 +620,8 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
                             tgt_cfg->rx_chain_mask);
                     return -1;
                 }
-                scn->user_config_rxval = value;
-                if (vap_opmode_count.sta_count || !vap_opmode_count.total_vaps) {
-                    osif_restart_for_config(ic, config_rxchainmask, NULL);
-                } else {
-                    ic->ic_restart_reason |= PDEV_CFG_RXCHAINMASK;
-                    osif_pdev_restart_vaps(ic);
-                }
+                scn->user_config_val = value;
+                osif_restart_for_config(ic, config_rxchainmask, NULL);
             }
 #if WLAN_SPECTRAL_ENABLE
             qdf_info("Resetting spectral chainmask to Rx chainmask\n");
@@ -901,61 +631,55 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
         }
         break;
 #if QCA_AIRTIME_FAIRNESS
-        case  OL_ATH_PARAM_ATF_STRICT_SCHED:
+    case  OL_ATH_PARAM_ATF_STRICT_SCHED:
         {
-            if ((value != 0) && (value != 1)) {
-                qdf_err("ATF Strict Sched value only accept 1 (Enable) or 0 (Disable)!!");
+            if ((value != 0) && (value != 1))
+            {
+                qdf_info("\n ATF Strict Sched value only accept 1 (Enable) or 0 (Disable)!! ");
                 return -1;
             }
             atf_sched = target_if_atf_get_sched(psoc, pdev);
             if ((value == 1) && (!(atf_sched & ATF_GROUP_SCHED_POLICY))
-               && (target_if_atf_get_ssid_group(psoc, pdev))) {
-                qdf_err("Fair queue across groups is enabled so strict queue "
-                        "within groups is not allowed. Invalid combination");
+               && (target_if_atf_get_ssid_group(psoc, pdev)))
+            {
+                qdf_info("\nFair queue across groups is enabled so strict queue within groups is not allowed. Invalid combination ");
                 return -EINVAL;
             }
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                           wmi_pdev_param_atf_strict_sch,
-                                           value);
+            retval = ol_ath_pdev_set_param(scn,  wmi_pdev_param_atf_strict_sch, value);
             if (retval == EOK) {
-                if (value)
-                    target_if_atf_set_sched(psoc, pdev,
-                                            atf_sched | ATF_SCHED_STRICT);
-                else
-                    target_if_atf_set_sched(psoc, pdev,
-                                            atf_sched & ~ATF_SCHED_STRICT);
+                    if (value)
+                        target_if_atf_set_sched(psoc, pdev, atf_sched | ATF_SCHED_STRICT);
+                    else
+                        target_if_atf_set_sched(psoc, pdev, atf_sched & ~ATF_SCHED_STRICT);
             }
         }
         break;
-        case  OL_ATH_PARAM_ATF_GROUP_POLICY:
+    case  OL_ATH_PARAM_ATF_GROUP_POLICY:
         {
-            if ((value != 0) && (value != 1)) {
-                qdf_err("ATF Group policy value only accept 1 (strict) or 0 (fair)!!");
+            if ((value != 0) && (value != 1))
+            {
+                qdf_info("\n ATF Group policy value only accept 1 (strict) or 0 (fair)!! ");
                 return -1;
             }
             atf_sched = target_if_atf_get_sched(psoc, pdev);
-            if ((value == 0) && (atf_sched & ATF_SCHED_STRICT)) {
-                qdf_err("Strict queue within groups is enabled so fair queue "
-                        "across groups is not allowed.Invalid combination");
+            if ((value == 0) && (atf_sched & ATF_SCHED_STRICT))
+            {
+                qdf_info("\n Strict queue within groups is enabled so fair queue across groups is not allowed.Invalid combination ");
                 return -EINVAL;
             }
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                           wmi_pdev_param_atf_ssid_group_policy,
-                                           value);
+            retval = ol_ath_pdev_set_param(scn, wmi_pdev_param_atf_ssid_group_policy, value);
             if (retval == EOK) {
                 if (value)
-                    target_if_atf_set_sched(psoc, pdev,
-                                            atf_sched | ATF_GROUP_SCHED_POLICY);
+                    target_if_atf_set_sched(psoc, pdev, atf_sched | ATF_GROUP_SCHED_POLICY);
                 else
-                    target_if_atf_set_sched(psoc, pdev,
-                                            atf_sched & ~ATF_GROUP_SCHED_POLICY);
+                    target_if_atf_set_sched(psoc, pdev, atf_sched & ~ATF_GROUP_SCHED_POLICY);
             }
         }
         break;
-        case  OL_ATH_PARAM_ATF_OBSS_SCHED:
+    case  OL_ATH_PARAM_ATF_OBSS_SCHED:
         {
 #if 0 /* remove after FW support */
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
+            retval = ol_ath_pdev_set_param(scn,
                                  wmi_pdev_param_atf_obss_noise_sch, !!value);
 #endif
             if (retval == EOK) {
@@ -967,13 +691,24 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
             }
         }
         break;
+    case  OL_ATH_PARAM_ATF_OBSS_SCALE:
+        {
+#if 0 /* remove after FW support */
+            retval = ol_ath_pdev_set_param(scn,
+                                 wmi_pdev_param_atf_obss_noise_scaling_factor, value);
+#endif
+            if (retval == EOK) {
+                target_if_atf_set_obss_scale(psoc, pdev, value);
+            }
+        }
+        break;
 #endif
         case OL_ATH_PARAM_TXPOWER_LIMIT2G:
         {
             if (!value) {
                 value = scn->max_tx_power;
             }
-            ic->ic_set_txPowerLimit(ic->ic_pdev_obj, value, value, 1);
+            ic->ic_set_txPowerLimit(ic, value, value, 1);
         }
         break;
 
@@ -981,9 +716,9 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
         {
             if (!value) {
                 value = scn->max_tx_power;
+                }
+                ic->ic_set_txPowerLimit(ic, value, value, 0);
             }
-            ic->ic_set_txPowerLimit(ic->ic_pdev_obj, value, value, 0);
-        }
         break;
         case OL_ATH_PARAM_RTS_CTS_RATE:
         if(value > 4) {
@@ -991,8 +726,8 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
             value = WMI_HOST_FIXED_RATE_NONE;
         }
         scn->ol_rts_cts_rate = value;
-        return ol_ath_pdev_set_param(scn->sc_pdev,
-                                     wmi_pdev_param_rts_fixed_rate,value);
+        return ol_ath_pdev_set_param(scn,
+                wmi_pdev_param_rts_fixed_rate,value);
         break;
 
         case OL_ATH_PARAM_DEAUTH_COUNT:
@@ -1004,68 +739,66 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
 #endif
         break;
 
-        case OL_ATH_PARAM_TXPOWER_SCALE:
+            case OL_ATH_PARAM_TXPOWER_SCALE:
         {
-            if ((WMI_HOST_TP_SCALE_MAX <= value) &&
-                (value <= WMI_HOST_TP_SCALE_MIN)) {
+            if((WMI_HOST_TP_SCALE_MAX <= value) && (value <= WMI_HOST_TP_SCALE_MIN))
+            {
                 scn->txpower_scale = value;
-                return ol_ath_pdev_set_param(scn->sc_pdev,
-                                             wmi_pdev_param_txpower_scale,
-                                             value);
+                return ol_ath_pdev_set_param(scn,
+                    wmi_pdev_param_txpower_scale, value);
             } else {
                 retval = -EINVAL;
             }
         }
         break;
-        case OL_ATH_PARAM_PS_STATE_CHANGE:
+            case OL_ATH_PARAM_PS_STATE_CHANGE:
         {
-            ol_ath_pdev_set_param(scn->sc_pdev,
-                                  wmi_pdev_peer_sta_ps_statechg_enable, value);
+            (void)ol_ath_pdev_set_param(scn,
+                    wmi_pdev_peer_sta_ps_statechg_enable, value);
             scn->ps_report = value;
         }
         break;
         case OL_ATH_PARAM_NON_AGG_SW_RETRY_TH:
         {
-            return ol_ath_pdev_set_param(scn->sc_pdev,
-                                         wmi_pdev_param_non_agg_sw_retry_th,
-                                         value);
+                return ol_ath_pdev_set_param(scn,
+                             wmi_pdev_param_non_agg_sw_retry_th, value);
         }
         break;
         case OL_ATH_PARAM_AGG_SW_RETRY_TH:
         {
-            return ol_ath_pdev_set_param(scn->sc_pdev,
-                                         wmi_pdev_param_agg_sw_retry_th, value);
-        }
-        break;
-        case OL_ATH_PARAM_STA_KICKOUT_TH:
-        {
-            return ol_ath_pdev_set_param(scn->sc_pdev,
-                                         wmi_pdev_param_sta_kickout_th, value);
-        }
-        break;
-        case OL_ATH_PARAM_DYN_GROUPING:
-        {
-            value = !!value;
-            if ((ic->ic_dynamic_grouping_support)) {
-                if (scn->dyngroup == (u_int8_t)value) {
-                   break;
-                }
-                retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                               wmi_pdev_param_mu_group_policy,
-                                               value);
-                if (retval == EOK)
-                    scn->dyngroup = (u_int8_t)value;
-            } else {
-                retval = -EINVAL;
+		return ol_ath_pdev_set_param(scn,
+				wmi_pdev_param_agg_sw_retry_th, value);
+	}
+	break;
+	case OL_ATH_PARAM_STA_KICKOUT_TH:
+	{
+		return ol_ath_pdev_set_param(scn,
+				wmi_pdev_param_sta_kickout_th, value);
+	}
+	break;
+    case OL_ATH_PARAM_DYN_GROUPING:
+    {
+        value = !!value;
+        if ((scn->dyngroup != (u_int8_t)value) && (ic->ic_dynamic_grouping_support)) {
+            retval = ol_ath_pdev_set_param(scn,
+                    wmi_pdev_param_mu_group_policy, value);
+
+            if (retval == EOK) {
+                scn->dyngroup = (u_int8_t)value;
             }
+
+        } else {
+                retval = -EINVAL;
         }
         break;
+    }
         case OL_ATH_PARAM_DBGLOG_RATELIM:
         {
                 void *dbglog_handle;
                 struct target_psoc_info *tgt_psoc_info;
 
-                tgt_psoc_info = wlan_psoc_get_tgt_if_handle(scn->soc->psoc_obj);
+                tgt_psoc_info = (struct target_psoc_info *)wlan_psoc_get_tgt_if_handle(
+                                                    scn->soc->psoc_obj);
                 if (tgt_psoc_info == NULL) {
                         qdf_info("%s: target_psoc_info is null ", __func__);
                         return -EINVAL;
@@ -1079,92 +812,76 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
                 fwdbg_ratelimit_set(dbglog_handle, value);
         }
         break;
-        case OL_ATH_PARAM_BCN_BURST:
-        {
-            /* value is set to either 1 (bursted) or 0 (staggered).
-             * if value passed is non-zero, convert it to 1 with
-             * double negation
-             */
-            value = !!value;
-            if (ieee80211_vap_is_any_running(ic)) {
-                qdf_err("VAP(s) in running state "
-                        "Cannot change between burst/staggered beacon modes");
-                retval = -EINVAL;
-                break;
-            }
-            if (scn->bcn_mode != (u_int8_t)value) {
-                if (wlan_pdev_nif_feat_cap_get(ic->ic_pdev_obj,
-                                              WLAN_PDEV_F_MBSS_IE_ENABLE)) {
-                    if (value != 1) {
-                        qdf_err("Disabling bursted mode not allowed "
-                                "when MBSS feature is enabled");
-                        retval = -EINVAL;
-                        break;
+	case OL_ATH_PARAM_BCN_BURST:
+	{
+		/* value is set to either 1 (bursted) or 0 (staggered).
+		 * if value passed is non-zero, convert it to 1 with
+                 * double negation
+                 */
+                value = !!value;
+                if (ieee80211_vap_is_any_running(ic)) {
+                    qdf_info("%s: VAP(s) in running state. Cannot change between burst/staggered beacon modes",
+                              __func__);
+                    retval = -EINVAL;
+                    break;
+                }
+                if (scn->bcn_mode != (u_int8_t)value) {
+		    if (wlan_pdev_nif_feat_cap_get(ic->ic_pdev_obj,
+                                                  WLAN_PDEV_F_MBSS_IE_ENABLE)) {
+		        if (value != 1) {
+		            qdf_err("Disabling bursted mode not allowed when MBSS feature is enabled");
+			    retval = -EINVAL;
+                            break;
+		        }
+		    }
+                    retval = ol_ath_pdev_set_param(scn,
+                                 wmi_pdev_param_beacon_tx_mode, value);
+                    if (retval == EOK) {
+                        scn->bcn_mode = (u_int8_t)value;
+                        *restart_vaps = TRUE;
                     }
                 }
-                retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                               wmi_pdev_param_beacon_tx_mode,
-                                               value);
-                if (retval == EOK) {
-                    scn->bcn_mode = (u_int8_t)value;
-                    *restart_vaps = TRUE;
-                }
-            }
-            break;
+                break;
         }
         break;
-        case OL_ATH_PARAM_DPD_ENABLE:
+    case OL_ATH_PARAM_DPD_ENABLE:
         {
             value = !!value;
-            if ((ic->ic_dpd_support)) {
-                if (scn->dpdenable == CLI_DPD_CMD_INPROGRES) {
-                    qdf_err("Previous command is in progress");
-                    break;
-                }
-                if (scn->dpdenable == (u_int8_t)value) {
-                    qdf_err("dpd_enable already in same state");
-                    break;
-                }
-                retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                               wmi_pdev_param_dpd_enable,
-                                               value);
+            if ((scn->dpdenable != (u_int8_t)value) && (ic->ic_dpd_support)) {
+                retval = ol_ath_pdev_set_param(scn,
+                        wmi_pdev_param_dpd_enable, value);
                 if (retval == EOK) {
-                    if (value)
-                        scn->dpdenable = CLI_DPD_CMD_INPROGRES;
-                    else
-                        scn->dpdenable = (u_int8_t)value;
+                    scn->dpdenable = (u_int8_t)value;
                 }
             } else {
-                qdf_err("dpd_support feature not enabled !!");
                 retval = -EINVAL;
             }
         }
         break;
-        case OL_ATH_PARAM_ARPDHCP_AC_OVERRIDE:
+
+    case OL_ATH_PARAM_ARPDHCP_AC_OVERRIDE:
         {
             if ((WME_AC_BE <= value) && (value <= WME_AC_VO)) {
                 scn->arp_override = value;
-                retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                               wmi_pdev_param_arp_ac_override,
-                                               value);
+                retval = ol_ath_pdev_set_param(scn,
+                        wmi_pdev_param_arp_ac_override, value);
             } else {
                 retval = -EINVAL;
             }
         }
         break;
+
         case OL_ATH_PARAM_IGMPMLD_OVERRIDE:
             if ((0 == value) || (value == 1)) {
                 scn->igmpmld_override = value;
-                val.cdp_pdev_param_igmpmld_override = value;
-                cdp_txrx_set_pdev_param(soc_txrx_handle, pdev_id,
-                                        CDP_CONFIG_IGMPMLD_OVERRIDE, val);
+                cdp_txrx_set_pdev_param(soc_txrx_handle, (struct cdp_pdev *)pdev_txrx_handle,
+                        CDP_CONFIG_IGMPMLD_OVERRIDE, value);
 #ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
                 if (ic->nss_radio_ops)
                     ic->nss_radio_ops->ic_nss_ol_set_igmpmld_override_tos(scn);
 #endif
-                retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                               wmi_pdev_param_igmpmld_override,
-                                               value);
+                retval = ol_ath_pdev_set_param(scn,
+                    wmi_pdev_param_igmpmld_override, value);
             } else {
                 retval = -EINVAL;
             }
@@ -1172,84 +889,76 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
         case OL_ATH_PARAM_IGMPMLD_TID:
         if ((0 <= value) && (value <= 7)) {
             scn->igmpmld_tid = value;
-            val.cdp_pdev_param_igmpmld_tid = value;
-            cdp_txrx_set_pdev_param(soc_txrx_handle, pdev_id, CDP_CONFIG_IGMPMLD_TID, val);
+            cdp_txrx_set_pdev_param(soc_txrx_handle, (struct cdp_pdev *)pdev_txrx_handle,
+                    CDP_CONFIG_IGMPMLD_TID, value);
 #ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
                 if (ic->nss_radio_ops)
                     ic->nss_radio_ops->ic_nss_ol_set_igmpmld_override_tos(scn);
 #endif
-                retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                               wmi_pdev_param_igmpmld_tid,
-                                               value);
+                retval = ol_ath_pdev_set_param(scn,
+                    wmi_pdev_param_igmpmld_tid, value);
             } else {
                 retval = -EINVAL;
             }
         break;
         case OL_ATH_PARAM_ANI_ENABLE:
         {
-            if (value <= 1) {
-                retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                               wmi_pdev_param_ani_enable,
-                                               value);
-            } else {
-                retval = -EINVAL;
-            }
-
-            if (retval == EOK) {
-                if (!value)
-                    scn->is_ani_enable = false;
-                else
-                    scn->is_ani_enable = true;
-            }
+                if (value <= 1) {
+                    retval = ol_ath_pdev_set_param(scn,
+                             wmi_pdev_param_ani_enable, value);
+                } else {
+                    retval = -EINVAL;
+                }
+                if (retval == EOK) {
+                    if (!value) {
+                        scn->is_ani_enable = false;
+                    } else {
+                        scn->is_ani_enable = true;
+                    }
+                }
         }
         break;
         case OL_ATH_PARAM_ANI_POLL_PERIOD:
         {
-            if (value > 0) {
-                return ol_ath_pdev_set_param(scn->sc_pdev,
-                                             wmi_pdev_param_ani_poll_period,
-                                             value);
-            } else {
-                retval = -EINVAL;
-            }
+                if (value > 0) {
+                    return ol_ath_pdev_set_param(scn,
+                             wmi_pdev_param_ani_poll_period, value);
+                } else {
+                    retval = -EINVAL;
+                }
         }
         break;
         case OL_ATH_PARAM_ANI_LISTEN_PERIOD:
         {
-            if (value > 0) {
-                return ol_ath_pdev_set_param(scn->sc_pdev,
-                        wmi_pdev_param_ani_listen_period, value);
-            } else {
-                retval = -EINVAL;
-            }
+                if (value > 0) {
+                    return ol_ath_pdev_set_param(scn,
+                             wmi_pdev_param_ani_listen_period, value);
+                } else {
+                    retval = -EINVAL;
+                }
         }
         break;
         case OL_ATH_PARAM_ANI_OFDM_LEVEL:
         {
-            return ol_ath_pdev_set_param(scn->sc_pdev,
-                                         wmi_pdev_param_ani_ofdm_level, value);
+                return ol_ath_pdev_set_param(scn,
+                       wmi_pdev_param_ani_ofdm_level, value);
         }
         break;
         case OL_ATH_PARAM_ANI_CCK_LEVEL:
         {
-            return ol_ath_pdev_set_param(scn->sc_pdev,
-                                         wmi_pdev_param_ani_cck_level, value);
+                return ol_ath_pdev_set_param(scn,
+                       wmi_pdev_param_ani_cck_level, value);
         }
         break;
         case OL_ATH_PARAM_BURST_DUR:
         {
-            if (!wmi_service_enabled(wmi_handle, wmi_service_burst)) {
-                qdf_err("Target does not support burst_dur");
-                return -EINVAL;
-            }
-
             /* In case of Lithium based targets, value = 0 is allowed for
              * burst_dur, whereas for default case, minimum value is 1 and
              * should return error if value  = 0.
              */
-            if ((value >= ic->ic_burst_min) && (value <= 8192)) {
-                retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                               wmi_pdev_param_burst_dur, value);
+            if((value >= ic->ic_burst_min) && (value <= 8192)) {
+                retval = ol_ath_pdev_set_param(scn,
+                         wmi_pdev_param_burst_dur, value);
                 if (retval == EOK)
                     scn->burst_dur = (u_int16_t)value;
             } else {
@@ -1260,71 +969,53 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
 
         case OL_ATH_PARAM_BURST_ENABLE:
         {
-            if (!wmi_service_enabled(wmi_handle, wmi_service_burst)) {
-                qdf_err("Target does not support burst command");
-                return -EINVAL;
-            }
+                if (value == 0 || value ==1) {
+                    retval = ol_ath_pdev_set_param(scn,
+                             wmi_pdev_param_burst_enable, value);
 
-            if ((value == 0) || (value == 1))
-                retval = ol_ath_pdev_set_burst(scn, value);
-            else
-                retval = -EINVAL;
+                    if (retval == EOK) {
+                        scn->burst_enable = (u_int8_t)value;
+                    }
+		    if(!scn->burst_dur)
+		    {
+			retval = ol_ath_pdev_set_param(scn,
+                             wmi_pdev_param_burst_dur, 8160);
+			if (retval == EOK) {
+			    scn->burst_dur = (u_int16_t)value;
+			}
+		    }
+                } else {
+                    retval = -EINVAL;
+                }
         }
         break;
 
-#define CCA_THRESHOLD_LIMIT_UPPER  -11
-#define CCA_THRESHOLD_LIMIT_LOWER  -94
         case OL_ATH_PARAM_CCA_THRESHOLD:
         {
-            if ((int32_t)value > CCA_THRESHOLD_LIMIT_UPPER)
-                value = CCA_THRESHOLD_LIMIT_UPPER;
-            else if ((int32_t)value < CCA_THRESHOLD_LIMIT_LOWER)
-                value = CCA_THRESHOLD_LIMIT_LOWER;
-
+            if (value > -11) {
+                value = -11;
+            } else if (value < -94) {
+                value = -94;
+            }
             if (value) {
-                retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                               wmi_pdev_param_cca_threshold,
-                                               value);
-                if (retval == EOK)
-                    scn->cca_threshold = (int32_t)value;
+                retval = ol_ath_pdev_set_param(scn,
+                        wmi_pdev_param_cca_threshold, value);
+                if (retval == EOK) {
+                    scn->cca_threshold = (u_int16_t)value;
+                }
             } else {
                 retval = -EINVAL;
             }
         }
         break;
 
-        case OL_ATH_PARAM_DCS_WIDEBAND_POLICY:
-            {
-                if ((value < 0) ||
-                    (value >= DCS_WIDEBAND_POLICY_INVALID)) {
-                    qdf_err("Invalid wideband policy setting");
-                    retval = -EINVAL;
-                } else if ((value == DCS_WIDEBAND_POLICY_INTERBAND) &&
-                           !ic->ic_wideband_csa_support) {
-                    qdf_err("Interband DCS wideband policy not supported");
-                    retval = -EINVAL;
-                } else {
-                    qdf_info("Setting DCS wideband policy to %d", value);
-                    scn->scn_dcs.dcs_wideband_policy = value;
-                }
-            }
-        break;
-
         case OL_ATH_PARAM_DCS:
             {
-                value &= CAP_DCS_MASK;
-                if ((value & CAP_DCS_WLANIM) && (IEEE80211_IS_CHAN_2GHZ(ic->ic_curchan))) {
+                value &= OL_ATH_CAP_DCS_MASK;
+                if ((value & OL_ATH_CAP_DCS_WLANIM) && !(IEEE80211_IS_CHAN_5GHZ(ic->ic_curchan))) {
                     qdf_info("Disabling DCS-WLANIM for 11G mode\n");
-                    value &= (~CAP_DCS_WLANIM);
+                    value &= (~OL_ATH_CAP_DCS_WLANIM);
                 }
-
-                /*
-                 * Don't enable AWGN detection if not supported by FW
-                 */
-                if (value & CAP_DCS_AWGNIM) {
-                    ol_ath_ctrl_dcsawgn(ic, &value, true);
-                }
-
                 /*
                  * Host and target should always contain the same value. So
                  * avoid talking to target if the values are same.
@@ -1337,15 +1028,13 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
                  * likely that channel change is in progress, do not let
                  * user modify the current status
                  */
-                if ((OL_IS_DCS_ENABLED(scn->scn_dcs.dcs_enable))  &&
-                    !(OL_IS_DCS_RUNNING(scn->scn_dcs.dcs_enable)) &&
-                    ic->cw_inter_found) {
+                if ((OL_IS_DCS_ENABLED(scn->scn_dcs.dcs_enable)) &&
+                        !(OL_IS_DCS_RUNNING(scn->scn_dcs.dcs_enable))) {
                     retval = EINVAL;
                     break;
                 }
-
-                retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                               wmi_pdev_param_dcs, value);
+                retval = ol_ath_pdev_set_param(scn,
+                                wmi_pdev_param_dcs, value);
 
                 /*
                  * we do not expect this to fail, if failed, eventually
@@ -1354,37 +1043,25 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
                  */
                 if (EOK == retval) {
                     scn->scn_dcs.dcs_enable = value;
-                    qdf_info("DCS: dcs enable value %d return value %d",
-                             value, retval);
+                    qdf_info("DCS: %s dcs enable value %d return value %d", __func__, value, retval );
                 } else {
-                    qdf_err("DCS: target command fail, setting return value %d",
-                            retval);
+                    qdf_info("DCS: %s target command fail, setting return value %d",
+                            __func__, retval );
                 }
                 (OL_IS_DCS_ENABLED(scn->scn_dcs.dcs_enable)) ? (OL_ATH_DCS_SET_RUNSTATE(scn->scn_dcs.dcs_enable)) :
                                         (OL_ATH_DCS_CLR_RUNSTATE(scn->scn_dcs.dcs_enable));
             }
             break;
-        case OL_ATH_PARAM_DCS_RANDOM_CHAN_EN:
-                ol_ath_set_dcs_param(ic, OL_ATH_DCS_PARAM_RANDOM_CHAN_EN, value);
-                break;
-        case OL_ATH_PARAM_DCS_CSA_TBTT:
-		ol_ath_set_dcs_param(ic, OL_ATH_DCS_PARAM_CSA_TBTT, value);
-                break;
         case OL_ATH_PARAM_DCS_SIM:
             switch (value) {
-            case CAP_DCS_CWIM: /* cw interferecne*/
-                if (OL_IS_DCS_ENABLED(scn->scn_dcs.dcs_enable) & CAP_DCS_CWIM) {
-                    ol_ath_dcs_generic_interference_handler(scn, NULL, value);
+            case ATH_CAP_DCS_CWIM: /* cw interferecne*/
+                if (OL_IS_DCS_ENABLED(scn->scn_dcs.dcs_enable) & OL_ATH_CAP_DCS_CWIM) {
+                    ol_ath_wlan_n_cw_interference_handler(scn, value);
                 }
                 break;
-            case CAP_DCS_WLANIM: /* wlan interference stats*/
-                if (OL_IS_DCS_ENABLED(scn->scn_dcs.dcs_enable) & CAP_DCS_WLANIM) {
-                    ol_ath_dcs_generic_interference_handler(scn, NULL, value);
-                }
-                break;
-            case CAP_DCS_AWGNIM: /* AWGN interference */
-                if (OL_IS_DCS_ENABLED(scn->scn_dcs.dcs_enable) & CAP_DCS_AWGNIM) {
-                    ol_ath_dcs_generic_interference_handler(scn, NULL, value);
+            case ATH_CAP_DCS_WLANIM: /* wlan interference stats*/
+                if (OL_IS_DCS_ENABLED(scn->scn_dcs.dcs_enable) & OL_ATH_CAP_DCS_WLANIM) {
+                    ol_ath_wlan_n_cw_interference_handler(scn, value);
                 }
                 break;
             default:
@@ -1414,14 +1091,6 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
             break;
         case OL_ATH_PARAM_DCS_SAMPLE_WINDOW:
             scn->scn_dcs.intr_detection_window = value;
-            break;
-        case OL_ATH_PARAM_DCS_RE_ENABLE_TIMER:
-            if (value < DCS_ENABLE_TIME_MIN || value > DCS_ENABLE_TIME_MAX) {
-                qdf_info("DCS re enable timer should be in between"
-                              "%d and %d\n", DCS_ENABLE_TIME_MIN, DCS_ENABLE_TIME_MAX);
-                return -EINVAL;
-            }
-            scn->scn_dcs.dcs_re_enable_time = value;
             break;
         case OL_ATH_PARAM_DCS_DEBUG:
             if (value < 0 || value > 2) {
@@ -1457,25 +1126,29 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
             if( (value & SINGLE_TXCHAIN) ||
                      (value & SINGLE_TXCHAIN_CTL) ){
                 value &= 0xf07;
-            } else{
+            }else{
                 value &= 0x1;
             }
 
             if (scn->dtcs != value) {
-                retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                               wmi_pdev_param_dyntxchain,
-                                               value);
-                if (retval == EOK)
+                retval = ol_ath_pdev_set_param(scn,
+                                 wmi_pdev_param_dyntxchain, value);
+                if (retval == EOK) {
                     scn->dtcs = value;
+                }
             }
         break;
-#if QCA_SUPPORT_SON
+#if ATH_SUPPORT_HYFI_ENHANCEMENTS
 		case OL_ATH_PARAM_BUFF_THRESH:
 			thresh = value;
-			son_ald_record_set_buff_lvl(soc->psoc_obj, thresh);
+			if((thresh >= MIN_BUFF_LEVEL_IN_PERCENT) && (thresh<=100))
+			{
+				scn->soc->buff_thresh.ald_free_buf_lvl = scn->soc->buff_thresh.pool_size - ((scn->soc->buff_thresh.pool_size * thresh) / 100);
+				qdf_info("Buff Warning Level=%d\n", (scn->soc->buff_thresh.pool_size - scn->soc->buff_thresh.ald_free_buf_lvl));
+			} else {
+                qdf_info("ERR: Buff Thresh(in %%) should be >=%d and <=100\n", MIN_BUFF_LEVEL_IN_PERCENT);
+            }
 			break;
-#endif
-#if ATH_SUPPORT_HYFI_ENHANCEMENTS
 		case OL_ATH_PARAM_DROP_STA_QUERY:
 			ic->ic_dropstaquery = !!value;
 			break;
@@ -1524,7 +1197,8 @@ ol_ath_set_config_param(struct ol_ath_softc_net80211 *scn,
             param_id = wmi_pdev_param_dsleep_enable;
             goto low_power_config;
 low_power_config:
-            retval = ol_ath_pdev_set_param(scn->sc_pdev, param_id, value);
+            retval = ol_ath_pdev_set_param(scn,
+                         param_id, value);
         case OL_ATH_PARAM_ACS_CTRLFLAG:
             if(ic->ic_acs){
                 ieee80211_acs_set_param(ic->ic_acs, IEEE80211_ACS_CTRLFLAG , *(int *)buff);
@@ -1570,14 +1244,9 @@ low_power_config:
                 ieee80211_acs_set_param(ic->ic_acs, IEEE80211_ACS_SCANTIME , *(int *)buff);
             }
             break;
-        case OL_ATH_PARAM_ACS_SNRVAR:
+        case OL_ATH_PARAM_ACS_RSSIVAR:
             if(ic->ic_acs){
-                ieee80211_acs_set_param(ic->ic_acs, IEEE80211_ACS_SNRVAR , *(int *)buff);
-            }
-            break;
-        case OL_ATH_PARAM_ACS_CHAN_EFFICIENCY_VAR:
-            if(ic->ic_acs){
-                ieee80211_acs_set_param(ic->ic_acs, IEEE80211_ACS_CHAN_EFFICIENCY_VAR , *(int *)buff);
+                ieee80211_acs_set_param(ic->ic_acs, IEEE80211_ACS_RSSIVAR , *(int *)buff);
             }
             break;
         case OL_ATH_PARAM_ACS_CHLOADVAR:
@@ -1620,39 +1289,35 @@ low_power_config:
 #define ANTENNA_GAIN_5G_MASK    0x8000
         case OL_ATH_PARAM_ANTENNA_GAIN_2G:
             if (value >= 0 && value <= 30) {
-                return ol_ath_pdev_set_param(scn->sc_pdev,
-                                             wmi_pdev_param_antenna_gain,
-                                             value | ANTENNA_GAIN_2G_MASK);
+                return ol_ath_pdev_set_param(scn,
+                         wmi_pdev_param_antenna_gain, value | ANTENNA_GAIN_2G_MASK);
             } else {
                 retval = -EINVAL;
             }
             break;
         case OL_ATH_PARAM_ANTENNA_GAIN_5G:
             if (value >= 0 && value <= 30) {
-                return ol_ath_pdev_set_param(scn->sc_pdev,
-                                             wmi_pdev_param_antenna_gain,
-                                             value | ANTENNA_GAIN_5G_MASK);
+                return ol_ath_pdev_set_param(scn,
+                         wmi_pdev_param_antenna_gain, value | ANTENNA_GAIN_5G_MASK);
             } else {
                 retval = -EINVAL;
             }
             break;
         case OL_ATH_PARAM_RX_FILTER:
             if (ic->ic_set_rxfilter)
-                ic->ic_set_rxfilter(ic->ic_pdev_obj, value);
+                ic->ic_set_rxfilter(ic, value);
             else
                 retval = -EINVAL;
             break;
        case OL_ATH_PARAM_SET_FW_HANG_ID:
-            ol_ath_set_fw_hang(pdev_wmi_handle, value);
+            ol_ath_set_fw_hang(scn, value);
             break;
        case OL_ATH_PARAM_FW_RECOVERY_ID:
-	    ol_ath_set_fw_recovery(scn, value);
-	    break;
-#ifdef CE_TASKLET_DEBUG_ENABLE
-       case OL_ATH_PARAM_ENABLE_CE_LATENCY_STATS:
-                ol_ath_enable_ce_latency_stats(scn->soc, !!value);
+            if (value >= RECOVERY_DISABLE && value <= RECOVERY_ENABLE_WAIT)
+                scn->soc->recovery_enable = value;
+            else
+                qdf_info("Please enter: 0 = Disable,  1 = Enable (auto recover), 2 = Enable (wait for user)");
             break;
-#endif
        case OL_ATH_PARAM_FW_DUMP_NO_HOST_CRASH:
             if (value == 1){
                 /* Do not crash host when target assert happened */
@@ -1728,76 +1393,71 @@ low_power_config:
             }
             break;
         case OL_ATH_PARAM_BLOCK_INTERBSS:
-        {
-            if (!ic->ic_block_interbss_support)
-                return -EINVAL;
+            {
+		        if (!ic->ic_block_interbss_support)
+                    return -EINVAL;
 
-            if (value == scn->scn_block_interbss) {
-                retval = EOK;
-                break;
-            }
-            /* send the WMI command to enable and if that is success update the state */
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                           wmi_pdev_param_block_interbss,
-                                           value);
-            /*
-             * we do not expect this to fail, if failed, eventually
-             * target and host may not be in agreement. Otherway is
-             * to keep it in same old state.
-             */
-            if (EOK == retval) {
-                scn->scn_block_interbss = value;
-                qdf_info("set block_interbss: val %d status %d", value, retval);
-            } else {
-                qdf_err("set block_interbss: wmi failed. retval = %d", retval);
-            }
-        }
+                if (value == scn->scn_block_interbss) {
+                    retval = EOK;
+                    break;
+                }
+		/* send the WMI command to enable and if that is success update the state */
+                retval = ol_ath_pdev_set_param(scn,
+                                wmi_pdev_param_block_interbss, value);
+
+                /*
+                 * we do not expect this to fail, if failed, eventually
+                 * target and host may not be in agreement. Otherway is
+                 * to keep it in same old state.
+                 */
+                if (EOK == retval) {
+                    scn->scn_block_interbss = value;
+                    qdf_info("set block_interbss: value %d wmi_status %d", value, retval );
+                } else {
+                    qdf_info("set block_interbss: wmi failed. retval = %d", retval );
+                }
+	    }
         break;
         case OL_ATH_PARAM_FW_DISABLE_RESET:
         {
-            if (!ic->ic_disable_reset_support)
-                return -EINVAL;
-            /* value is set to either 1 (enable) or 0 (disable).
-             * if value passed is non-zero, convert it to 1 with
-             * double negation
-             */
-            value = !!value;
-            if (scn->fw_disable_reset != (u_int8_t)value) {
-                retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                             wmi_pdev_param_set_disable_reset_cmdid, value);
-                if (retval == EOK)
-                    scn->fw_disable_reset = (u_int8_t)value;
-            }
+		        if (!ic->ic_disable_reset_support)
+                    return -EINVAL;
+                /* value is set to either 1 (enable) or 0 (disable).
+                 * if value passed is non-zero, convert it to 1 with
+                 * double negation
+                 */
+                value = !!value;
+                if (scn->fw_disable_reset != (u_int8_t)value) {
+                    retval = ol_ath_pdev_set_param(scn,
+                                 wmi_pdev_param_set_disable_reset_cmdid, value);
+                    if (retval == EOK) {
+                        scn->fw_disable_reset = (u_int8_t)value;
+                    }
+                }
         }
         break;
         case OL_ATH_PARAM_MSDU_TTL:
         {
-#if PEER_FLOW_CONTROL
-            enum _dp_param_t dp_param;
-#endif
             if (!ic->ic_msdu_ttl_support)
                 return -EINVAL;
             /* value is set to 0 (disable) else set msdu_ttl in ms.
              */
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                           wmi_pdev_param_set_msdu_ttl_cmdid,
-                                           value);
-            if (retval == EOK)
-                qdf_info("set MSDU_TTL: value %d wmi_status %d", value, retval);
-            else
-                qdf_err("set MSDU_TTL wmi_failed: wmi_status %d", retval);
+            retval = ol_ath_pdev_set_param(scn,
+                                 wmi_pdev_param_set_msdu_ttl_cmdid, value);
+            if (retval == EOK) {
+                qdf_info("set MSDU_TTL: value %d wmi_status %d", value, retval );
+            } else {
+                qdf_info("set MSDU_TTL wmi_failed: wmi_status %d", retval );
+            }
 #if PEER_FLOW_CONTROL
             /* update host msdu ttl */
-            dp_param = ol_ath_param_to_dp_param(param);
-            cdp_pflow_update_pdev_params(soc_txrx_handle, pdev_id,
-                                         dp_param, value, NULL);
+            cdp_pflow_update_pdev_params(soc_txrx_handle,
+                    (void *)pdev_txrx_handle, param, value, NULL);
 #endif
         }
         break;
         case OL_ATH_PARAM_PPDU_DURATION:
         {
-            uint16_t ppdu_max_duration = get_max_ppdu_duration(ic);
-
             if (!ic->ic_ppdu_duration_support)
                 return -EINVAL;
             /* Set global PPDU duration in usecs.
@@ -1807,18 +1467,16 @@ low_power_config:
              * for ppdu_duration, whereas for default case minimum value is 100,
              * should return error if value  = 0.
              */
-            if ((value < ic->ic_ppdu_min) || (value > ppdu_max_duration)) {
-                qdf_err("Input value should be within %d to %d",
-                        ic->ic_ppdu_min, ppdu_max_duration);
+            if((value < ic->ic_ppdu_min) || (value > 4000))
                 return -EINVAL;
-            }
 
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
+            retval = ol_ath_pdev_set_param(scn,
                                  wmi_pdev_param_set_ppdu_duration_cmdid, value);
-            if (retval == EOK)
-                qdf_info("set PPDU_DURATION: val %d status %d", value, retval);
-            else
-                qdf_err("set PPDU_DURATION: wmi_failed status %d", retval);
+            if (retval == EOK) {
+                qdf_info("set PPDU_DURATION: value %d wmi_status %d", value, retval );
+            } else {
+                qdf_info("set PPDU_DURATION: wmi_failed: wmi_status %d", retval );
+            }
         }
         break;
 
@@ -1826,21 +1484,22 @@ low_power_config:
         {
             /* Set global TXBF sounding duration in usecs.
              */
-            if (value < 10 || value > 10000)
+            if(value < 10 || value > 10000)
                 return -EINVAL;
             scn->txbf_sound_period = value;
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
+            retval = ol_ath_pdev_set_param(scn,
                                  wmi_pdev_param_txbf_sound_period_cmdid, value);
-            if (retval == EOK)
-                qdf_info("set TXBF_SND_PERIOD: val %d stat %d", value, retval);
-            else
-                qdf_err("set TXBF_SND_PERIOD: wmi_failed: status %d", retval);
+            if (retval == EOK) {
+                qdf_info("set TXBF_SND_PERIOD: value %d wmi_status %d", value, retval );
+            } else {
+                qdf_info("set TXBF_SND_PERIOD: wmi_failed: wmi_status %d", retval );
+            }
         }
         break;
 
         case OL_ATH_PARAM_ALLOW_PROMISC:
         {
-            if (!ic->ic_promisc_support)
+	    if (!ic->ic_promisc_support)
                 return -EINVAL;
             /* Set or clear promisc mode.
              */
@@ -1850,13 +1509,13 @@ low_power_config:
             } else if (value == scn->scn_promisc) {
                 retval = EOK;
             } else {
-                retval = ol_ath_pdev_set_param(scn->sc_pdev,
+                retval = ol_ath_pdev_set_param(scn,
                                  wmi_pdev_param_set_promisc_mode_cmdid, value);
                 if (retval == EOK) {
                     scn->scn_promisc = value;
-                    qdf_info("set PROMISC_MODE: val %d stat %d", value, retval);
+                    qdf_info("set PROMISC_MODE: value %d wmi_status %d", value, retval );
                 } else {
-                    qdf_err("set PROMISC_MODE: wmi_failed: status %d", retval);
+                    qdf_info("set PROMISC_MODE: wmi_failed: wmi_status %d", retval );
                 }
             }
         }
@@ -1864,42 +1523,42 @@ low_power_config:
 
         case OL_ATH_PARAM_BURST_MODE:
         {
-            if (!ic->ic_burst_mode_support)
+		    if (!ic->ic_burst_mode_support)
                 return -EINVAL;
             /* Set global Burst mode data-cts:0 data-ping-pong:1 data-cts-ping-pong:2.
              */
-            if (value < 0 || value >= 3) {
-                qdf_err("Usage: burst_mode <0:data-cts 1:data-data 2:data-(data/cts)");
-                return -EINVAL;
+	    if(value < 0 || value >= 3) {
+                qdf_info("Usage: burst_mode <0:data-cts 1:data-data 2:data-(data/cts)\n");
+		return -EINVAL;
             }
 
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
+            retval = ol_ath_pdev_set_param(scn,
                                  wmi_pdev_param_set_burst_mode_cmdid, value);
-            if (retval == EOK)
-                qdf_info("set BURST_MODE: val %d wmi_status %d", value, retval);
-            else
-                qdf_err("set BURST_MODE: wmi_failed: wmi_status %d", retval);
+            if (retval == EOK) {
+                qdf_info("set BURST_MODE: value %d wmi_status %d", value, retval );
+            } else {
+                qdf_info("set BURST_MODE: wmi_failed: wmi_status %d", retval );
+            }
         }
         break;
 
 #if ATH_SUPPORT_WRAP
-        case OL_ATH_PARAM_MCAST_BCAST_ECHO:
+         case OL_ATH_PARAM_MCAST_BCAST_ECHO:
         {
             /* Set global Burst mode data-cts:0 data-ping-pong:1 data-cts-ping-pong:2.
              */
-            if (value < 0 || value > 1) {
-                qdf_err("Usage: Mcast Bcast Echo mode usage 0:disable 1:enable");
+            if(value < 0 || value > 1) {
+                qdf_info("Usage: Mcast Bcast Echo mode usage  <0:disable 1:enable \n");
                 return -EINVAL;
             }
 
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                           wmi_pdev_param_set_mcast_bcast_echo,
-                                           value);
+            retval = ol_ath_pdev_set_param(scn,
+                                 wmi_pdev_param_set_mcast_bcast_echo, value);
             if (retval == EOK) {
-                qdf_info("set Mcast Bcast Echo val %d stat %d", value, retval);
+                qdf_info("set : Mcast Bcast Echo value %d wmi_status %d", value, retval );
                 scn->mcast_bcast_echo = (u_int8_t)value;
             } else {
-                qdf_err("set Mcast Bcast Echo mode failed, status %d", retval);
+                qdf_info("set : Mcast Bcast Echo mode wmi_failed: wmi_status %d", retval );
             }
         }
         break;
@@ -1909,18 +1568,10 @@ low_power_config:
                 qdf_err("Usage: wrap_isolation mode usage  <0:disable 1:enable \n");
                 return -EINVAL;
             }
-#if WLAN_QWRAP_LEGACY
             ic->ic_wrap_com->wc_isolation = value;
-#else
-            dp_wrap_pdev_set_isolation(ic->ic_pdev_obj, value);
-#endif
             qdf_info("Set: Qwrap isolation mode value %d", value);
 #ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
-#if WLAN_QWRAP_LEGACY
             mpsta_vap = ic->ic_mpsta_vap;
-#else
-            mpsta_vap = wlan_get_vap(dp_wrap_get_mpsta_vdev(ic->ic_pdev_obj));
-#endif
             if((value == 1) && mpsta_vap && ic->nss_vops && ic->nss_vops->ic_osif_nss_vdev_qwrap_isolation_enable) {
                 osd = (osif_dev *)mpsta_vap->iv_ifp;
                 ic->nss_vops->ic_osif_nss_vdev_qwrap_isolation_enable(osd);
@@ -1929,19 +1580,19 @@ low_power_config:
 #endif
 	break;
 #endif
-         case OL_ATH_PARAM_OBSS_SNR_THRESHOLD:
+         case OL_ATH_PARAM_OBSS_RSSI_THRESHOLD:
         {
-            if (value >= OBSS_SNR_MIN && value <= OBSS_SNR_MAX) {
-                ic->obss_snr_threshold = value;
+            if (value >= OBSS_RSSI_MIN && value <= OBSS_RSSI_MAX) {
+                ic->obss_rssi_threshold = value;
             } else {
                 retval = -EINVAL;
             }
         }
         break;
-         case OL_ATH_PARAM_OBSS_RX_SNR_THRESHOLD:
+         case OL_ATH_PARAM_OBSS_RX_RSSI_THRESHOLD:
         {
-            if (value >= OBSS_SNR_MIN && value <= OBSS_SNR_MAX) {
-                ic->obss_rx_snr_threshold = value;
+            if (value >= OBSS_RSSI_MIN && value <= OBSS_RSSI_MAX) {
+                ic->obss_rx_rssi_threshold = value;
             } else {
                 retval = -EINVAL;
             }
@@ -1962,79 +1613,55 @@ low_power_config:
             }
         }
         break;
-        case OL_ATH_PARAM_ACS_CHAN_GRADE_ALGO:
-        {
-            if (!ol_target_lithium(scn->soc->psoc_obj)) {
-                qdf_info("Feature not supported for this target!");
-                retval = -EINVAL;
-            } else {
-                if (ic->ic_acs){
-                    ieee80211_acs_set_param(ic->ic_acs, IEEE80211_ACS_CHAN_GRADE_ALGO, *(int *)buff);
-                }
-            }
-        }
-        break;
-        case OL_ATH_PARAM_ACS_NEAR_RANGE_WEIGHTAGE:
-        {
-            if(ic->ic_acs){
-                ieee80211_acs_set_param(ic->ic_acs, IEEE80211_ACS_OBSS_NEAR_RANGE_WEIGHTAGE, *(int *)buff);
-            }
-        }
-        break;
-        case OL_ATH_PARAM_ACS_MID_RANGE_WEIGHTAGE:
-        {
-            if(ic->ic_acs){
-                ieee80211_acs_set_param(ic->ic_acs, IEEE80211_ACS_OBSS_MID_RANGE_WEIGHTAGE, *(int *)buff);
-            }
-        }
-        break;
-        case OL_ATH_PARAM_ACS_FAR_RANGE_WEIGHTAGE:
-        {
-            if(ic->ic_acs){
-                ieee80211_acs_set_param(ic->ic_acs, IEEE80211_ACS_OBSS_FAR_RANGE_WEIGHTAGE, *(int *)buff);
-            }
-        }
-        break;
-	case OL_ATH_PARAM_ACS_PRECAC_SUPPORT:
-        {
-            ic->ic_acs_precac_completed_chan_only = *(int *)buff;
-        }
-        break;
         case OL_ATH_PARAM_ANT_POLARIZATION:
         {
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                           wmi_pdev_param_ant_plzn, value);
+            retval = ol_ath_pdev_set_param(scn,
+                          wmi_pdev_param_ant_plzn, value);
         }
         break;
 
          case OL_ATH_PARAM_ENABLE_AMSDU:
         {
 
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                           wmi_pdev_param_enable_per_tid_amsdu,
-                                           value);
+            retval = ol_ath_pdev_set_param(scn,
+                                  wmi_pdev_param_enable_per_tid_amsdu, value);
             if (retval == EOK) {
-                qdf_info("enable AMSDU: value %d wmi_status %d", value, retval);
+                qdf_info("enable AMSDU: value %d wmi_status %d", value, retval );
                 scn->scn_amsdu_mask = value;
             } else {
-                qdf_err("enable AMSDU: wmi_failed: wmi_status %d", retval);
+                qdf_info("enable AMSDU: wmi_failed: wmi_status %d", retval );
             }
         }
         break;
 
         case OL_ATH_PARAM_MAX_CLIENTS_PER_RADIO:
         {
-            uint16_t max_clients = 0;
-
-            max_clients = ol_ath_get_num_clients(pdev);
-
-            if (value <= max_clients) {
+#ifdef QCA_LOWMEM_PLATFORM
+            if (value > 0 && value <= IEEE80211_33_AID)
                 ic->ic_num_clients = value;
-            } else {
-                qdf_info("Range 1-%d clients", max_clients);
+            else {
+                qdf_info("QCA_LOWMEM_PLATFORM: Range 1-33 clients");
                 retval = -EINVAL;
                 break;
             }
+#else
+            if (value > 0 && value <= IEEE80211_512_AID) {
+                if (lmac_get_tgt_type(scn->soc->psoc_obj) == TARGET_TYPE_AR9888) {
+                    if (value <= IEEE80211_128_AID)
+                        ic->ic_num_clients = value;
+                    else {
+                        qdf_info("AR9888 PLATFORM: Range 1-128 clients");
+                        retval = -EINVAL;
+                        break;
+                    }
+                } else  /* As of now beeliner and lithium */
+                    ic->ic_num_clients = value;
+            } else {
+                qdf_info("Range 1-512 clients");
+                retval = -EINVAL;
+                break;
+            }
+#endif
         }
         TAILQ_FOREACH(tmp_vap, &ic->ic_vaps, iv_next) {
             if ((tmp_vap->iv_opmode == IEEE80211_M_HOSTAP) &&
@@ -2046,14 +1673,14 @@ low_power_config:
 
         case OL_ATH_PARAM_ENABLE_AMPDU:
         {
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                           wmi_pdev_param_enable_per_tid_ampdu,
-                                           value);
+
+            retval = ol_ath_pdev_set_param(scn,
+                                   wmi_pdev_param_enable_per_tid_ampdu, value);
             if (retval == EOK) {
-                qdf_info("enable AMPDU: value %d wmi_status %d", value, retval);
+                qdf_info("enable AMPDU: value %d wmi_status %d", value, retval );
                 scn->scn_ampdu_mask = value;
             } else {
-                qdf_err("enable AMPDU: wmi_failed: wmi_status %d", retval);
+                qdf_info("enable AMPDU: wmi_failed: wmi_status %d", retval );
             }
         }
         break;
@@ -2088,18 +1715,18 @@ low_power_config:
 
         case OL_ATH_PARAM_PDEV_RESET:
         {
-            if ((value > 0) && (value < 6)) {
-                return ol_ath_pdev_set_param(scn->sc_pdev,
-                                             wmi_pdev_param_pdev_reset, value);
-            } else {
-                qdf_info(" Invalid vaue : Use any one of the below values \n"
-                    "    TX_FLUSH = 1 \n"
-                    "    WARM_RESET = 2 \n"
-                    "    COLD_RESET = 3 \n"
-                    "    WARM_RESET_RESTORE_CAL = 4 \n"
-                    "    COLD_RESET_RESTORE_CAL = 5 \n");
-                retval = -EINVAL;
-            }
+                if ( (value > 0) && (value < 6)) {
+                    return ol_ath_pdev_set_param(scn,
+                             wmi_pdev_param_pdev_reset, value);
+                } else {
+                    qdf_info(" Invalid vaue : Use any one of the below values \n"
+                        "    TX_FLUSH = 1 \n"
+                        "    WARM_RESET = 2 \n"
+                        "    COLD_RESET = 3 \n"
+                        "    WARM_RESET_RESTORE_CAL = 4 \n"
+                        "    COLD_RESET_RESTORE_CAL = 5 \n");
+                    retval = -EINVAL;
+                }
         }
         break;
 
@@ -2138,31 +1765,32 @@ low_power_config:
          case OL_ATH_PARAM_HOSTQ_DUMP:
          case OL_ATH_PARAM_TIDQ_MAP:
         {
-            enum _dp_param_t dp_param = ol_ath_param_to_dp_param(param);
-            cdp_pflow_update_pdev_params(soc_txrx_handle, pdev_id,
-                                         dp_param, value, NULL);
+            cdp_pflow_update_pdev_params(soc_txrx_handle,
+                    (void *)pdev_txrx_handle, param, value, NULL);
         }
         break;
 #endif
         case OL_ATH_PARAM_DBG_ARP_SRC_ADDR:
         {
             scn->sc_arp_dbg_srcaddr = value;
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                           wmi_pdev_param_arp_srcaddr,
-                                           scn->sc_arp_dbg_srcaddr);
-            if (retval != EOK)
-                qdf_err("Failed to set ARP DEBUG SRC addr in firmware");
+            retval = ol_ath_pdev_set_param(scn,
+                         wmi_pdev_param_arp_srcaddr,
+                         scn->sc_arp_dbg_srcaddr);
+            if (retval != EOK) {
+                qdf_info("Failed to set ARP DEBUG SRC addr in firmware \r\n");
+            }
         }
         break;
 
         case OL_ATH_PARAM_DBG_ARP_DST_ADDR:
         {
             scn->sc_arp_dbg_dstaddr = value;
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                           wmi_pdev_param_arp_dstaddr,
-                                           scn->sc_arp_dbg_dstaddr);
-            if (retval != EOK)
-                qdf_err("Failed to set ARP DEBUG DEST addr in firmware");
+            retval = ol_ath_pdev_set_param(scn,
+                         wmi_pdev_param_arp_dstaddr,
+                         scn->sc_arp_dbg_dstaddr);
+            if (retval != EOK) {
+                qdf_info("Failed to set ARP DEBUG DEST addr in firmware \r\n");
+            }
         }
         break;
 
@@ -2175,8 +1803,8 @@ low_power_config:
                 scn->sc_rx_arp_req_count = 0;
             } else {
                 scn->sc_arp_dbg_conf = value;
-                val.cdp_pdev_param_arp_dbg_conf = value;
-                cdp_txrx_set_pdev_param(soc_txrx_handle, pdev_id, CDP_CONFIG_ARP_DBG_CONF, val);
+                cdp_txrx_set_pdev_param(soc_txrx_handle, (struct cdp_pdev *)pdev_txrx_handle,
+                        CDP_CONFIG_ARP_DBG_CONF, value);
             }
 #undef ARP_RESET
         }
@@ -2201,44 +1829,8 @@ low_power_config:
                 return -1;
             }
 
-            OS_MEMZERO(&vap_opmode_count,
-                       sizeof(struct ieee80211_vap_opmode_count));
-
-            if (!dfs_rx_ops || !dfs_tx_ops) {
-                qdf_err("dfs tx ops or rx ops is null");
-                wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
-                return -1;
-            }
-
-            if (dfs_rx_ops->dfs_is_stadfs_enabled)
-                prev_stadfs_en = dfs_rx_ops->dfs_is_stadfs_enabled(pdev);
-
-            if (dfs_rx_ops->dfs_enable_stadfs)
+            if (dfs_rx_ops && dfs_rx_ops->dfs_enable_stadfs)
                 dfs_rx_ops->dfs_enable_stadfs(pdev, !!value);
-
-            if (dfs_rx_ops->dfs_is_stadfs_enabled)
-                cur_stadfs_en = dfs_rx_ops->dfs_is_stadfs_enabled(pdev);
-
-            /** Even though the user tries to enable STA DFS, it will not
-              * be enabled if the country is non ETSI; so value is not
-              * always same as cur_stadfs_en.
-              */
-            if (prev_stadfs_en == cur_stadfs_en) {
-                qdf_err("No change in STA DFS Enable value");
-                wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
-                break;
-            }
-
-            ieee80211_get_vap_opmode_count(ic, &vap_opmode_count);
-
-            /* For fulloffload, radar detection for STA DFS is controlled in the
-             * FW. Enabling and disabling the STA DFS is done through vdev_start
-             * WMI command and done only for STA only mode. Therefore, restart
-             * the VAPs. */
-            if (dfs_tx_ops->dfs_is_tgt_offload(psoc)
-                && vap_opmode_count.total_vaps
-                && (vap_opmode_count.sta_count == vap_opmode_count.total_vaps))
-                osif_restart_for_config(ic, NULL, NULL);
 
             wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
             break;
@@ -2256,7 +1848,6 @@ low_power_config:
                 qdf_info("%s: When TXCSA is set to 1, Repeater CAC is forced to 1", __func__);
             }
             break;
-#if ATH_SUPPORT_DFS
         case OL_ATH_PARAM_BW_REDUCE:
             if (dfs_rx_ops && dfs_rx_ops->dfs_set_bw_reduction) {
                 if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_DFS_ID) !=
@@ -2267,86 +1858,6 @@ low_power_config:
                 wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
             }
             break;
-#endif
-        case OL_ATH_PARAM_NO_BACKHAUL_RADIO:
-            if(value != 1) {
-                qdf_info("Value should be given as 1 to set no backhaul radio");
-                retval = -EINVAL;
-                break;
-            }
-
-            if(ic->ic_nobackhaul_radio == value) {
-                qdf_info("primary radio is set already for this radio");
-                break;
-            }
-            ic->ic_nobackhaul_radio = value;
-
-#if DBDC_REPEATER_SUPPORT
-            if (ic->ic_wiphy) {
-                qca_multi_link_add_no_backhaul_radio(ic->ic_wiphy);
-
-#ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
-            if (ic->nss_radio_ops)
-                ic->nss_radio_ops->ic_nss_ol_set_dbdc_no_backhaul_radio(ic, value);
-#endif
-            }
-#endif
-
-            break;
-        case OL_ATH_PARAM_HE_MBSSID_CTRL_FRAME_CONFIG:
-            if(!is_mbssid_enabled) {
-                qdf_err("MBSSID Ctrl frame setting is disllowed when MBSSID feature is disabled");
-                retval = -EINVAL;
-                break;
-            }
-
-            if(value > IEEE80211_MBSSID_CTRL_FRAME_MAX_VAL) {
-                qdf_err("Invalid input: 0x%x\n"
-                        "MBSSID Control frame config bit interpretation:\n"
-                        "B0: Basic Trigger setting\n"
-                        "B1: BSR Trigger setting\n"
-                        "B2: MU RTS setting\n"
-                        "B3-B31: Reserved\n", value);
-                retval = -EINVAL;
-                break;
-            }
-
-            if (ol_ath_pdev_set_param(scn->sc_pdev,
-                                      wmi_pdev_param_enable_mbssid_ctrl_frame,
-                                      value) != EOK) {
-                qdf_err("HE MBSSID Basic Trigger setting WMI failed");
-                retval = -EINVAL;
-            } else {
-                ic->ic_he_mbssid_ctrl_frame_config = value;
-                qdf_info("MBSSID Control frame config: 0x%x\n"
-                        "Basic Trigger setting: %s\n"
-                        "BSR Trigger setting: %s\n"
-                        "MU RTS setting: %s",
-                        value,
-                        (value & IEEE80211_MBSSID_BASIC_TRIG_MASK) ? "ENABLED" : "DISABLED",
-                        (value & IEEE80211_MBSSID_BSR_TRIG_MASK) ? "ENABLED" : "DISABLED",
-                        (value & IEEE80211_MBSSID_MU_RTS_MASK) ? "ENABLED" : "DISABLED");
-            }
-            break;
-#ifdef QCA_CBT_INSTRUMENTATION
-        case OL_ATH_PARAM_FUNC_CALL_MAP:
-            if (value == 1) {
-                char *cc_buf = qdf_mem_malloc(QDF_FUNCTION_CALL_MAP_BUF_LEN);
-                qdf_err("\n\nFunction call map dump start");
-                qdf_get_func_call_map(cc_buf);
-                qdf_trace_hex_dump(QDF_MODULE_ID_ANY,
-                    QDF_TRACE_LEVEL_ERROR, cc_buf, QDF_FUNCTION_CALL_MAP_BUF_LEN);
-                qdf_err("Function call map dump end\n\n");
-                qdf_mem_free(cc_buf);
-            } else if (value == 0) {
-                qdf_clear_func_call_map();
-                qdf_err("Function call map clear\n\n");
-            } else {
-                qdf_info("Usage: iwpriv wifiX get_call_map 0/1");
-                return -EINVAL;
-            }
-            break;
-#endif
 #if DBDC_REPEATER_SUPPORT
         case OL_ATH_PARAM_PRIMARY_RADIO:
             if(value != 1) {
@@ -2355,26 +1866,14 @@ low_power_config:
                 break;
             }
 
-#ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
-            if (ic->nss_radio_ops) {
-                ic->nss_radio_ops->ic_nss_ol_set_primary_radio(scn, ic->ic_primary_radio);
-            }
-#endif
-
-            if (ic->ic_wiphy) {
-                if (value) {
-                    qca_multi_link_set_primary_radio(ic->ic_wiphy);
-                } else {
-                    primary_wiphy = qca_multi_link_get_primary_radio();
-                    if (primary_wiphy == ic->ic_wiphy)
-                        qca_multi_link_set_primary_radio(NULL);
-                }
+            if(ic->ic_primary_radio == value) {
+                qdf_info("primary radio is set already for this radio");
+                break;
             }
 
-            val.cdp_pdev_param_primary_radio = value;
             cdp_txrx_set_pdev_param(soc_txrx_handle,
-                                    pdev_id,
-                                    CDP_CONFIG_PRIMARY_RADIO, val);
+                                    (struct cdp_pdev *)pdev_txrx_handle,
+                                    CDP_CONFIG_PRIMARY_RADIO, value);
             /*
              * For Lithium, because of HW AST issue, primary/secondary radio
              * configuration is needed for AP mode also
@@ -2393,25 +1892,17 @@ low_power_config:
                         /* Setting current radio as primary radio*/
                         qdf_info("Setting primary radio for %s", ether_sprintf(ic->ic_myaddr));
                         tmp_ic->ic_primary_radio = 1;
+
                     } else {
                         tmp_ic->ic_primary_radio = 0;
                     }
                     dp_lag_pdev_set_primary_radio(tmp_ic->ic_pdev_obj,
                             tmp_ic->ic_primary_radio);
                     spin_unlock(&tmp_ic->ic_lock);
-                }
-            }
-            if (ic->fast_lane) {
-                if (ic->fast_lane_ic && !ic->fast_lane_ic->ic_primary_radio) {
-                    /*
-                     * In Fast lane if any of the fast radios is primary, the other
-                     * is also set to primary.
-                     */
-                    ic->fast_lane_ic->ic_primary_radio = 1;
 #ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
-                    tmp_scn = OL_ATH_SOFTC_NET80211(ic->fast_lane_ic);
-                    if (ic->fast_lane_ic->nss_radio_ops) {
-                        ic->fast_lane_ic->nss_radio_ops->ic_nss_ol_set_primary_radio(tmp_scn, ic->fast_lane_ic->ic_primary_radio);
+                    tmp_scn = OL_ATH_SOFTC_NET80211(tmp_ic);
+                    if (tmp_ic->nss_radio_ops) {
+                        tmp_ic->nss_radio_ops->ic_nss_ol_set_primary_radio(tmp_scn, tmp_ic->ic_primary_radio);
                     }
 #endif
                 }
@@ -2424,13 +1915,10 @@ low_power_config:
         case OL_ATH_PARAM_DBDC_ENABLE:
             GLOBAL_IC_LOCK_BH(ic->ic_global_list);
             ic->ic_global_list->dbdc_process_enable = (value) ?1:0;
-	    if (value) {
-                qca_multi_link_set_dbdc_enable(true);
-            } else {
-                qca_multi_link_set_dbdc_enable(false);
-            }
 
             if ((value == 0) || ic->ic_global_list->num_stavaps_up > 1) {
+                dp_lag_soc_enable(ic->ic_pdev_obj,
+                        ic->ic_global_list->dbdc_process_enable);
 
 #ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
                 if (ic->nss_radio_ops) {
@@ -2469,11 +1957,9 @@ low_power_config:
             GLOBAL_IC_LOCK_BH(ic->ic_global_list);
             if(value) {
                 ic->ic_global_list->force_client_mcast_traffic = 1;
-                qca_multi_link_set_force_client_mcast(true);
                 qdf_info("Enabling MCAST client traffic to go on corresponding STA VAP\n");
             } else {
                 ic->ic_global_list->force_client_mcast_traffic = 0;
-                qca_multi_link_set_force_client_mcast(false);
                 qdf_info("Disabling MCAST client traffic to go on corresponding STA VAP\n");
             }
 
@@ -2495,25 +1981,23 @@ low_power_config:
             break;
 #endif
         case OL_ATH_PARAM_TXPOWER_DBSCALE:
-        {
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                           wmi_pdev_param_txpower_decr_db,
-                                           value);
-        }
-        break;
-        case OL_ATH_PARAM_CTL_POWER_SCALE:
-        {
-            if ((WMI_HOST_TP_SCALE_MAX <= value) &&
-                (value <= WMI_HOST_TP_SCALE_MIN)) {
-                scn->powerscale = value;
-                return ol_ath_pdev_set_param(scn->sc_pdev,
-                                             wmi_pdev_param_cust_txpower_scale,
-                                             value);
-            } else {
-                retval = -EINVAL;
+            {
+                retval = ol_ath_pdev_set_param(scn,
+                        wmi_pdev_param_txpower_decr_db, value);
             }
-        }
-        break;
+            break;
+        case OL_ATH_PARAM_CTL_POWER_SCALE:
+            {
+                if((WMI_HOST_TP_SCALE_MAX <= value) && (value <= WMI_HOST_TP_SCALE_MIN))
+                {
+                    scn->powerscale = value;
+                    return ol_ath_pdev_set_param(scn,
+                            wmi_pdev_param_cust_txpower_scale, value);
+                } else {
+                    retval = -EINVAL;
+                }
+            }
+            break;
 
 #ifdef QCA_EMIWAR_80P80_CONFIG_SUPPORT
         case OL_ATH_PARAM_EMIWAR_80P80:
@@ -2543,13 +2027,12 @@ low_power_config:
             break;
 #endif /*QCA_EMIWAR_80P80_CONFIG_SUPPORT*/
         case OL_ATH_PARAM_BATCHMODE:
-            return ol_ath_pdev_set_param(scn->sc_pdev,
-                                         wmi_pdev_param_rx_batchmode, !!value);
+            return ol_ath_pdev_set_param(scn,
+                         wmi_pdev_param_rx_batchmode, !!value);
             break;
         case OL_ATH_PARAM_PACK_AGGR_DELAY:
-            return ol_ath_pdev_set_param(scn->sc_pdev,
-                                         wmi_pdev_param_packet_aggr_delay,
-                                         !!value);
+            return ol_ath_pdev_set_param(scn,
+                         wmi_pdev_param_packet_aggr_delay, !!value);
             break;
 #if UMAC_SUPPORT_ACFG
         case OL_ATH_PARAM_DIAG_ENABLE:
@@ -2578,27 +2061,27 @@ low_power_config:
             ic->ic_strict_pscan_enable = !!value;
             break;
 
-        case OL_ATH_MIN_SNR_ENABLE:
+        case OL_ATH_MIN_RSSI_ENABLE:
             {
                 if (value == 0 || value == 1) {
                     if (value)
-                        ic->ic_min_snr_enable = true;
+                        ic->ic_min_rssi_enable = true;
                     else
-                        ic->ic_min_snr_enable = false;
+                        ic->ic_min_rssi_enable = false;
                } else {
                    qdf_info("Please enter 0 or 1.\n");
                    retval = -EINVAL;
                }
             }
             break;
-        case OL_ATH_MIN_SNR:
+        case OL_ATH_MIN_RSSI:
             {
                 int val = *(int *)buff;
                 if (val <= 0) {
                     qdf_info("snr should be a positive value.\n");
                     retval = -EINVAL;
-                } else if (ic->ic_min_snr_enable)
-                    ic->ic_min_snr = val;
+                } else if (ic->ic_min_rssi_enable)
+                    ic->ic_min_rssi = val;
                 else
                     qdf_info("Cannot set, feature not enabled.\n");
             }
@@ -2617,62 +2100,51 @@ low_power_config:
             break;
 #endif
         case OL_ATH_BTCOEX_ENABLE:
-        {
-            int val = !!(*((int *) buff));
+            {
+                int val = !!(*((int *) buff));
 
-            if(wlan_psoc_nif_feat_cap_get(scn->soc->psoc_obj,
-                                          WLAN_SOC_F_BTCOEX_SUPPORT)) {
-                if (ol_ath_pdev_set_param(scn->sc_pdev,
-                                          wmi_pdev_param_enable_btcoex,
-                                          val) == EOK) {
-                    scn->soc->btcoex_enable = val;
+                if(wlan_psoc_nif_feat_cap_get(scn->soc->psoc_obj,
+					WLAN_SOC_F_BTCOEX_SUPPORT)) {
+                    if (ol_ath_pdev_set_param(scn, wmi_pdev_param_enable_btcoex, val) == EOK) {
+                        scn->soc->btcoex_enable = val;
 
-                    if (scn->soc->btcoex_enable) {
-                        if (scn->soc->btcoex_wl_priority == 0) {
-                            scn->soc->btcoex_wl_priority =
-                                        WMI_HOST_PDEV_VI_PRIORITY_BIT |
-                                        WMI_HOST_PDEV_BEACON_PRIORITY_BIT |
-                                        WMI_HOST_PDEV_MGMT_PRIORITY_BIT;
+                        if (scn->soc->btcoex_enable) {
+                            if (scn->soc->btcoex_wl_priority == 0) {
+                                scn->soc->btcoex_wl_priority  = WMI_HOST_PDEV_VI_PRIORITY_BIT |
+                                    WMI_HOST_PDEV_BEACON_PRIORITY_BIT |
+                                    WMI_HOST_PDEV_MGMT_PRIORITY_BIT;
 
-                            if (ol_ath_btcoex_wlan_priority(scn->soc,
-                                        scn->soc->btcoex_wl_priority) != EOK) {
-                                qdf_err("Assign btcoex_wlan_priority:%d failed",
-                                        scn->soc->btcoex_wl_priority);
-                                return -ENOMEM;
-                            } else {
-                                qdf_err("Set btcoex_wlan_priority:%d",
-                                        scn->soc->btcoex_wl_priority);
+                                if (ol_ath_btcoex_wlan_priority(scn->soc, scn->soc->btcoex_wl_priority) != EOK) {
+                                    qdf_info("%s Assigning btcoex_wlan_priority:%d failed ",
+                                            __func__,scn->soc->btcoex_wl_priority);
+                                    return -ENOMEM;
+                                } else {
+                                    qdf_info("%s Set btcoex_wlan_priority:%d ",
+                                            __func__,scn->soc->btcoex_wl_priority);
+                                }
+                            }
+                            if (scn->soc->btcoex_duty_cycle && (scn->soc->btcoex_period <= 0)) {
+                                if ( ol_ath_btcoex_duty_cycle(scn->soc,DEFAULT_PERIOD,DEFAULT_WLAN_DURATION) != EOK ) {
+                                    qdf_info("%s Assigning btcoex_period:%d btcoex_duration:%d failed ",
+                                            __func__,DEFAULT_PERIOD,DEFAULT_WLAN_DURATION);
+                                    return -ENOMEM;
+                                } else {
+                                    scn->soc->btcoex_period = DEFAULT_PERIOD;
+                                    scn->soc->btcoex_duration = DEFAULT_WLAN_DURATION;
+                                    qdf_info("%s Set default val btcoex_period:%d btcoex_duration:%d ",
+                                            __func__,scn->soc->btcoex_period,scn->soc->btcoex_duration);
+                                }
                             }
                         }
-                        if (scn->soc->btcoex_duty_cycle &&
-                            (scn->soc->btcoex_period <= 0)) {
-                            if (ol_ath_btcoex_duty_cycle(scn->soc,
-                                                         DEFAULT_PERIOD,
-                                                         DEFAULT_WLAN_DURATION)
-                                                         != EOK) {
-                                qdf_err("Assignign btcoex_period:%d "
-                                        "btcoex_duration duration:%d failed",
-                                        DEFAULT_PERIOD,DEFAULT_WLAN_DURATION);
-                                return -ENOMEM;
-                            } else {
-                                scn->soc->btcoex_period = DEFAULT_PERIOD;
-                                scn->soc->btcoex_duration = DEFAULT_WLAN_DURATION;
-                                qdf_info("Set default val btcoex_period:%d "
-                                         "btcoex_duration:%d ",
-                                         scn->soc->btcoex_period,
-                                         scn->soc->btcoex_duration);
-                            }
-                        }
+                    } else {
+                        qdf_info("%s Failed to send enable btcoex cmd:%d ",__func__,val);
+                        return -ENOMEM;
                     }
                 } else {
-                    qdf_err("Failed to send enable btcoex cmd:%d ", val);
-                    return -ENOMEM;
+                    retval = -EPERM;
                 }
-            } else {
-                retval = -EPERM;
             }
-        }
-        break;
+            break;
         case OL_ATH_BTCOEX_WL_PRIORITY:
             {
                 int val = *((int *) buff);
@@ -2707,8 +2179,9 @@ low_power_config:
             }
             break;
         case OL_ATH_PARAM_TID_OVERRIDE_QUEUE_MAPPING:
-             val.cdp_pdev_param_tidq_override = value;
-             cdp_txrx_set_pdev_param(soc_txrx_handle, pdev_id, CDP_TIDQ_OVERRIDE, val);
+           if (scn->soc->ol_if_ops->ol_pdev_set_tid_override_queue_mapping)
+                   scn->soc->ol_if_ops->ol_pdev_set_tid_override_queue_mapping(
+                                   pdev_txrx_handle, value);
             break;
         case OL_ATH_PARAM_NO_VLAN:
             ic->ic_no_vlan = !!value;
@@ -2724,12 +2197,6 @@ low_power_config:
             ic->ic_chan_switch_cnt = value;
             break;
 #if DBDC_REPEATER_SUPPORT
-        case OL_ATH_PARAM_SAME_SSID_DISABLE:
-            GLOBAL_IC_LOCK_BH(ic->ic_global_list);
-            ic->ic_global_list->same_ssid_disable = (value) ?1:0;
-            qdf_info("Same ssid global disable:%d",ic->ic_global_list->same_ssid_disable);
-            GLOBAL_IC_UNLOCK_BH(ic->ic_global_list);
-            break;
         case OL_ATH_PARAM_DISCONNECTION_TIMEOUT:
             GLOBAL_IC_LOCK_BH(ic->ic_global_list);
             ic->ic_global_list->disconnect_timeout = value;
@@ -2745,11 +2212,6 @@ low_power_config:
         case OL_ATH_PARAM_ALWAYS_PRIMARY:
             GLOBAL_IC_LOCK_BH(ic->ic_global_list);
             ic->ic_global_list->always_primary = (value) ?1:0;
-            if (value) {
-                qca_multi_link_set_always_primary(true);
-            } else {
-                qca_multi_link_set_always_primary(false);
-            }
             dp_lag_soc_set_always_primary(ic->ic_pdev_obj,
                     ic->ic_global_list->always_primary);
             qdf_info("Setting always primary flag as %d ",value);
@@ -2769,23 +2231,11 @@ low_power_config:
             break;
         case OL_ATH_PARAM_FAST_LANE:
 #ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
-            /*
-             * DBDC Fast-Lane is supported in NSS WiFi Offload mode for 807x V1, V2
-             * and 601x platforms and not supported in legacy platforms.
-             */
             if (scn->nss_radio.nss_rctx) {
-                if ((lmac_get_tgt_type(scn->soc->psoc_obj) != TARGET_TYPE_QCA8074) &&
-                    (lmac_get_tgt_type(scn->soc->psoc_obj) != TARGET_TYPE_QCA8074V2) &&
-                    (lmac_get_tgt_type(scn->soc->psoc_obj) != TARGET_TYPE_QCN9000) &&
-                    (lmac_get_tgt_type(scn->soc->psoc_obj) != TARGET_TYPE_QCN6122) &&
-                    (lmac_get_tgt_type(scn->soc->psoc_obj) != TARGET_TYPE_QCA5018) &&
-                    (lmac_get_tgt_type(scn->soc->psoc_obj) != TARGET_TYPE_QCA6018)) {
-                        qdf_info( "fast lane not supported on nss offload ");
-                        break;
-                    }
+                qdf_info( "fast lane not supported on nss offload ");
+                break;
             }
 #endif
-
             if (value && (ic->ic_global_list->num_fast_lane_ic > 1)) {
                 /* fast lane support allowed only on 2 radios*/
                 qdf_info("fast lane support allowed only on 2 radios ");
@@ -2804,21 +2254,7 @@ low_power_config:
             }
             spin_lock(&ic->ic_lock);
             ic->fast_lane = value ?1:0;
-            dp_lag_pdev_set_fast_lane(ic->ic_pdev_obj, ic->fast_lane);
-
-            if (ic->fast_lane) {
-                qca_multi_link_add_fastlane_radio(ic->ic_wiphy);
-            } else {
-                qca_multi_link_remove_fastlane_radio(ic->ic_wiphy);
-            }
             spin_unlock(&ic->ic_lock);
-
-#ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
-            GLOBAL_IC_LOCK_BH(ic->ic_global_list);
-            if (ic->nss_radio_ops)
-                ic->nss_radio_ops->ic_nss_ol_set_dbdc_fast_lane(ic, value);
-            GLOBAL_IC_UNLOCK_BH(ic->ic_global_list);
-#endif
             qdf_info("Setting fast lane flag as %d for radio:%s",value,ether_sprintf(ic->ic_my_hwaddr));
             if (ic->fast_lane) {
                 for (i=0; i < MAX_RADIO_CNT; i++) {
@@ -2833,24 +2269,6 @@ low_power_config:
                         ic->fast_lane_ic = tmp_ic;
                         qdf_info("fast lane ic mac:%s",ether_sprintf(ic->fast_lane_ic->ic_my_hwaddr));
                         spin_unlock(&ic->ic_lock);
-                        /*
-                         * In Fast lane if any of the fast radios is primary, the other
-                         * is also set to primary.
-                         */
-                        if ((tmp_ic->ic_primary_radio) || (ic->ic_primary_radio)) {
-                            ic->ic_primary_radio = 1;
-                            tmp_ic->ic_primary_radio = 1;
-#ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
-                            tmp_scn = OL_ATH_SOFTC_NET80211(ic);
-                            if (ic->nss_radio_ops) {
-                                ic->nss_radio_ops->ic_nss_ol_set_primary_radio(tmp_scn, ic->ic_primary_radio);
-                            }
-                            tmp_scn = OL_ATH_SOFTC_NET80211(tmp_ic);
-                            if (tmp_ic->nss_radio_ops) {
-                                tmp_ic->nss_radio_ops->ic_nss_ol_set_primary_radio(tmp_scn, tmp_ic->ic_primary_radio);
-                            }
-#endif
-                        }
                     }
                 }
             } else {
@@ -2900,7 +2318,7 @@ low_power_config:
         case OL_ATH_PARAM_WIDE_BAND_SUB_ELEMENT:
             ic->ic_wb_subelem = !!value;
             break;
-#if ATH_SUPPORT_DFS && ATH_SUPPORT_ZERO_CAC_DFS
+#if ATH_SUPPORT_ZERO_CAC_DFS
         case OL_ATH_PARAM_PRECAC_ENABLE:
             if (dfs_rx_ops && dfs_rx_ops->dfs_set_precac_enable) {
                 if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_DFS_ID) !=
@@ -2944,22 +2362,20 @@ low_power_config:
 		retval = -EINVAL;
 		break;
 	    }
-	    if (cdp_set_pdev_reo_dest(soc_txrx_handle,
-				  pdev_id,
-				  value) != QDF_STATUS_SUCCESS) {
-                retval = -EINVAL;
-            }
+	    cdp_set_pdev_reo_dest(soc_txrx_handle,
+				  (void *)pdev_txrx_handle,
+				  value);
 	    break;
         case OL_ATH_PARAM_DUMP_OBJECTS:
             wlan_objmgr_print_ref_cnts(ic);
             break;
 
-        case OL_ATH_PARAM_MGMT_SNR_THRESHOLD:
-            if (value < SNR_MIN || value > SNR_MAX) {
+        case OL_ATH_PARAM_MGMT_RSSI_THRESHOLD:
+            if (value <= RSSI_MIN || value > RSSI_MAX) {
                 qdf_info("invalid value: %d, RSSI is between 1-127 ", value);
                 return -EINVAL;
             }
-            ic->mgmt_rx_snr = value;
+            ic->mgmt_rx_rssi = value;
             break;
 
         case OL_ATH_PARAM_EXT_NSS_CAPABLE:
@@ -2973,24 +2389,18 @@ low_power_config:
             }
             if (value != ic->ic_ext_nss_capable) {
                 ic->ic_ext_nss_capable = value;
-                if(!ic->ic_ext_nss_capable){
-                    TAILQ_FOREACH(tmp_vap, &ic->ic_vaps, iv_next) {
-                               tmp_vap->iv_ext_nss_support = 0;
-                    }
-                }
-                osif_pdev_restart_vaps(ic);
+
+                osif_restart_for_config(ic, NULL, NULL);
             }
             break;
 #if QCN_ESP_IE
         case OL_ATH_PARAM_ESP_PERIODICITY:
             if (value < 0 || value > 5000) {
-                qdf_err("Invalid value! Periodicity value should be between 0 and 5000");
+                qdf_info("Invalid value! Periodicity value should be between 0 and 5000 ");
                 retval = -EINVAL;
             } else {
                 /* ESP indication period doesn't need service check to become compatible with legacy firmware. */
-                if (ol_ath_pdev_set_param(scn->sc_pdev,
-                                          wmi_pdev_param_esp_indication_period,
-                                          value) != EOK) {
+                if (ol_ath_pdev_set_param(scn, wmi_pdev_param_esp_indication_period, value) != EOK) {
                     QDF_PRINT_INFO(QDF_PRINT_IDX_SHARED, QDF_MODULE_ID_ANY, QDF_TRACE_LEVEL_ERROR,
                     "%s: ERROR - Param setting failed. Periodicity value 0x%x.\n", __func__, value);
                 } else {
@@ -2999,15 +2409,14 @@ low_power_config:
                 }
             }
             break;
+
         case OL_ATH_PARAM_ESP_AIRTIME:
             if (value < 0 || value > 255) {
-                qdf_err("Invalid value! Airtime value should be between 0 and 255");
+                qdf_info("Invalid value! Airtime value should be between 0 and 255 ");
                 retval = -EINVAL;
             } else {
                 if (wmi_service_enabled(wmi_handle, wmi_service_esp_support)) {
-                    if (ol_ath_pdev_set_param(scn->sc_pdev,
-                                              wmi_pdev_param_esp_airtime_fraction,
-                                              value) != EOK) {
+                    if (ol_ath_pdev_set_param(scn, wmi_pdev_param_esp_airtime_fraction, value) != EOK) {
                         QDF_PRINT_INFO(QDF_PRINT_IDX_SHARED, QDF_MODULE_ID_ANY, QDF_TRACE_LEVEL_ERROR,
                         "%s: ERROR - Param setting failed. Airtime value 0x%x.\n", __func__, value);
                         return -1;
@@ -3017,15 +2426,14 @@ low_power_config:
                 ic->ic_esp_flag = 1; /* This is required for updating the beacon packet */
             }
             break;
+
         case OL_ATH_PARAM_ESP_PPDU_DURATION:
             if (value < 0 || value > 255) {
-                qdf_err("Invalid value! PPDU duration target should be between 0 and 255");
+                qdf_info("Invalid value! PPDU duration target should be between 0 and 255 ");
                 retval = -EINVAL;
             } else {
                 if (wmi_service_enabled(wmi_handle, wmi_service_esp_support)) {
-                    if (ol_ath_pdev_set_param(scn->sc_pdev,
-                                              wmi_pdev_param_esp_ppdu_duration,
-                                              value) != EOK) {
+                    if (ol_ath_pdev_set_param(scn, wmi_pdev_param_esp_ppdu_duration, value) != EOK) {
                         QDF_PRINT_INFO(QDF_PRINT_IDX_SHARED, QDF_MODULE_ID_ANY, QDF_TRACE_LEVEL_ERROR,
                         "%s: ERROR - Param setting failed. PPDU duration value 0x%x.\n", __func__, value);
                         return -1;
@@ -3035,15 +2443,14 @@ low_power_config:
                 ic->ic_esp_flag = 1; /* This is required for updating the beacon packet */
             }
             break;
+
         case OL_ATH_PARAM_ESP_BA_WINDOW:
             if (value <= 0 || value > 7) {
-                qdf_err("Invalid value! BA window size should be between 1 and 7");
+                qdf_info("Invalid value! BA window size should be between 1 and 7 ");
                 retval = -EINVAL;
             } else {
                 if (wmi_service_enabled(wmi_handle, wmi_service_esp_support)) {
-                    if (ol_ath_pdev_set_param(scn->sc_pdev,
-                                              wmi_pdev_param_esp_ba_window,
-                                              value) != EOK) {
+                    if (ol_ath_pdev_set_param(scn, wmi_pdev_param_esp_ba_window, value) != EOK) {
                         QDF_PRINT_INFO(QDF_PRINT_IDX_SHARED, QDF_MODULE_ID_ANY, QDF_TRACE_LEVEL_ERROR,
                         "%s: ERROR - Param setting failed. BA window size value 0x%x.\n", __func__, value);
                         return -1;
@@ -3073,28 +2480,32 @@ low_power_config:
             break;
 
         case OL_ATH_PARAM_TXACKTIMEOUT:
-        {
-            if (wmi_service_enabled(wmi_handle,wmi_service_ack_timeout)) {
-                if (value >= DEFAULT_TX_ACK_TIMEOUT &&
-                    value <= MAX_TX_ACK_TIMEOUT) {
-                    if (ol_ath_pdev_set_param(scn->sc_pdev,
-                                              wmi_pdev_param_tx_ack_timeout,
-                                              value) == EOK)
-                        scn->tx_ack_timeout = value;
+            {
+                if (wmi_service_enabled(wmi_handle,wmi_service_ack_timeout))
+                {
+                    if (value >= DEFAULT_TX_ACK_TIMEOUT && value <= MAX_TX_ACK_TIMEOUT)
+                    {
+                        if(ol_ath_pdev_set_param(scn,
+                                wmi_pdev_param_tx_ack_timeout, value) == EOK) {
+                            scn->tx_ack_timeout = value;
+                        } else {
+                            retval = -1;
+                        }
+                    }
                     else
+                    {
+                        qdf_info("TX ACK Time-out value should be between 0x40 and 0xFF ");
                         retval = -1;
+                    }
                 }
-                else {
-                    qdf_err("TX ACK Time-out value should be between 0x40 and 0xFF");
+                else
+                {
+                    qdf_info("TX ACK Timeout Service is not supported");
                     retval = -1;
                 }
             }
-            else {
-                qdf_err("TX ACK Timeout Service is not supported");
-                retval = -1;
-            }
-        }
-        break;
+            break;
+
         case OL_ATH_PARAM_ACS_RANK:
             if (ic->ic_acs){
                 ieee80211_acs_set_param(ic->ic_acs, IEEE80211_ACS_RANK , *(int *)buff);
@@ -3206,10 +2617,8 @@ low_power_config:
                               value, tgt_cfg->tx_chain_mask);
                     retval = -EINVAL;
                 } else {
-                    if (ol_ath_pdev_set_param(scn->sc_pdev,
-                                              wmi_pdev_param_soft_tx_chain_mask,
-                                              value) != EOK)
-                        qdf_err("couldnt set soft chainmask value 0x%x", value);
+                    if (ol_ath_pdev_set_param(scn, wmi_pdev_param_soft_tx_chain_mask, value) != EOK)
+                        qdf_info("ERROR - soft chainmask value 0x%x couldn't be set", value);
                     else
                         scn->soft_chain = value;
                 }
@@ -3261,21 +2670,17 @@ low_power_config:
         case OL_ATH_PARAM_CCK_TX_ENABLE:
         if ((lmac_get_tgt_type(scn->soc->psoc_obj) == TARGET_TYPE_QCA8074) ||
                 (lmac_get_tgt_type(scn->soc->psoc_obj) == TARGET_TYPE_QCA8074V2) ||
-                (lmac_get_tgt_type(scn->soc->psoc_obj) == TARGET_TYPE_QCN9000) ||
-                (lmac_get_tgt_type(scn->soc->psoc_obj) == TARGET_TYPE_QCN6122) ||
-                (lmac_get_tgt_type(scn->soc->psoc_obj) == TARGET_TYPE_QCA5018) ||
                 (lmac_get_tgt_type(scn->soc->psoc_obj) == TARGET_TYPE_QCA6018)) {
-
-                if (!reg_cap) {
-                    qdf_err("reg_cap NULL, unable to process further, Investigate");
+                if (reg_cap == NULL)
+                {
+                    qdf_info("reg_cap is NULL, unable to process further. Investigate.");
                     retval = -1;
                 } else {
-                    if (reg_cap[pdev_idx].wireless_modes & WIRELESS_MODES_2G) {
+                    if (reg_cap[pdev_idx].wireless_modes & WIRELESS_MODES_2G)
+                    {
                         if (ic->cck_tx_enable != value) {
-                            if (ol_ath_pdev_set_param(scn->sc_pdev,
-                                    wmi_pdev_param_cck_tx_enable, !!value))
-                                qdf_err("Couldn't set CCK Tx enable val 0x%x",
-                                        !!value);
+                            if (ol_ath_pdev_set_param(scn, wmi_pdev_param_cck_tx_enable, !!value) != EOK)
+                                qdf_info("ERROR - CCK Tx enable value 0x%x couldn't be set", !!value);
                             else
                                 ic->cck_tx_enable = value;
                         }
@@ -3299,18 +2704,19 @@ low_power_config:
             }
 
             if(ic->ic_he_ru_allocation != value) {
-                retval = ol_ath_pdev_set_param(scn->sc_pdev,
+                retval = ol_ath_pdev_set_param(scn,
                         wmi_pdev_param_equal_ru_allocation_enable, value);
-                if (retval == EOK) {
+                if(retval == EOK) {
                     ic->ic_he_ru_allocation = value;
                 }
                 else {
-                    qdf_err("WMI send for he_ru_alloc failed");
+                    qdf_err("%s: WMI send for he_ru_alloc failed\n", __func__);
                     return retval;
                 }
             }
             else {
-                qdf_info("RU allocation enable already set with val %d", value);
+                qdf_info("RU allocation enable already set with value %d\n",
+                                                                        value);
             }
         break;
 #if defined(WLAN_DFS_PARTIAL_OFFLOAD) && defined(HOST_DFS_SPOOF_TEST)
@@ -3329,11 +2735,11 @@ low_power_config:
         case OL_ATH_PARAM_TWICE_ANTENNA_GAIN:
         if ((value >= 0) && (value <= (MAX_ANTENNA_GAIN * 2))) {
             if (IEEE80211_IS_CHAN_2GHZ(ic->ic_curchan)) {
-                return ol_ath_pdev_set_param(scn->sc_pdev,
+                return ol_ath_pdev_set_param(scn,
                                              wmi_pdev_param_antenna_gain_half_db,
                                              value | ANTENNA_GAIN_2G_MASK);
             } else {
-                return ol_ath_pdev_set_param(scn->sc_pdev,
+                return ol_ath_pdev_set_param(scn,
                                              wmi_pdev_param_antenna_gain_half_db,
                                              value | ANTENNA_GAIN_5G_MASK);
             }
@@ -3343,22 +2749,22 @@ low_power_config:
         break;
         case OL_ATH_PARAM_ENABLE_PEER_RETRY_STATS:
             scn->retry_stats = value;
-            return ol_ath_pdev_set_param(scn->sc_pdev,
+            return ol_ath_pdev_set_param(scn,
                                          wmi_pdev_param_enable_peer_retry_stats,
                                          !!value);
         break;
         case OL_ATH_PARAM_HE_UL_TRIG_INT:
             if(value > IEEE80211_HE_TRIG_INT_MAX) {
-                qdf_err("Trigger interval value should be less than %dms",
-                        IEEE80211_HE_TRIG_INT_MAX);
+                qdf_err("%s:Trigger interval value should be less than %dms\n",
+                        __func__, IEEE80211_HE_TRIG_INT_MAX);
                 retval = -EINVAL;
             }
 
-            if (ol_ath_pdev_set_param(scn->sc_pdev, wmi_pdev_param_ul_trig_int,
-                                      value))
-                qdf_err("Trigger interval value %d could not be set", value);
-            else
+            if(ol_ath_pdev_set_param(scn, wmi_pdev_param_ul_trig_int, value) != EOK) {
+                qdf_err("%s: Trigger interval value %d could not be set\n", __func__, value);
+            } else {
                 ic->ic_he_ul_trig_int = value;
+            }
         break;
         case OL_ATH_PARAM_DFS_NOL_SUBCHANNEL_MARKING:
 #if ATH_SUPPORT_DFS
@@ -3382,32 +2788,41 @@ low_power_config:
                         __func__);
                 retval = -EINVAL;
             }
-
+#ifdef OBSS_PD
+	    if(ic->ic_is_spatial_reuse_enabled &&
+                ic->ic_is_spatial_reuse_enabled(ic) &&
+                (ic->ic_he_sr_enable != value)) {
+                TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
+                    vap->iv_is_spatial_reuse_updated = true;
+                    wlan_vdev_beacon_update(vap);
+                }
+            }
+#endif /* OBSS_PD */
             ic->ic_he_sr_enable = value;
             osif_restart_for_config(ic, NULL, NULL);
             break;
 
         case OL_ATH_PARAM_HE_UL_PPDU_DURATION:
-            if (!ic->ic_he_target) {
+
+            if(!ic->ic_he_target) {
                 qdf_err("UL PPDU Duration setting not supported for this target");
                 return -EINVAL;
             }
 
-            if (value > IEEE80211_UL_PPDU_DURATION_MAX) {
+            if(value > IEEE80211_UL_PPDU_DURATION_MAX) {
                 qdf_err("UL PPDU Duration should be less than %d",
                         IEEE80211_UL_PPDU_DURATION_MAX);
                 return -EINVAL;
             }
 
-            if (ic->ic_he_ul_ppdu_dur != value) {
-                retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                               wmi_pdev_param_ul_ppdu_duration,
-                                               value);
-                if (retval == EOK) {
+            if(ic->ic_he_ul_ppdu_dur != value) {
+                retval = ol_ath_pdev_set_param(scn,
+                        wmi_pdev_param_ul_ppdu_duration, value);
+                if(retval == EOK) {
                     ic->ic_he_ul_ppdu_dur = value;
                 }
                 else {
-                    qdf_err("WMI send for ul_ppdu_dur failed");
+                    qdf_err("%s: WMI send for ul_ppdu_dur failed", __func__);
                     return -EINVAL;
                 }
             }
@@ -3416,115 +2831,102 @@ low_power_config:
             }
         break;
         case OL_ATH_PARAM_FLUSH_PEER_RATE_STATS:
-             if (cdp_flush_rate_stats_request(soc_txrx_handle, pdev_id) != QDF_STATUS_SUCCESS)
-                 return -EINVAL;
+             cdp_flush_rate_stats_request(soc_txrx_handle, (struct cdp_pdev *)pdev_txrx_handle);
             break;
-        case OL_ATH_PARAM_MGMT_TTL:
-            if (!ic->ic_he_target) {
-                qdf_err("MGMT TTL setting not supported for this target");
+#ifdef OBSS_PD
+        case OL_ATH_PARAM_SET_CMD_OBSS_PD_THRESHOLD:
+            OS_MEMZERO(&vap_opmode_count, sizeof(struct ieee80211_vap_opmode_count));
+            ieee80211_get_vap_opmode_count(ic, &vap_opmode_count);
+
+            /* Since spatial reuse works on a pdev level,
+             * once both STA vap and AP vap present, or any monitor vap,
+             * then we must disable spatial reuse params. This is because AP
+             * and STA share the same HW register, so they will overwrite the
+             * same fields in that register. Since Monitors do not transmit,
+             * spatial reuse should be disabled for all monitor vaps.
+             */
+            if ((vap_opmode_count.ap_count && vap_opmode_count.sta_count) ||
+                    (vap_opmode_count.monitor_count &&
+                    !cfg_get(psoc, CFG_OL_ALLOW_MON_VAPS_IN_SR))) {
+                retval = ol_ath_pdev_set_param(scn,
+                            wmi_pdev_param_set_cmd_obss_pd_threshold,
+                            !HE_SR_OBSS_PD_THRESH_ENABLE);
+                if(retval) {
+                    qdf_err("%s: Could not set obss pd thresh enable to 0", __func__);
+                }
+                else {
+                    qdf_info("%s: Invalid vap combination for spatial reuse so"
+                    " OBSS Thresh disabled. SR disallowed when both AP and STA vap"
+                    " present or when MONITOR vap present", __func__);
+                }
+                return retval;
+            }
+
+            /* OBSS Packet Detect threshold bounds for Spatial Reuse feature.
+             * The parameter value is programmed into the spatial reuse
+             * register, to specify how low the background signal strength
+             * from neighboring BSS cells must be, for this AP to
+             * employ spatial reuse.
+             */
+
+            if (!GET_HE_OBSS_PD_THRESH_ENABLE(ic->ic_ap_obss_pd_thresh)
+                                        || value > AP_OBSS_PD_UPPER_THRESH) {
+                qdf_err("value %d invalid for this param", value);
                 return -EINVAL;
             }
 
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                           wmi_pdev_param_set_mgmt_ttl, value);
-            if (retval == EOK) {
-               ic->ic_mgmt_ttl = value;
-            }
-            else {
-                 qdf_err("WMI send for set mgmt ttl failed");
-                 return -EINVAL;
-            }
-            break;
-        case OL_ATH_PARAM_PROBE_RESP_TTL:
-            if (!ic->ic_he_target) {
-                qdf_err("PROBE RESP TTL setting not supported for this target");
-                return -EINVAL;
-            }
-
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                           wmi_pdev_param_set_prb_rsp_ttl,
-                                           value);
-            if (retval == EOK) {
-               ic->ic_probe_resp_ttl = value;
-            }
-            else {
-                 qdf_err("WMI send for set probe respttl failed");
-                 return -EINVAL;
-            }
-            break;
-        case OL_ATH_PARAM_MU_PPDU_DURATION:
-            if (!ic->ic_he_target) {
-                qdf_err("MU PPDU DUR setting not supported for this target");
-                return -EINVAL;
-            }
-
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                           wmi_pdev_param_set_mu_ppdu_duration,
-                                           value);
-            if (retval == EOK) {
-                ic->ic_mu_ppdu_dur = value;
+            /* Try to set threshold value by clearing out the bottom 8 bits which
+             * is the current value and keep the currently set enable bit. Then,
+             * OR the value with the enable bit to get the correct value and try
+             * to wmi_send that value.
+             */
+            retval = ol_ath_pdev_set_param(scn,
+                                           wmi_pdev_param_set_cmd_obss_pd_threshold,
+                                           ((ic->ic_ap_obss_pd_thresh &
+                                           ~HE_OBSS_PD_THRESH_MASK) | value));
+            if(retval == EOK) {
+                /* Since the value was successfully set, discard the old threshold
+                 * value and overwrite with the specified value
+                 */
+                ic->ic_ap_obss_pd_thresh &= (~HE_OBSS_PD_THRESH_MASK);
+                ic->ic_ap_obss_pd_thresh = (ic->ic_ap_obss_pd_thresh | value);
             } else {
-                qdf_err("WMI send for set mu_ppdu_dur failed");
-                return -EINVAL;
+                qdf_err("WMI send for set cmd obss pd threshold failed");
             }
-            break;
-        case OL_ATH_PARAM_TBTT_CTRL:
-            if (!ic->ic_he_target) {
-                qdf_err("TBTT CTRL setting not supported for this target");
+        break;
+
+        case OL_ATH_PARAM_SET_CMD_OBSS_PD_THRESHOLD_ENABLE:
+            if(value > 1) {
+                qdf_err("%s: OBSS_PD Threshold enable value should be either 0 or 1\n",
+                        __func__);
                 return -EINVAL;
             }
 
-            retval = ol_ath_pdev_set_param(scn->sc_pdev,
-                                           wmi_pdev_param_set_tbtt_ctrl,
-                                           value);
-            if (retval == EOK) {
-                ic->ic_tbtt_ctrl = value;
-            } else {
-                qdf_err("WMI send for set tbtt_ctrl failed");
+            /* Try to enable/disable obss thresh val */
+            if(ol_ath_set_obss_thresh(ic, value, scn)) {
+                qdf_err("Spatial reuse not allowed for AP/STA vap combination"
+                " or for MONITOR vaps");
                 return -EINVAL;
             }
             break;
-
+#endif//OBSS_PD
 #ifdef WLAN_RX_PKT_CAPTURE_ENH
         case OL_ATH_PARAM_RX_MON_LITE:
-            val.cdp_pdev_param_en_tx_cap = value;
+
             if (QDF_STATUS_SUCCESS != cdp_txrx_set_pdev_param(soc_txrx_handle,
-                   pdev_id, CDP_CONFIG_ENH_RX_CAPTURE, val))
+                   (void *) pdev_txrx_handle, CDP_CONFIG_ENH_RX_CAPTURE, value))
                 return -EINVAL;
 
-            if (ic->ic_rx_mon_lite == RX_ENH_CAPTURE_DISABLED &&
-                value != RX_ENH_CAPTURE_DISABLED) {
-                scn->soc->scn_rx_lite_monitor_mpdu_subscriber.callback
-                    = process_rx_mpdu;
-                scn->soc->scn_rx_lite_monitor_mpdu_subscriber.context  = scn;
-                cdp_wdi_event_sub(soc_txrx_handle, pdev_id,
-                    &scn->soc->scn_rx_lite_monitor_mpdu_subscriber, WDI_EVENT_RX_MPDU);
-            } else if (ic->ic_rx_mon_lite != RX_ENH_CAPTURE_DISABLED &&
-                       value == RX_ENH_CAPTURE_DISABLED) {
-                scn->soc->scn_rx_lite_monitor_mpdu_subscriber.context  = scn;
-                cdp_wdi_event_unsub(soc_txrx_handle, pdev_id,
-                    &scn->soc->scn_rx_lite_monitor_mpdu_subscriber, WDI_EVENT_RX_MPDU);
-            }
             ic->ic_rx_mon_lite = value;
+
+            scn->soc->scn_rx_lite_monitor_mpdu_subscriber.callback
+                = process_rx_mpdu;
+            scn->soc->scn_rx_lite_monitor_mpdu_subscriber.context  = scn;
+            cdp_wdi_event_sub(soc_txrx_handle, (void *) pdev_txrx_handle,
+                &scn->soc->scn_rx_lite_monitor_mpdu_subscriber, WDI_EVENT_RX_MPDU);
         break;
 #endif
-        case OL_ATH_PARAM_WIFI_DOWN_IND:
-            /* In MBSSIE case, deletion of transmitting VAP is not allowed explicitly using
-             * 'iw <vap> del' command. But it is allowed as part of 'wifi down'. This param
-             * is used during 'wifi down' to notify the driver.
-             */
-            if ((value < 0) || (value > 1)) {
-                qdf_err("Valid value is 0 or 1 ");
-                return -EINVAL;
-            }
-
-            ic->ic_wifi_down_ind = value;
-            break;
         case OL_ATH_PARAM_TX_CAPTURE:
-            if (scn->soc->rdkstats_enabled) {
-                qdf_info("TX monitor mode not supported when RDK stats are enabled");
-                break;
-            }
 #ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
             nss_soc_cfg = cfg_get(soc->psoc_obj, CFG_NSS_WIFI_OL);
 
@@ -3534,461 +2936,23 @@ low_power_config:
                 break;
             }
 #endif /* QCA_NSS_WIFI_OFFLOAD_SUPPORT */
-            if (value >= CDP_TX_ENH_CAPTURE_MAX) {
-               qdf_err("value %d is not allowed for this config - disable/"
-                       "enable for all peers/enable per peer supported ", value);
+            if (value > 2) {
+               qdf_err("value %d is not allowed for this config "
+                       "- supported enable/disable only", value);
                return -EINVAL;
             }
-            if (ic->ic_tx_pkt_capture && value)
-            {
-               qdf_err("value %u is not allowed"
-                       "Disable before enabling tx_capture for all/per peer ",
-               value);
-               return -EINVAL;
-            }
-
-            val.cdp_pdev_param_en_tx_cap = value;
-            if (cdp_txrx_set_pdev_param(soc_txrx_handle, pdev_id,
-                                        CDP_CONFIG_ENH_TX_CAPTURE, val) ==
-                                        QDF_STATUS_SUCCESS) {
-                ic->ic_tx_pkt_capture = value;
+            ic->ic_tx_pkt_capture = value;
+            if (ic->ic_tx_pkt_capture)
                 ol_ath_set_debug_sniffer(scn, SNIFFER_TX_MONITOR_MODE);
-            } else {
-                qdf_err(" busy in handling previous request !!!");
-                return -EINVAL;
-            }
+            else
+                ol_ath_set_debug_sniffer(scn, SNIFFER_DISABLE);
 
-            break;
-
-        case OL_ATH_PARAM_WMI_DIS_DUMP:
-        {
-            if (!value) {
-                scn->scn_wmi_dis_dump = !!value;
-            } else {
-                if (value == 1) {
-                    scn->scn_wmi_dis_dump = !!value;
-                    scn->scn_wmi_hang_wait_time = WAIT_TIME;
-                    scn->scn_wmi_hang_after_time = FW_HANG_TIME;
-                } else if ((value >> 16) < (value & 0xFF)) {
-                    scn->scn_wmi_dis_dump = !!value;
-                    scn->scn_wmi_hang_wait_time = (value >> 16);
-                    scn->scn_wmi_hang_after_time = (value & 0xFF);
-                } else {
-                    qdf_err("Wait time is greater than hang time\n");
-                    return -EINVAL;
-                }
-                qdf_info("WMI dump collection value is %d, wait time %d secs, Hang after %d secs\n",
-                    scn->scn_wmi_dis_dump, scn->scn_wmi_hang_wait_time, scn->scn_wmi_hang_after_time);
-                //Register recovery callback
-                if (scn->scn_wmi_dis_dump) {
-                    qdf_register_self_recovery_callback(wmi_dis_dump);
-                }
-            }
-        }
+            cdp_txrx_set_pdev_param(soc_txrx_handle, (void *) pdev_txrx_handle,
+                CDP_CONFIG_TX_CAPTURE, value);
         break;
-
-        case OL_ATH_EXT_ACS_REQUEST_IN_PROGRESS:
-            ic->ext_acs_request_in_progress = !!value;
-            break;
-
-        case OL_ATH_PARAM_HW_MODE:
-        {
-            /* Currently, value = 1 (DBS) and value = 4 (DBS_SBS)
-             * supported
-             */
-            if (!(value == WMI_HOST_HW_MODE_DBS ||
-                        value == WMI_HOST_HW_MODE_DBS_SBS)) {
-                qdf_err("HW mode %d not supported", value);
-                return -EINVAL;
-            }
-
-            return ol_ath_handle_hw_mode_switch(scn, value);
-        }
-        break;
-        case OL_ATH_PARAM_HW_MODE_SWITCH_OMN_TIMER:
-        {
-            return ol_ath_set_hw_mode_omn_timer(scn, value);
-        }
-        case OL_ATH_PARAM_HW_MODE_SWITCH_OMN_ENABLE:
-        {
-            return ol_ath_set_hw_mode_omn_enable(scn, value);
-        }
-        case OL_ATH_PARAM_HW_MODE_SWITCH_PRIMARY_IF:
-        {
-            return ol_ath_set_hw_mode_primary_if(scn, (unsigned)value);
-        }
-
-        case OL_ATH_PARAM_CHAN_COEX:
-        {
-            if (TAILQ_EMPTY(&ic->ic_vaps)) {
-                reg_rx_ops = wlan_lmac_if_get_reg_rx_ops(psoc);
-                if (!(reg_rx_ops && reg_rx_ops->reg_disable_chan_coex)) {
-                    qdf_err("%s : reg_rx_ops is NULL", __func__);
-                    return -EINVAL;
-                }
-
-                if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_REGULATORY_SB_ID) !=
-                    QDF_STATUS_SUCCESS) {
-                    return -EINVAL;
-                }
-
-                reg_rx_ops->reg_disable_chan_coex(pdev, value);
-                wlan_objmgr_pdev_release_ref(pdev, WLAN_REGULATORY_SB_ID);
-            } else {
-                qdf_err("Chan coex cmd cant be executed after vap creation\n");
-            }
-        }
-        break;
-        case OL_ATH_PARAM_OOB_ENABLE:
-        {
-            if(IEEE80211_IS_CHAN_6GHZ(ic->ic_curchan)){
-              qdf_err("Out of band advertisement of 6Ghz in 2G/5g radio only");
-              return -EINVAL;
-            }
-            if(value > 1){
-              qdf_err("Value is 0 or 1");
-              return -EINVAL;
-            }
-            if (value == 1) {
-                WLAN_6GHZ_ADV_USER_SET(ic->ic_6ghz_rnr_enable, WLAN_RNR_IN_BCN);
-                WLAN_6GHZ_ADV_USER_SET(ic->ic_6ghz_rnr_enable, WLAN_RNR_IN_PRB);
-                WLAN_6GHZ_RNR_USR_MODE_SET(ic->ic_6ghz_rnr_enable);
-            } else { /* value == 0 */
-                WLAN_6GHZ_ADV_USER_CLEAR(ic->ic_6ghz_rnr_enable, WLAN_RNR_IN_BCN);
-                WLAN_6GHZ_ADV_USER_CLEAR(ic->ic_6ghz_rnr_enable, WLAN_RNR_IN_PRB);
-                WLAN_6GHZ_RNR_USR_MODE_SET(ic->ic_6ghz_rnr_enable);
-            }
-            osif_pdev_restart_vaps(ic);
-        }
-        break;
-
-        case OL_ATH_PARAM_RNR_UNSOLICITED_PROBE_RESP_ACTIVE:
-        {
-            if(!IEEE80211_IS_CHAN_6GHZ(ic->ic_curchan)){
-              qdf_err(" RNR Unsolicited Probe Resp Active can be enabled  on 6GHz pdev only");
-              return -EINVAL;
-            }
-            if(value > 1){
-              qdf_err(" RNR Unsolicited Probe Resp should be either 0 or 1");
-              return -EINVAL;
-            }
-
-            if (value && ic->ic_mbss.transmit_vap) {
-                if (!ic->ic_mbss.transmit_vap->iv_he_6g_bcast_prob_rsp) {
-                    qdf_err(" RNR: 20TU prb is not active for this AP");
-                    return -EINVAL;
-                }
-            }
-            if(ic->ic_6ghz_rnr_unsolicited_prb_resp_active != value) {
-                ic->ic_6ghz_rnr_unsolicited_prb_resp_active = value;
-                return ieee80211_set_rnr_bss_param(ic, RNR_BSS_PARAM_UNSOLICITED_PROBE_RESPONSE_ACTIVE, value);
-            } else {
-                qdf_info(" RNR Unsolicited Probe Resp is already set to %d ", value);
-            }
-       }
-        break;
-
-        case OL_ATH_PARAM_RNR_MEMBER_OF_ESS_24G_5G_CO_LOCATED:
-        {
-            if(!IEEE80211_IS_CHAN_6GHZ(ic->ic_curchan)){
-              qdf_err(" RNR Member of ESS of 2.4/5G Cco-located can be enabled on 6GHz pdev only");
-              return -EINVAL;
-            }
-            if(value > 1){
-              qdf_err(" RNR Member of ESS 2.4/5G co-located should be either 0 or 1");
-              return -EINVAL;
-            }
-            if (value && wlan_lower_band_ap_cnt_get() == 0) {
-                qdf_err(" RNR: 6Ghz Only AP. No co-located 2.4ghz/5ghz");
-                return -EINVAL;
-            }
-            if(ic->ic_6ghz_rnr_ess_24g_5g_co_located != value) {
-                ic->ic_6ghz_rnr_ess_24g_5g_co_located = value;
-                    return ieee80211_set_rnr_bss_param(ic, RNR_BSS_PARAM_MEMBER_ESS_24G_5G_CO_LOCATED_AP, value);
-            } else {
-                    qdf_info(" RNR Member of ESS 2.4G/5G co-located is already set to %d ", value);
-            }
-        }
-        break;
-
-        case OL_ATH_PARAM_OPCLASS_TBL:
-            return ol_ath_set_opclass_tbl(ic, value);
-#ifdef QCA_SUPPORT_ADFS_RCAC
-        case OL_ATH_PARAM_ROLLING_CAC_ENABLE:
-            if (dfs_rx_ops && dfs_rx_ops->dfs_set_rcac_enable) {
-                if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_DFS_ID) !=
-                        QDF_STATUS_SUCCESS) {
-                    return -1;
-                }
-                retval = dfs_rx_ops->dfs_set_rcac_enable(pdev, value);
-                wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
-            }
-            break;
-        case OL_ATH_PARAM_CONFIGURE_RCAC_FREQ:
-            if (dfs_rx_ops && dfs_rx_ops->dfs_set_rcac_freq) {
-                if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_DFS_ID) !=
-                        QDF_STATUS_SUCCESS) {
-                    return -1;
-                }
-                dfs_rx_ops->dfs_set_rcac_freq(pdev, value);
-                wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
-            }
-            break;
-#endif
-#if ATH_SUPPORT_DFS
-        case OL_ATH_SCAN_OVER_CAC:
-            ic->ic_scan_over_cac = !!value;
-        break;
-#endif
-        case OL_ATH_PARAM_NXT_RDR_FREQ:
-            if (mlme_dfs_is_freq_in_nol(ic->ic_pdev_obj, value)) {
-                qdf_err("user configured channel should not be in NOL list\n");
-                return -EINVAL;
-            }
-            ic->ic_radar_next_usr_freq = value;
-            qdf_info("ic_radar_next_usr_freq  %d",ic->ic_radar_next_usr_freq);
-        break;
-        case OL_ATH_PARAM_NON_INHERIT_ENABLE:
-            if (!wlan_pdev_nif_feat_cap_get(ic->ic_pdev_obj,
-                                            WLAN_PDEV_F_MBSS_IE_ENABLE)) {
-                qdf_err("MBSS IE mode not enabled!");
-                return -EINVAL;
-            }
-
-            if(value > 1) {
-               qdf_err("Value is 0 or 1");
-               return -EINVAL;
-            }
-
-            ic->ic_mbss.non_inherit_enable = value;
-
-            if (ic->ic_mbss.transmit_vap &&
-                    osif_restart_vaps(ic)) {
-                return -EINVAL;
-            }
-        break;
-        case OL_ATH_PARAM_RPT_MAX_PHY:
-            /* rpt_max_phy feature uses bw_reduce and mark_subchan features */
-            value = !!value;
-            if (value && !ieee80211_ic_rpt_max_phy_is_set(ic)) {
-#if ATH_SUPPORT_DFS
-                if (dfs_rx_ops && dfs_rx_ops->dfs_set_bw_reduction) {
-                    if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_DFS_ID) !=
-                        QDF_STATUS_SUCCESS) {
-                        return -1;
-                    }
-                    dfs_rx_ops->dfs_set_bw_reduction(pdev, true);
-                    dfs_rx_ops->dfs_set_nol_subchannel_marking(pdev, 1);
-                    wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
-                }
-#endif
-                ieee80211_ic_rpt_max_phy_set(ic);
-                osif_pdev_restart_vaps(ic);
-           } else if (!value && ieee80211_ic_rpt_max_phy_is_set(ic)) {
-#if ATH_SUPPORT_DFS
-                if (dfs_rx_ops && dfs_rx_ops->dfs_set_bw_reduction) {
-                    if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_DFS_ID) !=
-                        QDF_STATUS_SUCCESS) {
-                        return -1;
-                    }
-                    dfs_rx_ops->dfs_set_bw_reduction(pdev, false);
-                    dfs_rx_ops->dfs_set_nol_subchannel_marking(pdev, 0);
-                    wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
-                }
-#endif
-                ieee80211_ic_rpt_max_phy_clear(ic);
-                osif_pdev_restart_vaps(ic);
-           } else {
-                qdf_err("rpt_max_phy is already %s!",
-                        ieee80211_ic_rpt_max_phy_is_set(ic) ?
-                        "enabled" : "disabled");
-           }
-        break;
-#ifdef QCA_SUPPORT_DFS_CHAN_POSTNOL
-	case OL_ATH_DFS_CHAN_POSTNOL_FREQ:
-            if (dfs_rx_ops && dfs_rx_ops->dfs_set_postnol_freq) {
-                if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_DFS_ID) !=
-                        QDF_STATUS_SUCCESS) {
-                    return -1;
-                }
-                dfs_rx_ops->dfs_set_postnol_freq(pdev, value);
-                wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
-            }
-	break;
-	case OL_ATH_DFS_CHAN_POSTNOL_MODE:
-            if (dfs_rx_ops && dfs_rx_ops->dfs_set_postnol_mode) {
-                if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_DFS_ID) !=
-                        QDF_STATUS_SUCCESS) {
-                    return -1;
-                }
-                dfs_rx_ops->dfs_set_postnol_mode(pdev, value);
-                wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
-            }
-	break;
-	case OL_ATH_DFS_CHAN_POSTNOL_CFREQ2:
-            if (dfs_rx_ops && dfs_rx_ops->dfs_set_postnol_cfreq2) {
-                if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_DFS_ID) !=
-                        QDF_STATUS_SUCCESS) {
-                    return -1;
-                }
-                dfs_rx_ops->dfs_set_postnol_cfreq2(pdev, value);
-                wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
-            }
-	break;
-#endif
-        case OL_ATH_PARAM_ENABLE_ADDITIONAL_TRIPLETS:
-        {
-           uint8_t ctry_iso[REG_ALPHA2_LEN + 1];
-           QDF_STATUS status;
-
-           if (!value && !ic->ic_enable_additional_triplets) {
-               qdf_err("Do not set 0");
-               return -EINVAL;
-           }
-
-           status = ieee80211_set_6G_opclass_triplets(ic, value);
-           if (status != QDF_STATUS_SUCCESS) {
-               qdf_err("%d is an invalid input", value);
-               return -EINVAL;
-           }
-
-           ieee80211_getCurrentCountryISO(ic, ctry_iso);
-           ieee80211_build_countryie_all(ic, ctry_iso);
-           osif_pdev_restart_vaps(ic);
-           break;
-        }
-        case OL_ATH_PARAM_RNR_SELECTIVE_ADD:
-            if (!IEEE80211_IS_CHAN_6GHZ(ic->ic_curchan)) {
-                qdf_err("RNR_SELECTIVE_ADD only for 6G radio");
-                return -EINVAL;
-            }
-            if (value == 1) {
-                ic->ic_flags_ext2 |= IEEE80211_FEXT2_RNR_SELECTIVE_ADD;
-            } else if (value == 0){
-                ic->ic_flags_ext2 &= ~IEEE80211_FEXT2_RNR_SELECTIVE_ADD;
-            } else {
-                qdf_err("Invalid value %d",value);
-                return -EINVAL;
-            }
-            TAILQ_FOREACH(tmp_vap, &ic->ic_vaps, iv_next) {
-                if (tmp_vap && !IEEE80211_VAP_IS_MBSS_NON_TRANSMIT_ENABLED(tmp_vap) &&
-                    tmp_vap->iv_opmode == IEEE80211_M_HOSTAP &&
-                    ieee80211_is_vap_state_running(tmp_vap)) {
-                        tmp_vap->iv_oob_update = 1;
-                        wlan_vdev_beacon_update(tmp_vap);
-                        tmp_vap->iv_oob_update = 0;
-                        if (tmp_vap->iv_he_6g_bcast_prob_rsp) {
-                            struct ol_ath_vap_net80211 *avn;
-                            struct ieee80211_node *ni;
-                            ni = tmp_vap->iv_bss;
-                            avn = OL_ATH_VAP_NET80211(tmp_vap);
-                            avn->av_pr_rsp_wbuf = ieee80211_prb_rsp_alloc_init(ni,
-                                                  &avn->av_prb_rsp_offsets);
-                            if (avn->av_pr_rsp_wbuf) {
-                               if (QDF_STATUS_SUCCESS !=
-                                   ic->ic_prb_rsp_tmpl_send(tmp_vap->vdev_obj))
-                                   qdf_err("20TU prb rsp send failed");
-                            }
-                        }
-                }
-            }
-        break;
-        case OL_ATH_PARAM_PUNCTURED_BAND:
-        {
-            uint32_t mode = ieee80211_get_current_phymode(ic);
-
-            if (!ieee80211_is_phymode_11axa_he80(mode)) {
-                qdf_err("Band puncturing only supported for IEEE80211_MODE_11AXA_HE80."
-                        "\nNot supported for current phymode");
-                return -EINVAL;
-            }
-
-            if (!target_psoc_get_preamble_puncture_cap(tgt_psoc_info)) {
-                qdf_err("Target does not support Preamble Puncturing Tx");
-                return -EINVAL;
-            }
-
-            if (ol_ath_punctured_band_setting_check(ic, value) < 0) {
-                qdf_err("Invalid input");
-                return -EINVAL;
-            }
-
-            if (ol_ath_pdev_set_param(scn->sc_pdev,
-                                      wmi_pdev_param_pream_punct_bw,
-                                      value)) {
-                qdf_err("Error sending WMI for Punctured Band");
-                return -EINVAL;
-            } else {
-                ic->ic_punctured_band = value;
-            }
-        }
-        break;
-        case OL_ATH_PARAM_MBSS_AUTOMODE:
-           if (value)
-               ieee80211_ic_mbss_automode_set(ic);
-           else
-               ieee80211_ic_mbss_automode_clear(ic);
-        break;
-        case OL_ATH_PARAM_ENABLE_EMA:
-        {
-            retval = ieee80211_mbss_mode_switch_sanity(ic, value);
-            if (retval) {
-                qdf_err("Sanity check for MBSS mode switch failed");
-            } else {
-                qdf_info("Setting %s mode", value ? "EMA" : "Co-hosted");
-                retval = ieee80211_mbss_handle_mode_switch(ic, value ?
-                                                           MBSS_MODE_MBSSID_EMA :
-                                                           MBSS_MODE_COHOSTED);
-            }
-        }
-        break;
-        case OL_ATH_PARAM_ENABLE_TX_MODE_SELECT:
-           scn = OL_ATH_SOFTC_NET80211(ic);
-           if (!scn)
-               return -EINVAL;
-
-           pdev = scn->sc_pdev;
-           if (!pdev)
-               return -EINVAL;
-           ol_ath_set_duration_based_tx_mode_select(pdev, value);
-        break;
-#if !(defined REMOVE_PKT_LOG) && (defined PKTLOG_DUMP_UPLOAD_SSR)
-        case OL_ATH_PARAM_PKTLOG_DUMP_UPLOAD_SSR:
-            if (value == 0 || value == 1) {
-                scn->upload_pktlog = value;
-            } else {
-                qdf_info("Please enter: 0 = Disable,  1 = Enable");
-                retval = -EINVAL;
-            }
-        break;
-#endif
-        case OL_ATH_PARAM_USER_RNR_FRM_CTRL:
-            if (value > IEEE80211_BCN_PROBERSP_RNR_EN) {
-                qdf_err(" User frame selection cannot be more than 0x3(bcn and probersp)");
-                return -EINVAL;
-            }
-            if (ic->ic_user_rnr_frm_ctrl != value) {
-                ieee80211_user_rnr_frm_update(ic, value, false);
-                ic->ic_user_rnr_frm_ctrl = value;
-            }
-        break;
-        case OL_ATH_PARAM_ENABLE_LOW_LATENCY_MODE:
-           scn = OL_ATH_SOFTC_NET80211(ic);
-           if (!scn)
-               return -EINVAL;
-
-           pdev = scn->sc_pdev;
-           if (!pdev)
-               return -EINVAL;
-           if (ol_ath_enable_low_latency_mode(pdev, value) != QDF_STATUS_SUCCESS)
-               return -EINVAL;
-        break;
-
         default:
             return (-1);
     }
-
-    osif_radio_activity_update(scn);
 
 #if QCN_ESP_IE
     if (ic->ic_esp_flag)
@@ -4009,41 +2973,26 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
     struct wlan_objmgr_pdev *pdev;
     struct wlan_objmgr_psoc *psoc;
     ol_txrx_soc_handle soc_txrx_handle;
+    ol_txrx_pdev_handle pdev_txrx_handle;
     bool bw_reduce = false;
 #if QCA_AIRTIME_FAIRNESS
     int atf_sched = 0;
 #endif
     struct wlan_lmac_if_dfs_rx_ops *dfs_rx_ops;
-#if ATH_SUPPORT_ZERO_CAC_DFS
-    bool is_legacy_precac_enabled = false;
-#if QCA_SUPPORT_AGILE_DFS
-    bool is_adfs_enabled = false;
-#endif
-#endif
     struct wlan_psoc_host_hal_reg_capabilities_ext *reg_cap;
     uint8_t pdev_idx;
-    struct wmi_unified *wmi_handle;
+    struct common_wmi_handle *wmi_handle;
 #ifdef DIRECT_BUF_RX_ENABLE
-    struct wlan_lmac_if_tx_ops *tx_ops;
     struct wlan_lmac_if_direct_buf_rx_tx_ops *dbr_tx_ops = NULL;
 #endif
-    struct wlan_lmac_if_reg_rx_ops *reg_rx_ops;
-    uint8_t pdev_id;
-    cdp_config_param_type val = {0};
 
     wmi_handle = lmac_get_wmi_hdl(scn->soc->psoc_obj);
-    if (!wmi_handle) {
-        qdf_err("wmi_handle is null");
-        return -EINVAL;
-    }
-
     pdev = ic->ic_pdev_obj;
     if(pdev == NULL) {
         qdf_info("%s : pdev is null ", __func__);
         return -1;
     }
 
-    pdev_id = wlan_objmgr_pdev_get_pdev_id(pdev);
     psoc = wlan_pdev_get_psoc(pdev);
 
     if (psoc == NULL) {
@@ -4052,6 +3001,7 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
     }
 
     soc_txrx_handle = wlan_psoc_get_dp_handle(psoc);
+    pdev_txrx_handle = wlan_pdev_get_dp_handle(pdev);
 #if ATH_SUPPORT_DFS
     dfs_rx_ops = wlan_lmac_if_get_dfs_rx_ops(psoc);
 #endif
@@ -4067,7 +3017,7 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
         case OL_ATH_PARAM_TXCHAINMASK:
             *(int *)buff = ieee80211com_get_tx_chainmask(ic);
             break;
-#if ATH_SUPPORT_HYFI_ENHANCEMENTS && ATH_SUPPORT_DSCP_OVERRIDE
+#if ATH_SUPPORT_HYFI_ENHANCEMENTS || ATH_SUPPORT_DSCP_OVERRIDE
         case OL_ATH_PARAM_HMMC_DSCP_TID_MAP:
             *(int *)buff = ol_ath_get_hmmc_tid(ic);
             break;
@@ -4087,27 +3037,6 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
             break;
         case OL_ATH_PARAM_DPD_ENABLE:
             *(int *)buff = scn->dpdenable;
-            {
-                switch (scn->dpdenable) {
-                    case CLI_DPD_CMD_INPROGRES:
-                        qdf_info("DPD cal in progess");
-                        break;
-                    case CLI_DPD_STATUS_FAIL:
-                        qdf_info("DPD cal failed Or DPD disabled BDF loaded");
-                        break;
-                    case CLI_DPD_STATUS_DISABLED:
-                        qdf_info("DPD cal disabled");
-                        break;
-                    case CLI_DPD_STATUS_PASS:
-                        qdf_info("DPD cal Passed !!");
-                        break;
-                    case CLI_DPD_NA_STATE:
-                        qdf_info("INVALID!! DPD not triggered via CLI command");
-                        break;
-                    default:
-                        qdf_info("unknown state");
-                }
-            }
             break;
         case OL_ATH_PARAM_ARPDHCP_AC_OVERRIDE:
             *(int *)buff = scn->arp_override;
@@ -4144,18 +3073,9 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
         case OL_ATH_PARAM_VOW_EXT_STATS:
             *(int *)buff = scn->vow_extstats;
             break;
-        case OL_ATH_PARAM_DCS_WIDEBAND_POLICY:
-            *(int *)buff = scn->scn_dcs.dcs_wideband_policy;
-            break;
         case OL_ATH_PARAM_DCS:
             /* do not need to talk to target */
             *(int *)buff = OL_IS_DCS_ENABLED(scn->scn_dcs.dcs_enable);
-            break;
-        case OL_ATH_PARAM_DCS_RANDOM_CHAN_EN:
-            *(int *)buff = scn->scn_dcs.dcs_random_chan_en;
-            break;
-        case OL_ATH_PARAM_DCS_CSA_TBTT:
-            *(int *)buff = scn->scn_dcs.dcs_csa_tbtt;
             break;
         case OL_ATH_PARAM_DCS_COCH_THR:
             *(int *)buff = scn->scn_dcs.coch_intr_thresh ;
@@ -4181,19 +3101,13 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
         case OL_ATH_PARAM_DCS_SAMPLE_WINDOW:
             *(int *)buff = scn->scn_dcs.intr_detection_window ;
             break;
-        case OL_ATH_PARAM_DCS_RE_ENABLE_TIMER:
-            *(int *)buff = scn->scn_dcs.dcs_re_enable_time;
-            break;
         case OL_ATH_PARAM_DCS_DEBUG:
             *(int *)buff = scn->scn_dcs.dcs_debug ;
             break;
-#if QCA_SUPPORT_SON
-        case OL_ATH_PARAM_BUFF_THRESH:
-            *(int *)buff = son_ald_record_get_pool_size(scn->soc->psoc_obj) -
-                               son_ald_record_get_buff_lvl(scn->soc->psoc_obj);
-            break;
-#endif
 #if ATH_SUPPORT_HYFI_ENHANCEMENTS
+        case OL_ATH_PARAM_BUFF_THRESH:
+            *(int *)buff = scn->soc->buff_thresh.pool_size - scn->soc->buff_thresh.ald_free_buf_lvl;
+            break;
         case OL_ATH_PARAM_BLK_REPORT_FLOOD:
             *(int *)buff = ic->ic_blkreportflood;
             break;
@@ -4202,22 +3116,12 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
             break;
 #endif
         case OL_ATH_PARAM_BURST_ENABLE:
-            if (!wmi_service_enabled(wmi_handle, wmi_service_burst)) {
-                qdf_err("Target does not support burst command");
-                return -EINVAL;
-            }
-
             *(int *)buff = scn->burst_enable;
             break;
         case OL_ATH_PARAM_CCA_THRESHOLD:
             *(int *)buff = scn->cca_threshold;
             break;
         case OL_ATH_PARAM_BURST_DUR:
-            if (!wmi_service_enabled(wmi_handle, wmi_service_burst)) {
-                qdf_err("Target does not support burst_dur");
-                return -EINVAL;
-            }
-
             *(int *)buff = scn->burst_dur;
             break;
         case OL_ATH_PARAM_ANI_ENABLE:
@@ -4238,14 +3142,9 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
                 *(int *)buff = ieee80211_acs_get_param(ic->ic_acs, IEEE80211_ACS_SCANTIME );
             }
             break;
-        case OL_ATH_PARAM_ACS_SNRVAR:
+        case OL_ATH_PARAM_ACS_RSSIVAR:
             if(ic->ic_acs){
-                *(int *)buff = ieee80211_acs_get_param(ic->ic_acs, IEEE80211_ACS_SNRVAR );
-            }
-            break;
-        case OL_ATH_PARAM_ACS_CHAN_EFFICIENCY_VAR:
-            if(ic->ic_acs){
-                *(int *)buff = ieee80211_acs_get_param(ic->ic_acs, IEEE80211_ACS_CHAN_EFFICIENCY_VAR);
+                *(int *)buff = ieee80211_acs_get_param(ic->ic_acs, IEEE80211_ACS_RSSIVAR );
             }
             break;
         case OL_ATH_PARAM_ACS_CHLOADVAR:
@@ -4288,7 +3187,7 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
             break;
 #endif
         case OL_ATH_PARAM_RADIO_TYPE:
-            *(int *)buff = 1;
+            *(int *)buff = ic->ic_is_mode_offload(ic);
             break;
 
         case OL_ATH_PARAM_FW_RECOVERY_ID:
@@ -4317,21 +3216,17 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
             *(int*)buff = scn->mcast_bcast_echo;
             break;
         case OL_ATH_PARAM_ISOLATION:
-#if WLAN_QWRAP_LEGACY
             *(int *)buff = ic->ic_wrap_com->wc_isolation;
-#else
-            *(int *)buff = dp_wrap_pdev_get_isolation(ic->ic_pdev_obj);
-#endif
             break;
 #endif
-        case OL_ATH_PARAM_OBSS_SNR_THRESHOLD:
+        case OL_ATH_PARAM_OBSS_RSSI_THRESHOLD:
             {
-                *(int*)buff = ic->obss_snr_threshold;
+                *(int*)buff = ic->obss_rssi_threshold;
             }
             break;
-        case OL_ATH_PARAM_OBSS_RX_SNR_THRESHOLD:
+        case OL_ATH_PARAM_OBSS_RX_RSSI_THRESHOLD:
             {
-                *(int*)buff = ic->obss_rx_snr_threshold;
+                *(int*)buff = ic->obss_rx_rssi_threshold;
             }
             break;
         case OL_ATH_PARAM_ALLOW_PROMISC:
@@ -4347,26 +3242,6 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
          case OL_ATH_PARAM_ACS_2G_ALLCHAN:
             if(ic->ic_acs){
                 *(int *)buff = ieee80211_acs_get_param(ic->ic_acs, IEEE80211_ACS_2G_ALL_CHAN);
-            }
-            break;
-         case OL_ATH_PARAM_ACS_CHAN_GRADE_ALGO:
-            if(ic->ic_acs){
-                *(int *)buff = ieee80211_acs_get_param(ic->ic_acs, IEEE80211_ACS_CHAN_GRADE_ALGO);
-            }
-            break;
-         case OL_ATH_PARAM_ACS_NEAR_RANGE_WEIGHTAGE:
-            if(ic->ic_acs){
-                *(int *)buff = ieee80211_acs_get_param(ic->ic_acs, IEEE80211_ACS_OBSS_NEAR_RANGE_WEIGHTAGE);
-            }
-            break;
-         case OL_ATH_PARAM_ACS_MID_RANGE_WEIGHTAGE:
-            if(ic->ic_acs){
-                *(int *)buff = ieee80211_acs_get_param(ic->ic_acs, IEEE80211_ACS_OBSS_MID_RANGE_WEIGHTAGE);
-            }
-            break;
-         case OL_ATH_PARAM_ACS_FAR_RANGE_WEIGHTAGE:
-            if(ic->ic_acs){
-                *(int *)buff = ieee80211_acs_get_param(ic->ic_acs, IEEE80211_ACS_OBSS_FAR_RANGE_WEIGHTAGE);
             }
             break;
 
@@ -4389,13 +3264,6 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
 
             wlan_objmgr_pdev_release_ref(pdev, WLAN_CFR_ID);
         break;
-        case OL_ATH_PARAM_CFR_CAPTURE_STATUS:
-        {
-            enum cfr_capt_status status;
-            ucfg_cfr_get_capture_status(pdev, &status);
-            *(int *)buff = status;
-            break;
-        }
 #endif
 
         case OL_ATH_PARAM_ENABLE_AMPDU:
@@ -4422,9 +3290,8 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
         case OL_ATH_PARAM_ROTTING_TIMER_INTV:
         case OL_ATH_PARAM_LATENCY_PROFILE:
             {
-                enum _dp_param_t dp_param = ol_ath_param_to_dp_param(param);
-                cdp_pflow_update_pdev_params(soc_txrx_handle, pdev_id,
-                                             dp_param, value, buff);
+                cdp_pflow_update_pdev_params(soc_txrx_handle,
+                        (void *)pdev_txrx_handle, param, value, buff);
             }
             break;
 #endif
@@ -4485,12 +3352,6 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
                 wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
             }
             break;
-        case OL_ATH_PARAM_NO_BACKHAUL_RADIO:
-            *(int *) buff =  ic->ic_nobackhaul_radio;
-            break;
-        case OL_ATH_PARAM_HE_MBSSID_CTRL_FRAME_CONFIG:
-            *(int *) buff = ic->ic_he_mbssid_ctrl_frame_config;
-            break;
 #if DBDC_REPEATER_SUPPORT
         case OL_ATH_PARAM_PRIMARY_RADIO:
             *(int *) buff =  ic->ic_primary_radio;
@@ -4517,6 +3378,9 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
     case  OL_ATH_PARAM_ATF_OBSS_SCHED:
         atf_sched = target_if_atf_get_sched(psoc, pdev);
         *(int *)buff =!!(atf_sched & ATF_SCHED_OBSS);
+        break;
+    case  OL_ATH_PARAM_ATF_OBSS_SCALE:
+        *(int *)buff = target_if_atf_get_obss_scale(psoc, pdev);
         break;
 #endif
         case OL_ATH_PARAM_PHY_OFDM_ERR:
@@ -4556,11 +3420,11 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
             *(int *)buff = ic->ic_strict_pscan_enable;
             break;
 
-        case OL_ATH_MIN_SNR_ENABLE:
-            *(int *)buff = ic->ic_min_snr_enable;
+        case OL_ATH_MIN_RSSI_ENABLE:
+            *(int *)buff = ic->ic_min_rssi_enable;
             break;
-        case OL_ATH_MIN_SNR:
-            *(int *)buff = ic->ic_min_snr;
+        case OL_ATH_MIN_RSSI:
+            *(int *)buff = ic->ic_min_rssi;
             break;
 #if DBDC_REPEATER_SUPPORT
         case OL_ATH_PARAM_DELAY_STAVAP_UP:
@@ -4582,8 +3446,9 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
             *(int *)buff = ic->ic_cal_ver_check;
            break;
         case OL_ATH_PARAM_TID_OVERRIDE_QUEUE_MAPPING:
-            cdp_txrx_get_pdev_param(soc_txrx_handle, pdev_id, CDP_TIDQ_OVERRIDE, &val);
-            *(int *)buff = val.cdp_pdev_param_tidq_override;
+            if (scn->soc->ol_if_ops->ol_pdev_get_tid_override_queue_mapping)
+               *(int *)buff =
+                  scn->soc->ol_if_ops->ol_pdev_get_tid_override_queue_mapping(pdev_txrx_handle);
             break;
         case OL_ATH_PARAM_NO_VLAN:
             *(int *)buff = ic->ic_no_vlan;
@@ -4622,23 +3487,14 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
             break;
 #if ATH_SUPPORT_ZERO_CAC_DFS
         case OL_ATH_PARAM_PRECAC_ENABLE:
-            if (!dfs_rx_ops)
-                break;
-            if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_DFS_ID) !=
-                        QDF_STATUS_SUCCESS)
-                return -1;
-            if (dfs_rx_ops->dfs_get_legacy_precac_enable)
-                dfs_rx_ops->dfs_get_legacy_precac_enable(pdev,
-                        &is_legacy_precac_enabled);
-#if QCA_SUPPORT_AGILE_DFS
-            if (dfs_rx_ops->dfs_get_agile_precac_enable)
-                dfs_rx_ops->dfs_get_agile_precac_enable(pdev,
-                                                        &is_adfs_enabled);
-            *(int *)buff = is_legacy_precac_enabled || is_adfs_enabled;
-#else
-            *(int *)buff = is_legacy_precac_enabled;
-#endif
-            wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
+            if (dfs_rx_ops && dfs_rx_ops->dfs_get_precac_enable) {
+                if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_DFS_ID) !=
+                        QDF_STATUS_SUCCESS) {
+                    return -1;
+                }
+                dfs_rx_ops->dfs_get_precac_enable(pdev, (int *)buff);
+                wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
+            }
             break;
         case OL_ATH_PARAM_PRECAC_TIMEOUT:
             {
@@ -4669,12 +3525,12 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
             }
            break;
         case OL_ATH_PARAM_PRECAC_CHAN_STATE:
-            if (dfs_rx_ops && dfs_rx_ops->dfs_get_precac_chan_state_for_freq) {
+            if (dfs_rx_ops && dfs_rx_ops->dfs_get_precac_chan_state) {
                 if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_DFS_ID) !=
                         QDF_STATUS_SUCCESS) {
                     return -1;
                 }
-                retval = dfs_rx_ops->dfs_get_precac_chan_state_for_freq(pdev,
+                retval = dfs_rx_ops->dfs_get_precac_chan_state(pdev,
                                                         *((int *)buff + 1));
                 wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
                 if (retval == PRECAC_ERR)
@@ -4689,15 +3545,15 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
 #endif
         case OL_ATH_PARAM_PDEV_TO_REO_DEST:
             *(int *)buff = cdp_get_pdev_reo_dest(soc_txrx_handle,
-                                                 wlan_objmgr_pdev_get_pdev_id(pdev));
+                                           (void *)pdev_txrx_handle);
             break;
 
         case OL_ATH_PARAM_DUMP_CHAINMASK_TABLES:
             ol_ath_dump_chainmaks_tables(scn);
             break;
 
-        case OL_ATH_PARAM_MGMT_SNR_THRESHOLD:
-            *(int *)buff = ic->mgmt_rx_snr;
+        case OL_ATH_PARAM_MGMT_RSSI_THRESHOLD:
+            *(int *)buff = ic->mgmt_rx_rssi;
             break;
 
         case OL_ATH_PARAM_EXT_NSS_CAPABLE:
@@ -4750,9 +3606,6 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
             }
             break;
 
-	case OL_ATH_PARAM_ACS_PRECAC_SUPPORT:
-            *(int *)buff = ic->ic_acs_precac_completed_chan_only;
-        break;
 #ifdef OL_ATH_SMART_LOGGING
         case OL_ATH_PARAM_SMARTLOG_ENABLE:
             *(int *)buff = ic->smart_logging;
@@ -4866,12 +3719,7 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
             break;
 #ifdef DIRECT_BUF_RX_ENABLE
 	case OL_ATH_PARAM_DBR_RING_STATUS:
-	    tx_ops = wlan_psoc_get_lmac_if_txops(psoc);
-	    if (!tx_ops) {
-		qdf_err("tx_ops is null");
-		return -1;
-	    }
-	    dbr_tx_ops = &tx_ops->dbr_tx_ops;
+	    dbr_tx_ops = &psoc->soc_cb.tx_ops.dbr_tx_ops;
             if (dbr_tx_ops->direct_buf_rx_print_ring_stat) {
                 dbr_tx_ops->direct_buf_rx_print_ring_stat(pdev);
             }
@@ -4946,295 +3794,18 @@ ol_ath_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_ath_param_t 
         case OL_ATH_PARAM_TX_CAPTURE:
             *(int *)buff = ic->ic_tx_pkt_capture;
             break;
-        case OL_ATH_PARAM_MGMT_TTL:
-            *(int *)buff = ic->ic_mgmt_ttl;
+        case OL_ATH_PARAM_SET_CMD_OBSS_PD_THRESHOLD:
+            *(int *)buff = (HE_OBSS_PD_THRESH_MASK & ic->ic_ap_obss_pd_thresh);
             break;
-        case OL_ATH_PARAM_PROBE_RESP_TTL:
-            *(int *)buff = ic->ic_probe_resp_ttl;
+        case OL_ATH_PARAM_SET_CMD_OBSS_PD_THRESHOLD_ENABLE:
+            *(int *)buff = GET_HE_OBSS_PD_THRESH_ENABLE(ic->ic_ap_obss_pd_thresh);
             break;
-        case OL_ATH_PARAM_MU_PPDU_DURATION:
-            *(int *)buff = ic->ic_mu_ppdu_dur;
-            break;
-        case OL_ATH_PARAM_TBTT_CTRL:
-            *(int *)buff = ic->ic_tbtt_ctrl;
-            break;
-        case OL_ATH_PARAM_RCHWIDTH:
-            /*
-             * Return the baseline radio level channel width applicable for the
-             * current channel configured in ic.
-             */
-            *(int *)buff = ic->ic_cwm_get_width(ic);
-            break;
-        case OL_ATH_PARAM_HW_MODE:
-            *(int *)buff = scn->soc->hw_mode_ctx.current_mode;
-            break;
-        case OL_ATH_PARAM_HW_MODE_SWITCH_OMN_TIMER:
-            *(int *)buff = ic->ic_omn_cxt.omn_timeout;
-        case OL_ATH_PARAM_HW_MODE_SWITCH_OMN_ENABLE:
-            *(int *)buff = ic->ic_omn_cxt.omn_enable;
-
-        case OL_ATH_PARAM_MBSS_EN:
-            *(int *)buff = wlan_pdev_nif_feat_cap_get(ic->ic_pdev_obj,
-                                                    WLAN_PDEV_F_MBSS_IE_ENABLE);
-            break;
-        case OL_ATH_PARAM_CHAN_COEX:
-            {
-                uint8_t chan_coex_bitmap;
-
-                reg_rx_ops = wlan_lmac_if_get_reg_rx_ops(psoc);
-                if (!(reg_rx_ops && reg_rx_ops->reg_get_unii_5g_bitmap)) {
-                    qdf_err("%s : reg_rx_ops is NULL", __func__);
-                    return -EINVAL;
-                }
-
-                if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_REGULATORY_SB_ID) !=
-                    QDF_STATUS_SUCCESS) {
-                    return -EINVAL;
-                }
-                if ((reg_rx_ops->reg_get_unii_5g_bitmap(pdev,
-                                                        &chan_coex_bitmap)
-                     == QDF_STATUS_SUCCESS))
-                    *(int *)buff = chan_coex_bitmap;
-                else
-                    retval = -EINVAL;
-                wlan_objmgr_pdev_release_ref(pdev, WLAN_REGULATORY_SB_ID);
-
-                break;
-            }
-        case OL_ATH_PARAM_OOB_ENABLE:
-            {
-              if(IEEE80211_IS_CHAN_6GHZ(ic->ic_curchan)){
-                qdf_err("Out of band advertisement of 6Ghz AP in 2G/5G radio only");
-                return -EINVAL;
-              }
-              *(int *)buff = ic->ic_6ghz_rnr_enable;
-            }
-            break;
-        case OL_ATH_PARAM_RNR_UNSOLICITED_PROBE_RESP_ACTIVE:
-            {
-              if(!IEEE80211_IS_CHAN_6GHZ(ic->ic_curchan)){
-                qdf_err("Getting RNR Unsolicited Probe Response is only available on 6GHz");
-                return -EINVAL;
-              }
-              *(int *)buff = ic->ic_6ghz_rnr_unsolicited_prb_resp_active;
-            }
-            break;
-        case OL_ATH_PARAM_RNR_MEMBER_OF_ESS_24G_5G_CO_LOCATED:
-            {
-              if(!IEEE80211_IS_CHAN_6GHZ(ic->ic_curchan)){
-                qdf_err("Getting RNR Member of ESS 2.5/5G Co-located is only available on 6GHz");
-                return -EINVAL;
-              }
-              *(int *)buff = ic->ic_6ghz_rnr_ess_24g_5g_co_located;
-            }
-            break;
-        case OL_ATH_PARAM_USER_RNR_FRM_CTRL:
-            *(int *)buff = ic->ic_user_rnr_frm_ctrl;
-            break;
-        case OL_ATH_PARAM_GET_PSOC_NUM_VDEVS:
-            *(int *)buff = wlan_psoc_get_max_vdev_count(psoc);
-            break;
-        case OL_ATH_PARAM_GET_PSOC_NUM_PEERS:
-            *(int *)buff = wlan_psoc_get_max_peer_count(psoc);
-            break;
-        case OL_ATH_PARAM_GET_PDEV_NUM_VDEVS:
-            *(int *)buff = wlan_pdev_get_max_vdev_count(pdev);
-            break;
-        case OL_ATH_PARAM_GET_PDEV_NUM_PEERS:
-            *(int *)buff = ol_ath_get_num_clients(pdev);
-            break;
-        case OL_ATH_PARAM_GET_PDEV_NUM_MONITOR_VDEVS:
-            *(int *)buff = wlan_pdev_get_max_monitor_vdev_count(pdev);
-            break;
-        case OL_ATH_PARAM_OPCLASS_TBL:
-            {
-                uint8_t opclass_tbl;
-                if (ol_ath_get_opclass_tbl(ic, &opclass_tbl))
-                {
-                    qdf_err("Could not get current operating class table");
-                    return -EINVAL;
-                }
-                *(int *)buff = opclass_tbl;
-            }
-            break;
-#ifdef QCA_SUPPORT_ADFS_RCAC
-        case OL_ATH_PARAM_ROLLING_CAC_ENABLE:
-            {
-                bool rcac_en = 0;
-                if (dfs_rx_ops && dfs_rx_ops->dfs_get_rcac_enable) {
-                    if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_DFS_ID) !=
-                        QDF_STATUS_SUCCESS) {
-                        return -1;
-                    }
-                    if(dfs_rx_ops->dfs_get_rcac_enable(pdev, &rcac_en)
-                       == QDF_STATUS_SUCCESS)
-                        *(int *)buff = rcac_en;
-                    else
-                        retval = -EINVAL;
-                    wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
-                }
-            }
-            break;
-        case OL_ATH_PARAM_CONFIGURE_RCAC_FREQ:
-            {
-                uint16_t rcac_freq = 0;
-                if (dfs_rx_ops && dfs_rx_ops->dfs_get_rcac_freq) {
-                    if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_DFS_ID) !=
-                        QDF_STATUS_SUCCESS) {
-                        return -1;
-                    }
-                    if(dfs_rx_ops->dfs_get_rcac_freq(pdev, &rcac_freq)
-                       == QDF_STATUS_SUCCESS)
-                        *(int *)buff = rcac_freq;
-                    else
-                        retval = -EINVAL;
-                    wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
-                }
-            }
-            break;
-#endif
-#if ATH_SUPPORT_DFS
-        case OL_ATH_SCAN_OVER_CAC:
-            *(int *)buff = ic->ic_scan_over_cac;
-            break;
-#endif
-        case OL_ATH_PARAM_NXT_RDR_FREQ:
-            *(int *)buff = ic->ic_radar_next_usr_freq;
-            break;
-        case OL_ATH_PARAM_NON_INHERIT_ENABLE:
-            *(int *)buff = ic->ic_mbss.non_inherit_enable;
-            break;
-        case OL_ATH_PARAM_RPT_MAX_PHY:
-            *(int *)buff = ieee80211_ic_rpt_max_phy_is_set(ic);
-            break;
-#ifdef QCA_SUPPORT_DFS_CHAN_POSTNOL
-	case OL_ATH_DFS_CHAN_POSTNOL_FREQ:
-	{
-            uint16_t postnol_freq = 0;
-
-            if (dfs_rx_ops && dfs_rx_ops->dfs_get_postnol_freq) {
-                if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_DFS_ID) !=
-                        QDF_STATUS_SUCCESS) {
-                    return -1;
-                }
-                if(dfs_rx_ops->dfs_get_postnol_freq(pdev, &postnol_freq) ==
-                   QDF_STATUS_SUCCESS)
-                    *(int *)buff = postnol_freq;
-                else
-                    retval = -EINVAL;
-                wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
-            }
-	}
-	break;
-	case OL_ATH_DFS_CHAN_POSTNOL_MODE:
-        {
-            uint8_t postnol_mode = 0;
-
-            if (dfs_rx_ops && dfs_rx_ops->dfs_get_postnol_mode) {
-                if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_DFS_ID) !=
-                        QDF_STATUS_SUCCESS) {
-                    return -1;
-                }
-                if(dfs_rx_ops->dfs_get_postnol_mode(pdev, &postnol_mode) ==
-                   QDF_STATUS_SUCCESS)
-                    *(int *)buff = postnol_mode;
-                else
-                    retval = -EINVAL;
-                wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
-            }
-        }
-	break;
-	case OL_ATH_DFS_CHAN_POSTNOL_CFREQ2:
-        {
-            uint16_t postnol_cfreq2 = 0;
-
-            if (dfs_rx_ops && dfs_rx_ops->dfs_get_postnol_cfreq2) {
-                if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_DFS_ID) !=
-                        QDF_STATUS_SUCCESS) {
-                    return -1;
-                }
-                if(dfs_rx_ops->dfs_get_postnol_cfreq2(pdev, &postnol_cfreq2) ==
-                   QDF_STATUS_SUCCESS)
-                    *(int *)buff = postnol_cfreq2;
-                else
-                    retval = -EINVAL;
-                wlan_objmgr_pdev_release_ref(pdev, WLAN_DFS_ID);
-            }
-        }
-	break;
-#endif
-        case OL_ATH_PARAM_ENABLE_ADDITIONAL_TRIPLETS:
-            *(int *)buff = ic->ic_enable_additional_triplets;
-        break;
-        case OL_ATH_PARAM_PUNCTURED_BAND:
-            *(int *)buff = ic->ic_punctured_band;
-        break;
-        case OL_ATH_PARAM_OFDMA_MAX_USERS:
-            *(int *)buff = ol_ath_get_ofdma_max_users(scn->soc);
-            break;
-        case OL_ATH_PARAM_MUMIMO_MAX_USERS:
-            *(int *)buff = ol_ath_get_mumimo_max_users(scn->soc);
-            break;
-        case OL_ATH_PARAM_RNR_SELECTIVE_ADD:
-            *(int *) buff = ic->ic_flags_ext2 & IEEE80211_FEXT2_RNR_SELECTIVE_ADD;
-        break;
-        case OL_ATH_PARAM_RNR_STATS:
-            if (!IEEE80211_IS_CHAN_6GHZ(ic->ic_curchan)) {
-                qdf_err("command for 6Ghz radio only!!!");
-                return -EINVAL;
-            }
-            ieee80211_display_rnr_stats(ic);
-        break;
-        case OL_ATH_PARAM_MBSS_AUTOMODE:
-            *(int *)buff = ieee80211_ic_mbss_automode_is_set(ic);
-        break;
-        case OL_ATH_PARAM_NSS_WIFI_OFFLOAD_STATUS:
-        {
-#ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
-            int nss_wifi_ol = (ic->nss_radio_ops) ? 1 : 0;
-            qdf_info("NSS WiFi offload status: %s", (nss_wifi_ol) ? "Enabled" : "Disabled");
-            *(int *)buff = nss_wifi_ol;
-#else
-            qdf_info("NSS WiFi offload not supported");
-            retval = -EOPNOTSUPP;
-#endif
-        }
-        break;
-#if !(defined REMOVE_PKT_LOG) && (defined PKTLOG_DUMP_UPLOAD_SSR)
-        case OL_ATH_PARAM_PKTLOG_DUMP_UPLOAD_SSR:
-            *(int *)buff = scn->upload_pktlog;
-        break;
-#endif
-        case OL_ATH_PARAM_DISPLAY_PHY_ID:
-        {
-            struct wlan_lmac_if_reg_tx_ops *reg_tx_ops;
-            uint8_t phy_id;
-
-            reg_tx_ops = wlan_reg_get_tx_ops(psoc);
-            if (wlan_objmgr_pdev_try_get_ref(pdev, WLAN_REGULATORY_SB_ID) !=
-                QDF_STATUS_SUCCESS) {
-                return -EINVAL;
-            }
-            if (reg_tx_ops->get_phy_id_from_pdev_id) {
-                reg_tx_ops->get_phy_id_from_pdev_id(psoc, pdev_id, &phy_id);
-                *(int *)buff = phy_id;
-            } else {
-                retval = -EINVAL;
-            }
-
-            wlan_objmgr_pdev_release_ref(pdev, WLAN_REGULATORY_SB_ID);
-        }
-        break;
-        case OL_ATH_PARAM_CURCHAN_REG_TXPOWER:
-        {
-           *(int *)buff = ic->ic_curchan->ic_maxregpower;
-        }
-        break;
         default:
             return (-1);
     }
     return retval;
 }
+
 
 int
 ol_hal_set_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_hal_param_t param, void *buff)
@@ -5248,18 +3819,18 @@ ol_hal_get_config_param(struct ol_ath_softc_net80211 *scn, enum _ol_hal_param_t 
     return -1;
 }
 
-int ol_net80211_set_mu_whtlist(wlan_if_t vap, uint8_t *macaddr,
-                               uint16_t tidmask)
+int
+ol_net80211_set_mu_whtlist(wlan_if_t vap, u_int8_t *macaddr, u_int16_t tidmask)
 {
     int retval = 0;
-    struct wlan_objmgr_pdev *pdev = wlan_vdev_get_pdev(vap->vdev_obj);
+    struct ieee80211com *ic = vap->iv_ic;
+    struct ol_ath_softc_net80211 *scn = OL_ATH_SOFTC_NET80211(ic);
+    struct ol_ath_vap_net80211 *avn = OL_ATH_VAP_NET80211(vap);
 
-    retval = ol_ath_node_set_param(pdev, macaddr,
-                                   WMI_HOST_PEER_SET_MU_WHITELIST,
-                                   tidmask, wlan_vdev_get_id(vap->vdev_obj));
-    if (retval)
-        qdf_err("Unable to set peer MU white list");
+    if((retval = ol_ath_node_set_param(scn, macaddr, WMI_HOST_PEER_SET_MU_WHITELIST,
+            tidmask, avn->av_if_id))) {
+        qdf_info("%s:Unable to set peer MU white list\n", __func__);
+    }
     return retval;
 }
-
 #endif /* ATH_PERF_PWR_OFFLOAD */

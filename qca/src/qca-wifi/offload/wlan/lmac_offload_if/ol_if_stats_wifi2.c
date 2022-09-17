@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017-2018, 2020 Qualcomm Innovation Center, Inc.
+ * Copyright (c) 2015, 2017-2018 Qualcomm Innovation Center, Inc.
  * All Rights Reserved
  * Confidential and Proprietary - Qualcomm Innovation Center, Inc.
  *
@@ -25,8 +25,11 @@
 /*
  * LMAC offload interface functions for UMAC - for power and performance offload model
  */
+#if WLAN_SPECTRAL_ENABLE
+#include "spectral.h"
+#endif
 #include "ol_if_athvar.h"
-#include <ol_if_athpriv.h>
+#include "ol_if_athpriv.h"
 #include "ol_ath.h"
 #include "qdf_mem.h"   /* qdf_mem_malloc,free */
 #include "qdf_lock.h"  /* qdf_spinlock_* */
@@ -44,7 +47,7 @@
 #include <pktlog_ac_i.h>
 #include "ol_tx_desc.h"
 #include "ol_ratetable.h"
-#include <ol_if_stats.h>
+#include "ol_if_stats.h"
 #include "osif_private.h"
 #if QCA_AIRTIME_FAIRNESS
 #include <target_if_atf.h>
@@ -74,16 +77,12 @@ qdf_export_symbol(ol_get_wlan_dbg_stats);
 void ol_ath_chan_change_msg_handler(struct ol_txrx_pdev_t *txrx_pdev,
                                   uint32_t* msg_word, uint32_t msg_len)
 {
-    struct ol_ath_softc_net80211 *scn;
+    struct ol_ath_softc_net80211 *scn = NULL;
+    struct wlan_objmgr_pdev *pdev_obj = (struct wlan_objmgr_pdev *)txrx_pdev->ctrl_pdev;
 
-    if (!txrx_pdev) {
-        qdf_warn("txrx_pdev is NULL");
-        return;
-    }
-
-    scn = (struct ol_ath_softc_net80211 *)txrx_pdev->scnctx;
+    scn = (struct ol_ath_softc_net80211 *)lmac_get_pdev_feature_ptr(pdev_obj);
     if (!scn) {
-        qdf_warn("scn is NULL for pdev:%pK", txrx_pdev);
+        qdf_warn("scn is NULL for pdev:%pK", pdev_obj);
         return;
     }
 
@@ -91,7 +90,7 @@ void ol_ath_chan_change_msg_handler(struct ol_txrx_pdev_t *txrx_pdev,
     scn->sc_chan_band_center_f1 = *(msg_word + 2);
     scn->sc_chan_band_center_f2 = *(msg_word + 3);
     scn->sc_chan_phy_mode = *(msg_word + 4);
- /*   qdf_nofl_info("\nfreq %d bc_f1 %d bc_f2 %d mode %d\n",
+ /*   printk("\nfreq %d bc_f1 %d bc_f2 %d mode %d\n",
                   scn->sc_chan_freq,scn->sc_chan_band_center_f1,
                   scn->sc_chan_band_center_f2,scn->sc_chan_phy_mode);
 */
@@ -104,20 +103,18 @@ void ol_ath_stats_attach_wifi2(struct ieee80211com *ic)
     struct ol_ath_softc_net80211 *scn = OL_ATH_SOFTC_NET80211(ic);
 
     /* enable the pdev stats event */
-    ol_ath_pdev_set_param(scn->sc_pdev,
-                          wmi_pdev_param_pdev_stats_update_period,
-                          PDEV_DEFAULT_STATS_UPDATE_PERIOD);
+    ol_ath_pdev_set_param(scn,
+                wmi_pdev_param_pdev_stats_update_period,
+                PDEV_DEFAULT_STATS_UPDATE_PERIOD);
 
     /* enable the pdev stats event */
-    ol_ath_pdev_set_param(scn->sc_pdev,
-                          wmi_pdev_param_vdev_stats_update_period,
-                          VDEV_DEFAULT_STATS_UPDATE_PERIOD);
-
+    ol_ath_pdev_set_param(scn,
+                wmi_pdev_param_vdev_stats_update_period,
+                VDEV_DEFAULT_STATS_UPDATE_PERIOD);
     /* enable the pdev stats event */
-    ol_ath_pdev_set_param(scn->sc_pdev,
-                          wmi_pdev_param_peer_stats_update_period,
-                          PEER_DEFAULT_STATS_UPDATE_PERIOD);
-
+    ol_ath_pdev_set_param(scn,
+                wmi_pdev_param_peer_stats_update_period,
+                PEER_DEFAULT_STATS_UPDATE_PERIOD);
     /* enable periodic chan stats event */
     ol_ath_periodic_chan_stats_config(scn, true,
                 IEEE80211_DEFAULT_CHAN_STATS_PERIOD);

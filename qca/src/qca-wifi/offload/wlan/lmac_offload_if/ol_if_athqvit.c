@@ -44,10 +44,10 @@ int qvit_check_message(struct ol_ath_softc_net80211 * scn, u_int8_t *data)
     if (swba_event->hdr.msgCode == QVIT_MSG_ASYNC_SWBA_EVENT)
     {
 #ifdef QVIT_DEBUG_SWBA_EVENT
-        qdf_nofl_info(KERN_INFO "QVIT: %s() msgCode [0x%x]\n", __FUNCTION__, swba_event->hdr.msgCode);
-        qdf_nofl_info(KERN_INFO "QVIT: %s: Start\n", __FUNCTION__);
+        printk(KERN_INFO "QVIT: %s() msgCode [0x%x]\n", __FUNCTION__, swba_event->hdr.msgCode);
+        printk(KERN_INFO "QVIT: %s: Start\n", __FUNCTION__);
         qvit_hexdump((unsigned char *)cptr, swba_event->hdr.msgLen);
-        qdf_nofl_info(KERN_INFO "QVIT: %s: End\n", __FUNCTION__);
+        printk(KERN_INFO "QVIT: %s: End\n", __FUNCTION__);
 #endif
         qvit_process_swba_event(scn, swba_event);
         return 0;
@@ -56,10 +56,10 @@ int qvit_check_message(struct ol_ath_softc_net80211 * scn, u_int8_t *data)
     if (swba_event->hdr.msgCode == QVIT_MSG_ASYNC_TBTT_EVENT)
     {
 #ifdef QVIT_DEBUG_TBTT_EVENT
-        qdf_nofl_info(KERN_INFO "QVIT: %s() msgCode [0x%x]\n", __FUNCTION__, swba_event->hdr.msgCode);
-        qdf_nofl_info(KERN_INFO "QVIT: %s: Start\n", __FUNCTION__);
+        printk(KERN_INFO "QVIT: %s() msgCode [0x%x]\n", __FUNCTION__, swba_event->hdr.msgCode);
+        printk(KERN_INFO "QVIT: %s: Start\n", __FUNCTION__);
         qvit_hexdump((unsigned char *)cptr, swba_event->hdr.msgLen);
-        qdf_nofl_info(KERN_INFO "QVIT: %s: End\n", __FUNCTION__);
+        printk(KERN_INFO "QVIT: %s: End\n", __FUNCTION__);
 #endif
         qvit_process_tbtt_event(scn, swba_event);
         return 0;
@@ -78,7 +78,7 @@ static int ol_ath_qvit_event(ol_scn_t sc,
     struct wmi_host_pdev_qvit_event event;
     u_int32_t qvit_datalen;
     uint8_t *data;
-    struct wmi_unified *wmi_handle;
+    struct common_wmi_handle *wmi_handle;
     struct wlan_objmgr_pdev *pdev;
     struct ol_ath_softc_net80211 *scn;
 
@@ -119,7 +119,7 @@ static int ol_ath_qvit_event(ol_scn_t sc,
     {
         if ( scn->utf_event_info.expectedSeq != currentSeq )
         {
-            qdf_nofl_info(KERN_ERR "QVIT: Mismatch in expecting seq expected Seq %d got seq %d\n",scn->utf_event_info.expectedSeq,currentSeq);
+            printk(KERN_ERR "QVIT: Mismatch in expecting seq expected Seq %d got seq %d\n",scn->utf_event_info.expectedSeq,currentSeq);
         }
     }
 
@@ -127,13 +127,13 @@ static int ol_ath_qvit_event(ol_scn_t sc,
     scn->utf_event_info.offset = scn->utf_event_info.offset + qvit_datalen;
     scn->utf_event_info.expectedSeq++;
 #ifdef QVIT_DEBUG_EVENT
-    qdf_nofl_info(KERN_INFO "QVIT: %s: scn->utf_event_info.expectedSeq [%d]\n", __FUNCTION__, scn->utf_event_info.expectedSeq);
+    printk(KERN_INFO "QVIT: %s: scn->utf_event_info.expectedSeq [%d]\n", __FUNCTION__, scn->utf_event_info.expectedSeq);
 #endif
     if ( scn->utf_event_info.expectedSeq == totalNumOfSegments )
     {
         if( scn->utf_event_info.offset != segHdrInfo.len )
         {
-            qdf_nofl_info(KERN_ERR "QVIT: All segs received total len mismatch .. len %d total len %d\n",scn->utf_event_info.offset,segHdrInfo.len);
+            printk(KERN_ERR "QVIT: All segs received total len mismatch .. len %d total len %d\n",scn->utf_event_info.offset,segHdrInfo.len);
         }
 #ifdef QVIT_DEBUG_EVENT
         qvit_hexdump((unsigned char *)data, qvit_datalen + 4);
@@ -154,7 +154,7 @@ void ol_ath_pdev_qvit_detach(struct ol_ath_softc_net80211 *scn)
 {
 
 #ifdef QVIT_debug
-    qdf_nofl_info(KERN_INFO "QVIT: %s: called\n", __FUNCTION__);
+    printk(KERN_INFO "QVIT: %s: called\n", __FUNCTION__);
 #endif
     OS_FREE(scn->utf_event_info.data);
     scn->utf_event_info.data = NULL;
@@ -163,7 +163,7 @@ void ol_ath_pdev_qvit_detach(struct ol_ath_softc_net80211 *scn)
 
 void ol_ath_qvit_detach(struct ol_ath_softc_net80211 *scn)
 {
-    struct wmi_unified *pdev_wmi_handle;
+    struct common_wmi_handle *pdev_wmi_handle;
 
     pdev_wmi_handle = lmac_get_pdev_wmi_handle(scn->sc_pdev);
     wmi_unified_unregister_event_handler((wmi_unified_t)pdev_wmi_handle,
@@ -173,7 +173,7 @@ void ol_ath_qvit_detach(struct ol_ath_softc_net80211 *scn)
 void ol_ath_pdev_qvit_attach(struct ol_ath_softc_net80211 *scn)
 {
 #ifdef QVIT_DEBUG
-    qdf_nofl_info(KERN_INFO "QVIT: %s: called\n", __FUNCTION__);
+    printk(KERN_INFO "QVIT: %s: called\n", __FUNCTION__);
 #endif
     scn->utf_event_info.data = (unsigned char *)OS_MALLOC((void*)scn->sc_osdev,MAX_QVIT_EVENT_LENGTH,GFP_KERNEL);
     scn->utf_event_info.length = 0;
@@ -181,7 +181,7 @@ void ol_ath_pdev_qvit_attach(struct ol_ath_softc_net80211 *scn)
 
 void ol_ath_qvit_attach(ol_ath_soc_softc_t *soc)
 {
-    struct wmi_unified *wmi_handle;
+    struct common_wmi_handle *wmi_handle;
 
     wmi_handle = lmac_get_wmi_hdl(soc->psoc_obj);
     wmi_unified_register_event_handler((wmi_unified_t)wmi_handle, wmi_pdev_qvit_event_id,
@@ -194,7 +194,7 @@ int ol_ath_pdev_qvit_cmd(struct ol_ath_softc_net80211 *scn,
                               u_int32_t len)
 {
     struct pdev_qvit_params param;
-    struct wmi_unified *pdev_wmi_handle;
+    struct common_wmi_handle *pdev_wmi_handle;
 
     pdev_wmi_handle = lmac_get_pdev_wmi_handle(scn->sc_pdev);
     qdf_mem_set(&param, sizeof(param), 0);
@@ -202,7 +202,7 @@ int ol_ath_pdev_qvit_cmd(struct ol_ath_softc_net80211 *scn,
     param.len = len;
 
 #ifdef QVIT_DEBUG
-    qdf_nofl_info(KERN_INFO "QVIT: %s: called\n", __FUNCTION__);
+    printk(KERN_INFO "QVIT: %s: called\n", __FUNCTION__);
 #endif
 
     return wmi_unified_pdev_qvit_cmd_send(pdev_wmi_handle, &param);
@@ -215,7 +215,7 @@ int ol_ath_qvit_cmd(ol_scn_t scn_handle, u_int8_t *data, u_int16_t len)
     scn->utf_event_info.length = 0;
 
 #ifdef QVIT_DEBUG
-    qdf_nofl_info(KERN_INFO "QVIT: %s called\n", __FUNCTION__);
+    printk(KERN_INFO "QVIT: %s called\n", __FUNCTION__);
 #endif
     return wmi_unified_pdev_qvit_cmd(scn,data,len);
 }
@@ -232,9 +232,9 @@ int ol_ath_qvit_rsp(struct ol_ath_softc_net80211 * scn, u_int8_t *payload)
         OS_MEMCPY((payload+4), scn->utf_event_info.data, scn->utf_event_info.length);
 
 #ifdef QVIT_DEBUG_RSP
-        qdf_nofl_info(KERN_INFO "QVIT: %s: Start\n", __FUNCTION__);
+        printk(KERN_INFO "QVIT: %s: Start\n", __FUNCTION__);
         qvit_hexdump((unsigned char *)payload, (unsigned int)(scn->utf_event_info.length + 4));
-        qdf_nofl_info(KERN_INFO "QVIT: %s: End\n", __FUNCTION__);
+        printk(KERN_INFO "QVIT: %s: End\n", __FUNCTION__);
 #endif
         scn->utf_event_info.length = 0;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2020 Qualcomm Innovation Center, Inc.
+ * Copyright (c) 2017-2018 Qualcomm Innovation Center, Inc.
  * All Rights Reserved
  * Confidential and Proprietary - Qualcomm Innovation Center, Inc.
  *
@@ -30,7 +30,7 @@
 #if ATH_PERF_PWR_OFFLOAD
 
 #if WLAN_SPECTRAL_ENABLE
-#include <ol_if_spectral.h>
+#include "ol_if_spectral.h"
 #include <target_if_spectral.h>
 #endif
 
@@ -66,8 +66,8 @@ ol_ath_phyerr_rx_event_handler(ol_scn_t sc, u_int8_t *data,
     struct wlan_objmgr_psoc *psoc = soc->psoc_obj;
     struct wlan_objmgr_pdev *pdev;
     uint32_t target_type;
-    struct wmi_unified *wmi_handle;
-#if ATH_SUPPORT_DFS || WLAN_SPECTRAL_ENABLE
+    struct common_wmi_handle *wmi_handle;
+#if ATH_SUPPORT_DFS
     struct wlan_lmac_if_dfs_rx_ops *dfs_rx_ops;
 #endif
     if (psoc == NULL) {
@@ -77,11 +77,6 @@ ol_ath_phyerr_rx_event_handler(ol_scn_t sc, u_int8_t *data,
 
     target_type = lmac_get_tgt_type(psoc);
     wmi_handle = lmac_get_wmi_hdl(soc->psoc_obj);
-    if (!wmi_handle) {
-        qdf_err("wmi_handle is null");
-        return -EINVAL;
-    }
-
     if (target_type == TARGET_TYPE_AR900B  || target_type == TARGET_TYPE_QCA9984 || \
                         target_type == TARGET_TYPE_QCA9888 || target_type == TARGET_TYPE_IPQ4019) {
         return ol_ath_phyerr_rx_event_handler_wifi2_0(soc, data, datalen);
@@ -136,17 +131,15 @@ ol_ath_phyerr_rx_event_handler(ol_scn_t sc, u_int8_t *data,
          *
          * Don't pass radar events with no buffer payload.
          */
-        if ((dfs_rx_ops && dfs_rx_ops->dfs_is_hw_pulses_allowed && dfs_rx_ops->dfs_is_hw_pulses_allowed(pdev))){
-                if (phyerr.phy_err_code == 0x5 || phyerr.phy_err_code == 0x24) {
-                        if (dfs_rx_ops && dfs_rx_ops->dfs_process_phyerr) {
-                                dfs_rx_ops->dfs_process_phyerr(pdev,
-                                                &phyerr.bufp[0], phyerr.buf_len,
-                                                phyerr.rf_info.rssi_comb & 0xff,
-                                                phyerr.rf_info.rssi_comb & 0xff, /* XXX Extension RSSI */
-                                                phyerr.tsf_timestamp,
-                                                phyerr.tsf64);
-                        }
-                }
+        if (phyerr.phy_err_code == 0x5 || phyerr.phy_err_code == 0x24) {
+            if (dfs_rx_ops && dfs_rx_ops->dfs_process_phyerr) {
+               dfs_rx_ops->dfs_process_phyerr(pdev,
+                        &phyerr.bufp[0], phyerr.buf_len,
+                        phyerr.rf_info.rssi_comb & 0xff,
+                        phyerr.rf_info.rssi_comb & 0xff, /* XXX Extension RSSI */
+                        phyerr.tsf_timestamp,
+                        phyerr.tsf64);
+            }
         }
 #endif /* ATH_SUPPORT_DFS && WLAN_DFS_PARTIAL_OFFLOAD */
 
@@ -169,6 +162,16 @@ ol_ath_phyerr_rx_event_handler(ol_scn_t sc, u_int8_t *data,
                     target_if_spectral_process_phyerr(ic->ic_pdev_obj, phyerr.bufp, phyerr.buf_len,
                                     &rfqual_info, &chan_info, phyerr.tsf64, &acs_stats);
                 }
+
+#if ATH_ACS_SUPPORT_SPECTRAL && WLAN_SPECTRAL_ENABLE
+                if (phyerr.phy_err_code == PHY_ERROR_SPECTRAL_SCAN) {
+                    ieee80211_init_spectral_chan_loading(ic, chan_info.center_freq1, 0);
+                    ieee80211_update_eacs_counters(ic, acs_stats.nfc_ctl_rssi,
+                                                       acs_stats.nfc_ext_rssi,
+                                                       acs_stats.ctrl_nf,
+                                                       acs_stats.ext_nf);
+                }
+#endif
             }
         }
 #endif  /* WLAN_SPECTRAL_ENABLE */
@@ -192,14 +195,9 @@ ol_ath_phyerr_rx_event_handler_wifi2_0(ol_ath_soc_softc_t *soc, u_int8_t *data,
 #if ATH_SUPPORT_DFS
     struct wlan_lmac_if_dfs_rx_ops *dfs_rx_ops;
 #endif
-    struct wmi_unified *wmi_handle;
+    struct common_wmi_handle *wmi_handle;
 
     wmi_handle = lmac_get_wmi_hdl(soc->psoc_obj);
-    if (!wmi_handle) {
-        qdf_err("wmi_handle is null");
-        return -EINVAL;
-    }
-
    /* sanity check on data length */
     if (wmi_extract_composite_phyerr(wmi_handle, data,
                        datalen, &phyerr )) {
@@ -253,22 +251,30 @@ ol_ath_phyerr_rx_event_handler_wifi2_0(ol_ath_soc_softc_t *soc, u_int8_t *data,
                 target_if_spectral_process_phyerr(ic->ic_pdev_obj, phyerr.bufp, phyerr.buf_len,
                                 &rfqual_info, &chan_info, phyerr.tsf64, &acs_stats);
              }
+
+#if ATH_ACS_SUPPORT_SPECTRAL && WLAN_SPECTRAL_ENABLE
+             if ( phyerr.phy_err_mask0 & AR900B_SPECTRAL_PHYERR_MASK) {
+                    ieee80211_init_spectral_chan_loading(ic, chan_info.center_freq1, 0);
+                    ieee80211_update_eacs_counters(ic, acs_stats.nfc_ctl_rssi,
+                                                       acs_stats.nfc_ext_rssi,
+                                                       acs_stats.ctrl_nf,
+                                                       acs_stats.ext_nf);
+             }
+#endif
         }
 #endif  /* WLAN_SPECTRAL_ENABLE */
 
     } else if ((phyerr.phy_err_mask0 & AR900B_DFS_PHYERR_MASK)) {
         if (phyerr.buf_len > 0) {
 #if ATH_SUPPORT_DFS && WLAN_DFS_PARTIAL_OFFLOAD
-                if ((dfs_rx_ops && dfs_rx_ops->dfs_is_hw_pulses_allowed && dfs_rx_ops->dfs_is_hw_pulses_allowed(pdev))){
-                        if (dfs_rx_ops && dfs_rx_ops->dfs_process_phyerr) {
-                                dfs_rx_ops->dfs_process_phyerr(pdev,
-                                                phyerr.bufp, phyerr.buf_len,
-                                                phyerr.rf_info.rssi_comb & 0xff,
-                                                phyerr.rf_info.rssi_comb & 0xff, /* XXX Extension RSSI */
-                                                phyerr.tsf_timestamp,
-                                                phyerr.tsf64);
-                        }
-                }
+            if (dfs_rx_ops && dfs_rx_ops->dfs_process_phyerr) {
+                dfs_rx_ops->dfs_process_phyerr(pdev,
+                        phyerr.bufp, phyerr.buf_len,
+                        phyerr.rf_info.rssi_comb & 0xff,
+                        phyerr.rf_info.rssi_comb & 0xff, /* XXX Extension RSSI */
+                        phyerr.tsf_timestamp,
+                        phyerr.tsf64);
+            }
 #endif /*ATH_SUPPORT_DFS && WLAN_DFS_PARTIAL_OFFLOAD */
         }
     }
@@ -276,27 +282,35 @@ ol_ath_phyerr_rx_event_handler_wifi2_0(ol_ath_soc_softc_t *soc, u_int8_t *data,
      return (0);
 }
 
-void ol_ath_phyerr_enable(struct ieee80211com *ic)
+/*
+ * Enable PHY errors.
+ *
+ * For now, this just enables the DFS PHY errors rather than
+ * being able to select which PHY errors to enable.
+ */
+void
+ol_ath_phyerr_enable(struct ieee80211com *ic)
 {
-    struct wmi_unified *pdev_wmi_handle;
+    struct ol_ath_softc_net80211 *scn = OL_ATH_SOFTC_NET80211(ic);
+    struct common_wmi_handle *pdev_wmi_handle;
 
-    pdev_wmi_handle = lmac_get_pdev_wmi_handle(ic->ic_pdev_obj);
-    if (!pdev_wmi_handle) {
-        qdf_err("pdev wmi handle is null");
-        return;
-    }
+    pdev_wmi_handle = lmac_get_pdev_wmi_handle(scn->sc_pdev);
     wmi_unified_phyerr_enable_cmd_send(pdev_wmi_handle);
 }
 
-void ol_ath_phyerr_disable(struct ieee80211com *ic)
+/*
+ * Disbale PHY errors.
+ *
+ * For now, this just disables the DFS PHY errors rather than
+ * being able to select which PHY errors to disable.
+ */
+void
+ol_ath_phyerr_disable(struct ieee80211com *ic)
 {
-    struct wmi_unified *pdev_wmi_handle;
+    struct ol_ath_softc_net80211 *scn = OL_ATH_SOFTC_NET80211(ic);
+    struct common_wmi_handle *pdev_wmi_handle;
 
-    pdev_wmi_handle = lmac_get_pdev_wmi_handle(ic->ic_pdev_obj);
-    if (!pdev_wmi_handle) {
-        qdf_err("pdev wmi handle is null");
-        return;
-    }
+    pdev_wmi_handle = lmac_get_pdev_wmi_handle(scn->sc_pdev);
     wmi_unified_phyerr_disable_cmd_send(pdev_wmi_handle);
 }
 
@@ -306,7 +320,7 @@ void ol_ath_phyerr_disable(struct ieee80211com *ic)
 void
 ol_ath_phyerr_attach(ol_ath_soc_softc_t *soc)
 {
-    struct wmi_unified *wmi_handle;
+    struct common_wmi_handle *wmi_handle;
 
     wmi_handle = lmac_get_wmi_hdl(soc->psoc_obj);
 

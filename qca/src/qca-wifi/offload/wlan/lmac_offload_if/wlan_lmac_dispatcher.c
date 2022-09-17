@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2018, 2020 Qualcomm Innovation Center, Inc.
+ * Copyright (c) 2017-2018 Qualcomm Innovation Center, Inc.
  * All Rights Reserved
  * Confidential and Proprietary - Qualcomm Innovation Center, Inc.
  *
@@ -30,9 +30,8 @@
 #include <target_if.h>
 #include <wlan_lmac_dispatcher.h>
 #include <ol_if_athvar.h>
-#include <ol_if_athpriv.h>
+#include "ol_if_athpriv.h"
 #include "cfg_ucfg_api.h"
-#include <init_deinit_lmac.h>
 
 int wlan_ucfg_get_btcoex_param(struct wlan_objmgr_psoc *psoc,
 					uint16_t param_type)
@@ -45,7 +44,8 @@ int wlan_ucfg_get_btcoex_param(struct wlan_objmgr_psoc *psoc,
 		return 0;
 	}
 
-	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+	tgt_hdl = (struct target_psoc_info *)wlan_psoc_get_tgt_if_handle(
+						psoc);
 	if (!tgt_hdl) {
 		qdf_print("%s: target_psoc_info is null", __func__);
 		return 0;
@@ -93,7 +93,8 @@ QDF_STATUS wlan_ucfg_set_btcoex_param(struct wlan_objmgr_psoc *psoc,
 		return QDF_STATUS_E_INVAL;
 	}
 
-	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+	tgt_hdl = (struct target_psoc_info *)wlan_psoc_get_tgt_if_handle(
+						psoc);
 	if (!tgt_hdl) {
 		qdf_print("%s: target_psoc_info is null", __func__);
 		return QDF_STATUS_E_INVAL;
@@ -150,7 +151,8 @@ uint32_t wlan_ucfg_get_config_param(struct wlan_objmgr_psoc *psoc,
 		return 0;
 	}
 
-	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+	tgt_hdl = (struct target_psoc_info *)wlan_psoc_get_tgt_if_handle(
+						psoc);
 	if (!tgt_hdl) {
 		qdf_print("%s: target_psoc_info is null", __func__);
 		return 0;
@@ -215,12 +217,6 @@ uint32_t wlan_ucfg_get_config_param(struct wlan_objmgr_psoc *psoc,
 		return (uint32_t)cfg_get(psoc, CFG_OL_CARRIER_VOW_CONFIG);
 	case FW_VOW_STATS_ENABLE:
 		return (uint32_t)cfg_get(psoc, CFG_OL_FW_VOW_STATS_ENABLE);
-	case MAX_GROUP_KEYS:
-		return (uint32_t)soc->max_group_keys;
-		break;
-	case RE_UL_RESP:
-		return (uint32_t)soc->re_ul_resp;
-		break;
 	default:
 		return 0;
 	}
@@ -256,7 +252,8 @@ qdf_netdev_t wlan_create_pdev_netdevice(struct wlan_objmgr_psoc *psoc,
 		return 0;
 	}
 
-	tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+	tgt_hdl = (struct target_psoc_info *)wlan_psoc_get_tgt_if_handle(
+						psoc);
 	if (!tgt_hdl) {
 		qdf_print("%s: target_psoc_info is null", __func__);
 		return NULL;
@@ -348,28 +345,30 @@ void wlan_pdev_update_feature_ptr(struct wlan_objmgr_psoc *psoc,
 	qdf_event_create(&ic->ic_wait_for_init_cc_response);
 
 	ic->ic_get_min_and_max_power = ol_ath_get_min_and_max_power;
+	ic->ic_fill_hal_chans_from_reg_db = ol_ath_fill_hal_chans_from_reg_db;
 	ic->ic_get_modeSelect = ol_ath_get_modeSelect;
 	ic->ic_get_chip_mode = ol_ath_get_chip_mode;
+	ic->ic_is_mode_offload = ol_ath_net80211_is_mode_offload;
 	ic->ic_is_regulatory_offloaded = ol_ath_is_regulatory_offloaded;
 }
 
-#ifndef REMOVE_PKT_LOG
-void wlan_pktlog_set_checksum(struct wlan_objmgr_pdev *pdev, uint32_t checksum)
+void wlan_psoc_update_peer_count(struct wlan_objmgr_psoc *psoc,
+	target_resource_config *tgt_cfg)
 {
+	ol_ath_soc_softc_t *soc;
+	struct target_psoc_info *psoc_tgt_info;
 
-	struct ol_ath_softc_net80211 *scn;
-
-	if (!pdev) {
-		qdf_err("pdev is NULL");
+	psoc_tgt_info = wlan_psoc_get_tgt_if_handle(psoc);
+	if (!psoc_tgt_info) {
+		qdf_print("%s: psoc_tgt_info is NULL", __func__);
 		return;
 	}
 
-	scn = (struct ol_ath_softc_net80211 *)lmac_get_pdev_feature_ptr(pdev);
-	if (!scn) {
-		qdf_err("scn is NULL");
+	soc = target_psoc_get_feature_ptr(psoc_tgt_info);
+	if (!soc) {
+		qdf_print("%s: soc is NULL", __func__);
 		return;
 	}
 
-	ol_pl_set_checksum(scn, checksum);
+	return;
 }
-#endif

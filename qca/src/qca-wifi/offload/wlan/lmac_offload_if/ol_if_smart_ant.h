@@ -89,10 +89,6 @@
 #define MASK_LOWER_NIBBLE 0x0f
 #define NIBBLE_BITS 4
 
-#define SA_BW_COUNT 4
-#define SA_RC_LEN 8
-#define SA_RC_MASK 0xFF
-
 struct ath_smart_ant_pktlog_hdr {
     u_int16_t flags;
     u_int16_t missed_cnt;

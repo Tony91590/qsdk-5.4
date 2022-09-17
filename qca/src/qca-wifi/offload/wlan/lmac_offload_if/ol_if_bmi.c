@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2021 Qualcomm Innovation Center, Inc.
+ * Copyright (c) 2013-2019 Qualcomm Innovation Center, Inc.
  * All Rights Reserved
  * Confidential and Proprietary - Qualcomm Innovation Center, Inc.
  *
@@ -25,7 +25,7 @@
  * LMAC offload interface functions for UMAC - for power and performance offload model
  */
 #include "ol_if_athvar.h"
-#include <ol_if_athpriv.h>
+#include "ol_if_athpriv.h"
 #include <osdep.h>
 #include "target_type.h"
 #include <hif.h>
@@ -52,7 +52,6 @@
 #include "wlan_scan.h"
 #include "ol_cfg.h"
 #include "pld_common.h"
-#include "qal_devnode.h"
 
 #ifdef QCA_PARTNER_PLATFORM
 #include "ol_txrx_peer_find.h"
@@ -83,14 +82,15 @@
 #include "pktlog_ac.h"
 #include "ol_regdomain.h"
 #include <wlan_reg_ucfg_api.h>
+#include "ol_if_me.h"
 #if WLAN_SPECTRAL_ENABLE
-#include <ol_if_spectral.h>
+#include "ol_if_spectral.h"
 #endif
 #include "ol_ath.h"
 #include <wlan_objmgr_psoc_obj.h>
 #include <wlan_objmgr_pdev_obj.h>
 
-#include <ol_if_stats.h>
+#include "ol_if_stats.h"
 #include "ol_ratetable.h"
 #include "wds_addr_api.h"
 
@@ -105,9 +105,7 @@
 #include <linux/fs.h>
 #include <linux/gpio.h>
 #ifndef __LINUX_POWERPC_ARCH__
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 24)
 #include <asm/segment.h>
-#endif
 #endif
 #include <asm/uaccess.h>
 #include <linux/buffer_head.h>
@@ -152,7 +150,7 @@
 #endif
 
 #include "pld_common.h"
-#include <if_fs.h>
+#include <osif_fs.h>
 #include "cfg_ucfg_api.h"
 
 #ifdef QCA_SUPPORT_CP_STATS
@@ -160,15 +158,9 @@
 #endif
 #include <linux/of_fdt.h>
 
-#if QLD
-#include "qld_api.h"
-#endif
-
 #include "AR900B/soc_addrs.h" /* tgt iram backup */
 #ifdef CONFIG_AR900B_SUPPORT
-#if QLD
-int  qld_process_list(struct ol_ath_soc_softc *soc);
-#endif
+
 /* TODO this section need to be used when linux kernel memory for crash
  * scope is increased
  */
@@ -229,6 +221,17 @@ struct dbglog_hdr_s {
 	uint32_t             dropped;
 } __attribute__ ((packed));
 
+/* Following definitions are added from fw header bmi_msg.h.
+ * Due to conflict in Host defined converged target_type.h
+ * fw bmi_msg.h, this file includes host defined target_type.h.
+ * If bmi_msg.h is included in this file then target_type value
+ * conflicts and firmware loading fails.
+ */
+struct bmi_target_info {
+    uint32_t target_info_byte_count; /* size of this structure */
+    uint32_t target_ver;             /* Target Version ID */
+    uint32_t target_type;            /* Target type */
+};
 
 #define BMI_SEGMENTED_WRITE_ADDR 0x1234
 
@@ -252,38 +255,22 @@ static uint32_t QC98XX_EEPROM_SIZE_LARGEST;
 extern u_int32_t CalAddr[];
 #endif
 
-/*
- * check_path_exists() - Checks if a file path exists
- * @path: Path to check
- *
- * Return: True if path exists, else False
- */
-static bool check_path_exists(const char* path)
+
+struct file* file_open(const char* path, int flags, int rights);
+void file_close(struct file* file);
+
+static int
+get_fileindex(char *tmpbuf)
 {
-    struct file* filp = NULL;
-
-    if (!path)
-        return false;
-
-    filp = filp_open(path, O_RDONLY, 00644);
-    if (IS_ERR(filp)) {
-        qdf_warn("Path %s doesnt exist", path);
-        return false;
-    }
-
-    filp_close(filp, NULL);
-    return true;
+	char* filename = "/lib/firmware/.fileindex";
+	return qdf_fs_read(filename, 0, 10, tmpbuf);
 }
 
-static int get_fileindex(char *tmpbuf)
-{
-    char* filename = "/lib/firmware/.fileindex";
-    return qdf_fs_read(filename, 0, 10, tmpbuf);
-}
-
+int filesnotexist = 0;
 #define MAX_FILENAMES_SIZE 1024 * 4 //File list names len
 
-static int get_filenames(u_int32_t target_type, char *tmpbuf, int size)
+static int
+get_filenames(u_int32_t target_type,char *tmpbuf, int size)
 {
     int ret;
     char* filename = NULL;
@@ -292,25 +279,25 @@ static int get_filenames(u_int32_t target_type, char *tmpbuf, int size)
     {
         case TARGET_TYPE_AR900B:
             if (chipid == 0) {
-                filename = "/lib/firmware/AR900B/hw.1/.filenames";
+		filename = "/lib/firmware/AR900B/hw.1/.filenames";
             } else if (chipid == 1) {
-                filename = "/lib/firmware/AR900B/hw.2/.filenames";
-            } else {
-                qdf_err("Chip id %d is not supported for AR900B!", chipid);
-                return -1;
-            }
-            break;
+		filename = "/lib/firmware/AR900B/hw.2/.filenames";
+	    } else {
+		qdf_info(KERN_ERR "%s: Chip id %d is not supported for AR900B!",__func__, chipid);
+	        return -1;
+	    }
+	    break;
         case TARGET_TYPE_QCA9984:
-            if (chipid == 0) {
-                filename = "/lib/firmware/QCA9984/hw.1/.filenames";
+	    if (chipid == 0) {
+		filename = "/lib/firmware/QCA9984/hw.1/.filenames";
             } else {
-                qdf_err("Chip id %d is not supported for QCA9984!", chipid);
-                return -1;
-            }
-            break;
-        default:
-            qdf_err("Target type %u is not supported.", target_type);
-            return -1;
+                qdf_info(KERN_ERR "%s: Chip id %d is not supported for QCA9984!",__func__, chipid);
+		return -1;
+	    }
+	    break;
+	default:
+	    qdf_info(KERN_ERR "%s: Target type %u is not supported.", __func__,target_type);
+	    return -1;
     }
     /* Why ignore the return value of read_file()? It returns the number of
      * bytes that have been read. This is the number of valid bytes in the
@@ -344,7 +331,7 @@ boardid_to_filename(ol_ath_soc_softc_t *soc, int id, char *tmpbuf, int buflen, c
             /* As we are reading arbitrary file content, it is not unlikely that
              * kstrtol fails. Therefore check the return value. */
             if (kstrtol(idstr, 10, &result) != 0) {
-                qdf_err("Failed to convert '%s' to integer!", idstr);
+                qdf_info(KERN_ERR "%s: Failed to convert '%s' to integer!", __func__, idstr);
                 return -1;
             }
 #endif
@@ -441,22 +428,23 @@ boardid_to_filename(ol_ath_soc_softc_t *soc, int id, char *tmpbuf, int buflen, c
                     break;
             }
             qdf_str_lcopy(destptr, srcptr, strlen(srcptr) + 1);
-            qdf_info("%s: Selecting board data file name %s",soc->sc_osdev->netdev->name, destptr);
-        } else if (target_type == TARGET_TYPE_QCA9984) {
+            qdf_info("\n %s: Selecting board data file name %s",soc->sc_osdev->netdev->name, destptr);
+        }
+        else if (target_type == TARGET_TYPE_QCA9984) {
             destptr = &boarddata_file[0];
             if (soc->soc_idx == 0) {
                 qdf_str_lcopy(destptr, "boarddata_0.bin", 16);
-                qdf_info("wifi0: Selecting board data file name %s", destptr);
+                qdf_info("\n wifi0: Selecting board data file name %s", destptr);
             } else if (soc->soc_idx == 1) {
                 qdf_str_lcopy(destptr, "boarddata_1.bin", 16);
-                qdf_info("wifi1: Selecting board data file name %s", destptr);
+                qdf_info("\n wifi1: Selecting board data file name %s", destptr);
             } else if (soc->soc_idx == 2) {
                 qdf_str_lcopy(destptr, "boarddata_2.bin", 16);
-                qdf_info("wifi2: Selecting board data file name %s", destptr);
+                qdf_info("\n wifi2: Selecting board data file name %s", destptr);
             } else {
-                qdf_err("Unable to map board data file for unknown device "
-                         "%s",
-                         soc->sc_osdev->netdev->name);
+                qdf_info("\n Unable to map board data file for unknown device "
+                       "%s",
+                       soc->sc_osdev->netdev->name);
                 return -1;
             }
         } else if (target_type == TARGET_TYPE_QCA9888){
@@ -488,10 +476,10 @@ boardid_to_filename(ol_ath_soc_softc_t *soc, int id, char *tmpbuf, int buflen, c
             }
 
             qdf_str_lcopy(destptr, srcptr, strlen(srcptr) + 1);
-            qdf_info("%s: Selecting board data file name %s",soc->sc_osdev->netdev->name, destptr);
-        } else {
-            qdf_info("******************************************* CAUTION!! ************************************************");
-            qdf_info("Invalid BoardId! Did not find board data file for board id %d", id);
+            qdf_info("\n %s: Selecting board data file name %s",soc->sc_osdev->netdev->name, destptr);
+	}else {
+            qdf_info("\n ******************************************* CAUTION!! ************************************************");
+            qdf_info(KERN_ERR "%s: Invalid BoardId! Did not find board data file for board id %d", __func__, id);
             destptr = &boarddata_file[0];
             if (soc->soc_idx == 0) {
                 qdf_str_lcopy(destptr, DEFAULT_BOARDDATA_FILE_5G, strlen(DEFAULT_BOARDDATA_FILE_5G) + 1);
@@ -500,7 +488,7 @@ boardid_to_filename(ol_ath_soc_softc_t *soc, int id, char *tmpbuf, int buflen, c
             } else {
                 qdf_str_lcopy(destptr, DEFAULT_BOARDDATA_FILE_5G, strlen(DEFAULT_BOARDDATA_FILE_5G) + 1);
             }
-            qdf_info("******************************LOADING DEFAULT BOARD DATA FILE************************");
+            qdf_info("\n ******************************LOADING DEFAULT BOARD DATA FILE************************");
 
         }
     }
@@ -572,8 +560,8 @@ ol_ath_configure_target(ol_ath_soc_softc_t *soc)
         param |= (0 << HI_OPTION_FW_BRIDGE_SHIFT);  //firmware_bridge
         param |= (0 << HI_OPTION_FW_SUBMODE_SHIFT); //fwsubmode
 
-        qdf_info("NUM_DEV=%d FWMODE=0x%x FWSUBMODE=0x%x FWBR_BUF %d",
-                 1, HI_OPTION_FW_MODE_AP, 0, 0);
+        qdf_info(KERN_INFO"NUM_DEV=%d FWMODE=0x%x FWSUBMODE=0x%x FWBR_BUF %d",
+                            1, HI_OPTION_FW_MODE_AP, 0, 0);
 
         if (BMIWriteMemory(hif_hdl,
             host_interest_item_address(target_type, offsetof(struct host_interest_s, hi_option_flag)),
@@ -603,7 +591,7 @@ ol_ath_configure_target(ol_ath_soc_softc_t *soc)
             (A_UCHAR *)&param,
             4, bmi_handle) != A_OK)
         {
-            qdf_err("BMIWriteMemory for setting cdc max perf failed ");
+            qdf_info("BMIWriteMemory for setting cdc max perf failed ");
             return A_ERROR;
         }
     }
@@ -775,8 +763,8 @@ static int eeprom_byte_read(ol_ath_soc_softc_t *soc, u_int16_t addr_offset, u_in
             OS_DELAY(DELAY_BETWEEN_DONE_BIT_POLL);
             reg = hif_reg_read(hif_hdl, SI_BASE_ADDRESS + SI_CS_OFFSET);
     }
-    if (wait_limit == 0) {
-        qdf_err("Timeout waiting for DONE_INT bit to be set in SI_CONFIG register");
+    if(wait_limit == 0) {
+        qdf_info("%s: Timeout waiting for DONE_INT bit to be set in SI_CONFIG register", __func__);
         return SI_ERR;
     }
 
@@ -810,12 +798,11 @@ static int qc98xx_verify_checksum(void *eeprom)
         sum ^= le16_to_cpu(*p_half++);
     }
     if (sum != 0xffff) {
-        qdf_err("error: flash checksum 0x%x, computed 0x%x ",
+        qdf_info("%s error: flash checksum 0x%x, computed 0x%x ", __func__,
                 le16_to_cpu(*((uint16_t *)eeprom + 1)), sum ^ 0xFFFF);
         return -1;
     }
-    qdf_info("flash checksum passed: 0x%4x",
-             le16_to_cpu(*((uint16_t *)eeprom + 1)));
+    qdf_info("%s: flash checksum passed: 0x%4x", __func__, le16_to_cpu(*((uint16_t *)eeprom + 1)));
     return 0;
 }
 
@@ -851,13 +838,14 @@ ol_transfer_target_eeprom_caldata(ol_ath_soc_softc_t *soc, u_int32_t address, bo
     if (target_version != AR9887_REV1_VERSION) {
         qdf_info("ERROR: UNSUPPORTED TARGET VERSION 0x%x ", target_version);
         return EOK;
-    } else {
+    }
+    else {
         u_int8_t *tmp_ptr;
         u_int16_t addr_offset;
         ptr = vmalloc(QC98XX_EEPROM_SIZE_LARGEST);
-        if (NULL == ptr) {
-            qdf_err("target eeprom caldata memory allocation failed");
-            return -EINVAL;
+        if ( NULL == ptr ){
+        qdf_info("%s %d: target eeprom caldata memory allocation failed",__func__, __LINE__);
+        return -EINVAL;
         } else {
             tmp_ptr = ptr;
             /* Config for Target EEPROM access */
@@ -873,7 +861,7 @@ ol_transfer_target_eeprom_caldata(ol_ath_soc_softc_t *soc, u_int32_t address, bo
                 tmp_ptr++;
             }
             if (le16_to_cpu(*(uint16_t *)ptr) != QC98XX_EEPROM_SIZE_LARGEST) {
-                qdf_err("Target EEPROM caldata len %d doesn't equal to %d",
+                qdf_info("%s: Target EEPROM caldata len %d doesn't equal to %d", __func__,
                         le16_to_cpu(*(uint16_t *)ptr), QC98XX_EEPROM_SIZE_LARGEST);
                 if (ptr)
                     vfree(ptr);
@@ -888,13 +876,15 @@ ol_transfer_target_eeprom_caldata(ol_ath_soc_softc_t *soc, u_int32_t address, bo
             orig_size = QC98XX_EEPROM_SIZE_LARGEST;
             fw_entry->data = ptr;
             fw_entry->size = (orig_size + 3) & ~3;
-            qdf_info("Download Target EEPROM caldata len %zd", fw_entry->size);
+            qdf_info("%s %d: Download Target EEPROM caldata len %zd",
+                    __func__, __LINE__, fw_entry->size);
 
             savedestp = destp = vmalloc(fw_entry->size);
-            if (destp == NULL) {
+            if(destp == NULL)
+            {
                 if (ptr)
                     vfree(ptr);
-                qdf_err("memory allocation failed");
+                qdf_info("%s %d: memory allocation failed",__func__, __LINE__);
                 return -EINVAL;
             }
             pdst = (uint8_t *)destp;
@@ -922,8 +912,9 @@ ol_transfer_target_eeprom_caldata(ol_ath_soc_softc_t *soc, u_int32_t address, bo
             }
         }
 
-        if (status != EOK)
-            qdf_info("BMI operation failed ");
+        if (status != EOK) {
+            qdf_info("%s :%d BMI operation failed ",__func__, __LINE__);
+        }
 
         if (ptr)
             vfree(ptr);
@@ -990,9 +981,10 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
     void *hif_hdl;
     struct bmi_info *bmi_handle;
 
-    tgt_psoc_info = wlan_psoc_get_tgt_if_handle(soc->psoc_obj);
-    if (tgt_psoc_info == NULL) {
-        qdf_err("target_psoc_info is null ");
+    tgt_psoc_info = (struct target_psoc_info *)wlan_psoc_get_tgt_if_handle(
+                                                        soc->psoc_obj);
+    if(tgt_psoc_info == NULL) {
+        qdf_info("%s: target_psoc_info is null ", __func__);
         return -1;
     }
 
@@ -1014,11 +1006,11 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
     switch (file)
     {
         default:
-            qdf_err("Unknown file type ");
+            qdf_info("%s: Unknown file type", __func__);
             return -1;
 
         case ATH_OTP_FILE:
-            qdf_info("Selecting  OTP binary for CHIP Version %d", target_revision);
+            qdf_info(KERN_INFO"\n Selecting  OTP binary for CHIP Version %d", target_revision);
             if (target_version == AR6004_REV1_VERSION) {
                 filename = AR6004_REV1_OTP_FILE;
             } else if (target_version == AR9888_REV2_VERSION) {
@@ -1067,7 +1059,7 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
                      */
                 }
             } else {
-                qdf_err("no OTP file defined ");
+                qdf_info("%s: no OTP file defined", __func__);
                 return -ENOENT;
             }
             if (ol_ath_code_data_swap(soc,filename,ATH_OTP_FILE)) {
@@ -1080,7 +1072,7 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
                 if ( testmode == 1 ) {
                     A_UINT32 param;
 
-                    qdf_info("Test mode");
+                    qdf_info("%s: Test mode", __func__);
                     if (target_version == AR6004_REV1_VERSION) {
                         filename = AR6004_REV1_UTF_FIRMWARE_FILE;
                     } else if (target_version == AR9888_REV2_VERSION) {
@@ -1126,10 +1118,10 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
                             filename = IPQ4019_BB_VER1_UTF_FIRMWARE_FILE;
                         }
                     } else {
-                        qdf_info("no firmware file defined ");
+                        qdf_info("%s: no firmware file defined", __func__);
                         return EOK;
                     }
-                    qdf_info("Downloading firmware file: %s",filename);
+                    qdf_info("%s: Downloading firmware file: %s", __func__, filename);
 
                     if (BMIReadMemory(hif_hdl,
                         host_interest_item_address(target_type, offsetof(struct host_interest_s, hi_fw_swap)),
@@ -1150,8 +1142,9 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
                 if(ol_ath_code_data_swap(soc,filename,ATH_UTF_FIRMWARE_FILE)) {
                     return -EIO;
                 }
-            } else {
-                qdf_info("Mission mode: Firmware CHIP Version %d", target_revision);
+            }
+            else {
+                qdf_info(KERN_INFO"\n Mission mode: Firmware CHIP Version %d", target_revision);
                 if (target_version == AR6004_REV1_VERSION) {
                     filename = AR6004_REV1_FIRMWARE_FILE;
                 } else if (target_version == AR9888_REV2_VERSION) {
@@ -1213,12 +1206,13 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
                         filename = IPQ4019_BB_VER1_FIRMWARE_FILE;
                     }
                 } else {
-                    qdf_info("no firmware file defined");
+                    qdf_info("%s: no firmware file defined", __func__);
                     return EOK;
                 }
-                if(ol_ath_code_data_swap(soc,filename,ATH_FIRMWARE_FILE))
+                if(ol_ath_code_data_swap(soc,filename,ATH_FIRMWARE_FILE)) {
                     return -EIO;
-                qdf_info("Downloading firmware file: %s", filename);
+                }
+                qdf_info("%s: Downloading firmware file: %s", __func__, filename);
             }
 
 #ifdef EPPING_TEST
@@ -1231,29 +1225,31 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
             break;
 
         case ATH_PATCH_FILE:
-            qdf_info("no Patch file defined");
+            qdf_info("%s: no Patch file defined", __func__);
             return EOK;
 
         case ATH_BOARD_DATA_FILE:
             if (target_version == AR6004_REV1_VERSION) {
                 filename = AR6004_REV1_BOARD_DATA_FILE;
-                qdf_info("Board data file AR6004");
+                qdf_info("%s: Board data file AR6004", __func__);
             } else if (target_version == AR9888_REV2_VERSION) {
                 filename = AR9888_REV2_BOARD_DATA_FILE;
-                qdf_info("Board data file AR9888v2 ");
+                qdf_info("%s: Board data file AR9888v2", __func__);
             } else if (target_version == AR9887_REV1_VERSION) {
-                qdf_info("Board data file AR9887v1 ");
-                if (testmode == 1)
+                qdf_info("%s: Board data file AR9887v1", __func__);
+                if (testmode == 1) {
                     filename = AR9887_REV1_BOARDDATA_FILE;
-                else
+                } else {
                     filename = AR9887_REV1_BOARD_DATA_FILE;
+                }
             } else if (target_version == AR9888_DEV_VERSION) {
                 filename = AR9888_DEV_BOARD_DATA_FILE;
-                qdf_info("Board data file AR9888 ");
+                qdf_info("%s: Board data file AR9888", __func__);
             } else if (target_version == SOC_SW_VERSION) {
 
-                /* QDART condition only */
+		/* QDART condition only */
                 if(testmode == 1) {
+
                     /* initialize file vars */
                     qdf_mem_set(buf, MAX_FILENAME_BUFF_SIZE, 0);
                     qdf_mem_set(absolute_filename,MAX_ABSOLUTE_FILE_SIZE, 0);
@@ -1298,47 +1294,47 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
                     }
 
                     /* get the file name */
-                    if (soc->soc_idx == 0){
+                    if(soc->soc_idx == 0){
                         filename = "boarddata_0.bin";
-                        qdf_info("wifi0 Select filename %s", filename);
+                        qdf_info("\n wifi0 Select filename %s", filename);
                     } else if (soc->soc_idx == 1){
                         filename = "boarddata_1.bin";
-                        qdf_info("wifi1 Select filename %s", filename);
+                        qdf_info("\n wifi1 Select filename %s", filename);
                     } else {
                         filename = "boarddata_2.bin";
-                        qdf_info("wifi2 Select filename %s", filename);
+                        qdf_info("\n wifi2 Select filename %s", filename);
                     }
+
 
                     /* validate PATH and FILE vars */
                     if ((pathname == NULL) || (filename == NULL)) {
-                        qdf_info("Unable to get the PATH/FILE name, check chip revision");
+                        qdf_info("\n %s : Unable to get the PATH/FILE name, check chip revision", __FUNCTION__);
                         return EOK;
                     }
 
                     /* create absolute PATH variable */
                     if (strlcat(absolute_filename, pathname, MAX_ABSOLUTE_FILE_SIZE) >= MAX_ABSOLUTE_FILE_SIZE) {
-                        qdf_err("ifname too long: %s", pathname);
+                        qdf_info("ifname too long: %s", pathname);
                         return -1;
                     }
                     if (strlcat(absolute_filename, filename, MAX_ABSOLUTE_FILE_SIZE) >= MAX_ABSOLUTE_FILE_SIZE) {
-                        qdf_err("ifname too long: %s", pathname);
+                        qdf_info("ifname too long: %s", pathname);
                         return -1;
                     }
                     filename = absolute_filename;
 
-                    qdf_info("(Test Mode) For interface (%s) selected filename %s",
-                             soc->sc_osdev->netdev->name, absolute_filename);
+                    qdf_info("\n %s : (Test Mode) For interface (%s) selected filename %s",
+                            __FUNCTION__, soc->sc_osdev->netdev->name, absolute_filename);
 
                 } else { /* Mission-mode condition only */
 #ifdef CONFIG_AR900B_SUPPORT
                     filename = NULL;
                     qdf_mem_set(buf, MAX_FILENAME_BUFF_SIZE, 0);
                     qdf_mem_set(absolute_filename,MAX_ABSOLUTE_FILE_SIZE, 0);
-                    if (ol_get_board_id(soc, buf) < 0) {
-                        qdf_err("BoardData Download Failed");
+                    if(ol_get_board_id(soc, buf) < 0) {
+                        qdf_info("\n %s : BoardData Download Failed",__FUNCTION__);
                         return -1;
                     }
-
                     if (target_type == TARGET_TYPE_AR900B) {
                         if(target_revision == AR900B_REV_1){
                             filename = AR900B_VER1_PATH;
@@ -1382,7 +1378,7 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
 
                     /* validate PATH and FILE vars */
                     if (filename == NULL) {
-                        qdf_info("Unable to get the FILE name, check chip revision");
+                        qdf_info("\n %s : Unable to get the FILE name, check chip revision", __FUNCTION__);
                         return EOK;
                     }
 
@@ -1400,23 +1396,23 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
 #endif
                 }
             } else {
-                qdf_info("no Board data file defined");
+                qdf_info("%s: no Board data file defined", __func__);
                 return EOK;
             }
-            qdf_info("Board Data File download to address=0x%x file name=%s",
+            qdf_info("%s: Board Data File download to address=0x%x file name=%s", __func__,
                      address,(filename ? filename : "ERROR: NULL FILE NAME"));
             break;
 
         case ATH_FLASH_FILE:
-                qdf_info("flash data file defined");
+                qdf_info("%s: flash data file defined", __func__);
             break;
 
     }
     // No File present for Flash only memmapped
-    if (file != ATH_FLASH_FILE) {
+    if(file != ATH_FLASH_FILE) {
         if (!filename) {
-            qdf_info("filename null ");
-            if (emu_type && file == ATH_OTP_FILE) {
+            qdf_info("%s:%d filename null ", __func__, __LINE__);
+            if ( emu_type && file == ATH_OTP_FILE ) {
                 return -ENOENT;
             }
             return -1;
@@ -1425,20 +1421,22 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
         rfwst = ol_ath_request_firmware((struct firmware_priv **) &fw_entry,
                 filename, soc->sc_osdev->device, soc->device_id);
 
-        if ((rfwst != 0)) {
-            qdf_info("Failed to get %s", filename);
+	if ((rfwst != 0)) {
+            qdf_info("%s: Failed to get %s", __func__, filename);
             if (file == ATH_OTP_FILE)
                 return -ESKIP_OTP;
+
             return -ENOENT;
         }
 
         srcp = (uint32_t *)fw_entry->data;
         orig_size = fw_entry->size;
         fw_entry_size = fw_entry->size = (orig_size + (sizeof(int) - 1)) & ~(sizeof(int) - 1); /* round off to 4 bytes */
-        qdf_info("downloading file %d, Download data len %zd", file, fw_entry->size);
+        qdf_info(KERN_INFO"%s %d: downloading file %d, Download data len %zd", __func__, __LINE__, file, fw_entry->size);
     }
 
-    if (file == ATH_FLASH_FILE) {
+    if (file == ATH_FLASH_FILE)
+    {
 #ifdef  ATH_CAL_NAND_FLASH
         int ret_val=0;
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3,4,103)
@@ -1450,7 +1448,7 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
 #endif
 #ifdef AH_CAL_IN_FLASH_PCI
         if (!soc->cal_in_flash) {
-            qdf_err("flash cal data address is not mapped");
+            qdf_info("%s: flash cal data address is not mapped", __func__);
             return -EINVAL;
         }
 
@@ -1458,23 +1456,29 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
 			cal_location = CalAddr[scn->cal_idx-1];
 			QDF_PRINT_INFO(ic->ic_print_idx, QDF_MODULE_ID_ANY, QDF_TRACE_LEVEL_INFO, "Cal location [%d]: %08x\n", scn->cal_idx-1, cal_location);
 			ptr = vmalloc(QC98XX_EEPROM_SIZE_LARGEST);
-        if (NULL == ptr) {
-            qdf_err("flash cal data(NAND)memory allocation failed");
+        if ( NULL == ptr )
+        {
+            qdf_info("%s %d: flash cal data(NAND)memory allocation failed",__func__, __LINE__);
             return -EINVAL;
-        } else {
-            if (soc->soc_idx == 0) {
+        }
+        else
+        {
+            if(soc->soc_idx == 0)
+            {
                 qdf_info("\n Wifi0 NAND FLASH Select OFFSET 0x%x",cal_location + FLASH_CAL_START_OFFSET);
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3,4,103)
                 ret_val = OS_NAND_FLASH_READ(ATH_CAL_NAND_PARTITION, cal_location + FLASH_CAL_START_OFFSET ,QC98XX_EEPROM_SIZE_LARGEST,&ret_len,ptr);
 #else
                 filename = CALDATA0_FILE_PATH;
-                if (A_ERROR ==  qdf_fs_read(filename, 0, QC98XX_EEPROM_SIZE_LARGEST, ptr)) {
-                        qdf_info("Error: Reading %s failed.", filename);
+                if(A_ERROR ==  qdf_fs_read(filename, 0, QC98XX_EEPROM_SIZE_LARGEST, ptr)) {
+                        qdf_info("%s[%d], Error: Reading %s failed.", __func__, __LINE__, filename);
                         ret_val =  -EINVAL;
                 }
 #endif
-            } else {
-                qdf_info("%s NAND FLASH Select OFFSET 0x%x",soc->sc_osdev->netdev->name, cal_location + FLASH_CAL_START_OFFSET);
+            }
+            else
+            {
+                qdf_info("\n %s NAND FLASH Select OFFSET 0x%x",soc->sc_osdev->netdev->name, cal_location + FLASH_CAL_START_OFFSET);
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(3,4,103)
                 ret_val = OS_NAND_FLASH_READ(ATH_CAL_NAND_PARTITION, cal_location + FLASH_CAL_START_OFFSET ,QC98XX_EEPROM_SIZE_LARGEST,&ret_len,ptr);
 #else
@@ -1483,14 +1487,15 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
                 } else if (soc->soc_idx == 2) {
                         filename = CALDATA2_FILE_PATH;
                 }
-                if (A_ERROR ==  qdf_fs_read(filename, 0, QC98XX_EEPROM_SIZE_LARGEST, ptr)) {
-                    qdf_err("Error: Reading %s failed.", filename);
-                    ret_val =  -EINVAL;
+                if(A_ERROR ==  qdf_fs_read(filename, 0, QC98XX_EEPROM_SIZE_LARGEST, ptr)) {
+                        qdf_info("%s[%d], Error: Reading %s failed.", __func__, __LINE__, filename);
+                        ret_val =  -EINVAL;
                 }
 #endif
             }
-            if (ret_val) {
-                qdf_err("ATH_CAL_NAND Partition flash cal data(NAND) read failed");
+            if (ret_val)
+            {
+                qdf_info("%s %d: ATH_CAL_NAND Partition flash cal data(NAND) read failed",__func__, __LINE__ );
                 if (ptr) {
                     vfree(ptr);
                 }
@@ -1498,16 +1503,19 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
             }
         }
 #else
-        if (!soc->cal_mem ) {
-            qdf_err("NOR FLASH cal data address is not mapped");
+        if (!soc->cal_mem ){
+            qdf_info("%s: NOR FLASH cal data address is not mapped", __func__);
             return -EINVAL;
         }
 
-        if (soc->soc_idx == 0) {
-            qdf_info("NOR FLASH Wifi0 Select OFFSET %x",FLASH_CAL_START_OFFSET);
+        if(soc->soc_idx == 0)
+        {
+            qdf_info("\n NOR FLASH Wifi0 Select OFFSET %x",FLASH_CAL_START_OFFSET);
             ptr = soc->cal_mem + FLASH_CAL_START_OFFSET;
-        } else {
-            qdf_info("%s NOR FLASH Select OFFSET %x",soc->sc_osdev->netdev->name, FLASH_CAL_START_OFFSET);
+        }
+        else
+        {
+            qdf_info("\n %s NOR FLASH Select OFFSET %x",soc->sc_osdev->netdev->name, FLASH_CAL_START_OFFSET);
             ptr = soc->cal_mem + FLASH_CAL_START_OFFSET;
         }
 
@@ -1518,7 +1526,7 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
 		char * filename;
 
 		if (!soc->cal_in_file) {
-			qdf_err("cal data file is not ready.");
+			qdf_info("%s: cal data file is not ready.", __func__);
 			return -EINVAL;
 		}
 
@@ -1536,106 +1544,91 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
 		}
 		else
 		{
-			qdf_err(" Error, Please check why none of wifi0 wifi1 or wifi2 is your device name (%s).",
-				soc->sc_osdev->netdev->name);
+			qdf_info("%s[%d], Error, Please check why none of wifi0 wifi1 or wifi2 is your device name (%s).",
+					__func__, __LINE__, soc->sc_osdev->netdev->name);
 			return A_ERROR;
 		}
 
-		qdf_info("Get Caldata for %s.", soc->sc_osdev->netdev->name);
+		qdf_info("%s[%d] Get Caldata for %s.", __func__, __LINE__, soc->sc_osdev->netdev->name);
 
-		if (NULL == filename) {
-			/* potential ptr leak here, as already allocated ptr is not freed
-			 * ptr is either pointing to vmalloc, if ath_nand_flash complation
-			 * flag is present if not ptr points to soc->cal_mem+offset, in
-			 * first case we should free here
-			 */
-#ifdef ATH_CAL_NAND_FLASH
-			if (ptr) vfree(ptr);
-#endif
-			qdf_err("Error: File name is null, please assign right caldata file name.");
+		if(NULL == filename)
+		{
+			qdf_info("%s[%d], Error: File name is null, please assign right caldata file name.", __func__, __LINE__);
 			return -EINVAL;
 		}
-		/* pointer allocated at line 1459, is not freed, but allocated with
-		 * new pointer here. Both seems be of same size. We should check and
-		 * allocate here. This new ptr memory is allocated without any
-		 * compilation flags like ATH_CAL_NAND_FLASH.
-		 */
-#ifdef ATH_NAND_CAL_FLASH
-	    /* if ATH_NAND_CAL_FLASH is defined, memory is allocated through
-		 * vmalloc, free it first before taking new allocation. If that
-		 * is not defined it is pointing to sc_calmem which need not be
-		 * freed.
-		 */
-		if (ptr) vfree(ptr);
-#endif
+
 		ptr = vmalloc(QC98XX_EEPROM_SIZE_LARGEST);
-		if (NULL == ptr) {
-			qdf_err("Memory allocation for calibration file failed.");
+		if ( NULL == ptr ){
+			qdf_info("%s %d: Memory allocation for calibration file failed.",__func__, __LINE__);
 			return -A_NO_MEMORY;
 		}
 
-		if (A_ERROR ==  qdf_fs_read(filename, 0, QC98XX_EEPROM_SIZE_LARGEST, ptr)) {
+		if(A_ERROR ==  qdf_fs_read(filename, 0, QC98XX_EEPROM_SIZE_LARGEST, ptr))
+		{
 			soc->cal_in_file = 0;
-			qdf_err("Error: Reading %s failed.", filename);
-			if (ptr)
+			qdf_info("%s[%d], Error: Reading %s failed.", __func__, __LINE__, filename);
+			if(ptr)
 				vfree(ptr);
 			return A_ERROR;
 		}
 	}
 
-        if (!ptr) {
-            qdf_err("Memory allocation failed");
+        if (NULL == ptr) {
+            qdf_info("%s %d: Memory allocation failed.",__func__, __LINE__);
+
             return -EINVAL;
         }
 
         if (le16_to_cpu(*(uint16_t *)ptr) != QC98XX_EEPROM_SIZE_LARGEST) {
             soc->cal_in_file = 0;
-            qdf_info("flash cal data len %d doesn't equal to %d",
-                     le16_to_cpu(*(uint16_t *)ptr), QC98XX_EEPROM_SIZE_LARGEST);
-            /* ptr is allocated out side ATH_NAND_CAL_FLASH flag needs free here */
-
+            qdf_info("%s: flash cal data len %d doesn't equal to %d", __func__, le16_to_cpu(*(uint16_t *)ptr), QC98XX_EEPROM_SIZE_LARGEST);
+#if defined(ATH_CAL_NAND_FLASH)
             if (ptr) {
                 vfree(ptr);
             }
+#endif
             return -EINVAL;
         }
 
         if (qc98xx_verify_checksum(ptr)){
             soc->cal_in_file = 0;
-            /* ptr is allocated out side ATH_NAND_CAL_FLASH flag needs free here */
-
+#if defined(ATH_CAL_NAND_FLASH)
             if (ptr) {
                 vfree(ptr);
             }
-            qdf_err("===> CAL CHECKSUM FAILED <=== ");
+#endif
+            qdf_info("\n ===> CAL CHECKSUM FAILED <=== ");
             return -EINVAL;
         }
 
         srcp = (uint32_t *)ptr;
         orig_size = QC98XX_EEPROM_SIZE_LARGEST;
         fw_entry_size = (orig_size + 3) & ~3;
-        qdf_info("Download Flash data len %u", fw_entry_size);
+        qdf_info("%s %d: Download Flash data len %zd", __func__, __LINE__, fw_entry_size);
     }
 
-    if (fw_entry && fw_entry->data == NULL) {
-        qdf_info("fw_entry->data %pK", fw_entry->data);
-        /* ptr is allocated out side ATH_NAND_CAL_FLASH flag needs free here */
+    if ( fw_entry && fw_entry->data == NULL) {
+        qdf_info("%s:%d fw_entry->data == NULL ", __func__, __LINE__);
+#if defined(ATH_CAL_NAND_FLASH) || defined(AH_CAL_IN_FILE_HOST)
         if (ptr) {
             vfree(ptr);
         }
+#endif
         return -EINVAL;
     }
 
     savedestp = destp = vmalloc(fw_entry_size);
-    if (destp == NULL) {
-        qdf_err("memory allocation failed");
-        if (file != ATH_FLASH_FILE) {
-            ol_ath_release_firmware(fw_entry);
-        }
-        /* ptr is allocated out side ATH_NAND_CAL_FLASH flag needs free here */
+    if(destp == NULL)
+    {
+        qdf_info("%s %d: memory allocation failed",__func__, __LINE__);
+	if(file != ATH_FLASH_FILE) {
+	    ol_ath_release_firmware(fw_entry);
+	}
+#if defined(ATH_CAL_NAND_FLASH)
         if (ptr) {
             vfree(ptr);
         }
+#endif
         return A_ERROR;
     }
     pad_dst = (uint8_t *)destp;
@@ -1659,25 +1652,26 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
 
     tempEeprom = NULL;
 
-    if ((file == ATH_BOARD_DATA_FILE) || (file == ATH_FLASH_FILE)) {
+    if ((file == ATH_BOARD_DATA_FILE) || (file == ATH_FLASH_FILE))
+    {
         u_int32_t board_ext_address = 0;
         int32_t board_ext_data_size;
 
         tempEeprom = OS_MALLOC(soc->sc_osdev, fw_entry_size, GFP_ATOMIC);
         if (!tempEeprom) {
-            qdf_info("Memory allocation failed");
-            if (file != ATH_FLASH_FILE) {
-                ol_ath_release_firmware(fw_entry);
-            }
-            /* ptr is allocated out side ATH_NAND_CAL_FLASH flag needs free here */
-
+            qdf_info("%s: Memory allocation failed", __func__);
+	    if(file != ATH_FLASH_FILE) {
+		ol_ath_release_firmware(fw_entry);
+	    }
+#if defined(ATH_CAL_NAND_FLASH)
             if (ptr) {
                 vfree(ptr);
             }
-            if (destp) {
+#endif
+            if(destp) {
                 vfree(destp);
             }
-            /* potential leak here if ATH_CAL_NAND_FLASH is not defined */
+
             return A_ERROR;
         }
 
@@ -1711,23 +1705,18 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
 	    if(file != ATH_FLASH_FILE) {
 		ol_ath_release_firmware(fw_entry);
 	    }
-		/* ptr is allocated out side ATH_NAND_CAL_FLASH flag needs free here */
-
+#if defined(ATH_CAL_NAND_FLASH)
             if (ptr) {
                 vfree(ptr);
             }
-
+#endif
             if(destp) {
                 vfree(destp);
             }
 
-            if (tempEeprom) {
-                 OS_FREE(tempEeprom);
-            }
-
             return A_ERROR;
         }
-        qdf_info("Board extended Data download address: 0x%x", board_ext_address);
+        qdf_info(KERN_INFO"Board extended Data download address: 0x%x", board_ext_address);
 
         /*
          * Check whether the target has allocated memory for extended board
@@ -1741,23 +1730,19 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
                     (u_int8_t *)(((uintptr_t)tempEeprom) + board_data_size), board_ext_data_size, bmi_handle);
 
             if (status != EOK) {
-                qdf_info("BMI operation failed ");
-                if (file != ATH_FLASH_FILE) {
-                    ol_ath_release_firmware(fw_entry);
-                }
-                /* ptr is allocated out side ATH_NAND_CAL_FLASH flag needs free here */
-
+                qdf_info("%s: BMI operation failed: %d", __func__, __LINE__);
+		if(file != ATH_FLASH_FILE) {
+		    ol_ath_release_firmware(fw_entry);
+		}
+#if defined(ATH_CAL_NAND_FLASH)
                 if (ptr) {
                     vfree(ptr);
                 }
-
+#endif
                 if(destp) {
                     vfree(destp);
                 }
 
-                if (tempEeprom) {
-                     OS_FREE(tempEeprom);
-                }
                 return -1;
             }
 
@@ -1774,6 +1759,7 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
     offset = 0;
 
 #if defined(ATH_CONFIG_FW_SIGN)
+
     A_UINT32 length;
     SIGN_HEADER_T *sign_header;
 
@@ -1792,19 +1778,15 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
 
         if(A_FAILED(status)) {
             AR_DEBUG_PRINTF(ATH_DEBUG_ERR, ("Unable to start sign stream\n"));
-            /* ptr is allocated out side ATH_NAND_CAL_FLASH flag needs free here */
-
+#if defined(ATH_CAL_NAND_FLASH)
             if (ptr) {
                 vfree(ptr);
             }
-
+#endif
             if(destp) {
                 vfree(destp);
             }
 
-            if (tempEeprom) {
-                 OS_FREE(tempEeprom);
-            }
             return A_ERROR;
         }
 
@@ -1849,10 +1831,11 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
 #endif
 
     if (file == ATH_FLASH_FILE) {
-        /* ptr is allocated out side ATH_NAND_CAL_FLASH flag needs free here */
+#if defined(ATH_CAL_NAND_FLASH)
         if (ptr) {
             vfree(ptr);
         }
+#endif
     }
 
     if(destp) {
@@ -1864,15 +1847,16 @@ ol_transfer_bin_file(ol_ath_soc_softc_t *soc, ATH_BIN_FILE file,
     }
 
     if (status != EOK) {
-        qdf_err("BMI operation failed ");
-        if (file != ATH_FLASH_FILE) {
-            ol_ath_release_firmware(fw_entry);
-        }
+        qdf_info("BMI operation failed: %d", __LINE__);
+	if(file != ATH_FLASH_FILE) {
+	    ol_ath_release_firmware(fw_entry);
+	}
         return -1;
     }
 
-    if (file != ATH_FLASH_FILE)
-        ol_ath_release_firmware(fw_entry);
+    if(file != ATH_FLASH_FILE) {
+	ol_ath_release_firmware(fw_entry);
+    }
 
     return status;
 }
@@ -1907,11 +1891,11 @@ ol_download_cal_data (ol_ath_soc_softc_t  *soc,
         }
     }
     if (status) {
-        qdf_info("Board data download failed, download address: %pK",
-                 (uint8_t *)(uintptr_t)address);
+        qdf_info("%s: Board data download failed, download address: %pK",
+                 __func__, (void *)(uintptr_t)address);
     } else {
-        qdf_info("Board data file: %d successfully downloaded, download address: %pK",
-                 file, (uint8_t *)(uintptr_t)address);
+        qdf_info("%s: Board data file: %d successfully downloaded, download address: %pK",
+                 __func__, file, (void *)(uintptr_t)address);
     }
     return status;
 }
@@ -1928,9 +1912,10 @@ ol_ath_download_firmware(ol_ath_soc_softc_t *soc)
     struct bmi_info *bmi_handle;
 
     hif_hdl = lmac_get_hif_hdl(soc->psoc_obj);
-    if (!hif_hdl) {
-        qdf_err("Failed to get valid hif_hdl ");
-        goto failed;
+    if (!hif_hdl)
+    {
+	    qdf_info("Failed to get valid hif_hdl ");
+	    goto failed;
     }
     target_type = lmac_get_tgt_type(soc->psoc_obj);
     target_version = lmac_get_tgt_version(soc->psoc_obj);
@@ -1947,17 +1932,17 @@ ol_ath_download_firmware(ol_ath_soc_softc_t *soc)
                         (u_int8_t *)&address, 4, bmi_handle);
             }
 
-            qdf_info("Target Version is %x",target_version);
+            qdf_info("\n Target Version is %x",target_version);
             if (!address) {
                 if (target_version == AR6004_REV1_VERSION)  {
                     address = AR6004_REV1_BOARD_DATA_ADDRESS;
                 } else if (target_version == AR6004_VERSION_REV1_3) {
                     address = AR6004_REV5_BOARD_DATA_ADDRESS;
                 }
-                qdf_info("Target address not known! Using 0x%x",address);
+                qdf_info("%s: Target address not known! Using 0x%x", __func__, address);
             }
             /* Write EEPROM or Flash data to Target RAM */
-            qdf_info("Flash Download Address  %x ",address);
+            qdf_info("\n Flash Download Address  %x ",address);
             status = ol_transfer_bin_file(soc, ATH_FLASH_FILE, address, FALSE);
             if(status != EOK) {
                 flash_download_fail = 1;
@@ -1965,7 +1950,7 @@ ol_ath_download_firmware(ol_ath_soc_softc_t *soc)
 
             /* Record the fact that Board Data is initialized */
             if ((!flash_download_fail) && (target_version != AR6004_VERSION_REV1_3)) {
-                qdf_info("Board data initialized");
+                qdf_info("\n Board data initialized");
                 param = 1;
                 BMIWriteMemory(hif_hdl,
                         host_interest_item_address(target_type,
@@ -1980,7 +1965,7 @@ ol_ath_download_firmware(ol_ath_soc_softc_t *soc)
              * Download first otp bin to get a board id
              */
             /* Transfer One Time Programmable data */
-            qdf_info("Download OTP, flash download ADDRESS 0x%x",address);
+            qdf_info(KERN_INFO"%s: Download OTP, flash download ADDRESS 0x%x",__func__,address);
             address = BMI_SEGMENTED_WRITE_ADDR;
 #if defined(ATH_CONFIG_FW_SIGN)
             status = ol_transfer_bin_file(soc, ATH_OTP_FILE, address, FALSE);
@@ -2002,22 +1987,22 @@ ol_ath_download_firmware(ol_ath_soc_softc_t *soc)
                 else {
                     param = PARAM_GET_CHIPVER_BID; /* Get BoardID first */
                 }
-                if (((1 << soc->soc_idx) != 0) && ol_dual_band_5g_radios) {
-                    qdf_info("Dual-band configuring with 2.4Ghz");
+                if ((1 << soc->soc_idx) && ol_dual_band_5g_radios) {
+                    qdf_info("\n Dual-band configuring with 2.4Ghz");
                     param |= PARAM_DUAL_BAND_5G;
-                } else if (((1 << soc->soc_idx) != 0) && ol_dual_band_2g_radios) {
-                    qdf_info("Dual-band configuring with 5Ghz");
+                } else if ((1 << soc->soc_idx) && ol_dual_band_2g_radios) {
+                    qdf_info("\n Dual-band configuring with 5Ghz");
                     param |= PARAM_DUAL_BAND_2G;
                 }
-                qdf_info("First OTP send param 0x%x", param);
+                qdf_info(KERN_INFO"\n First OTP send param %x", param);
                 if((status = BMIExecute(hif_hdl, address, &param, bmi_handle, 1))!= A_OK ) {
-                    qdf_info("OTP download and Execute failed . status :%d  ", status);
+                    qdf_info("%s : OTP download and Execute failed . status :%d  ",__func__,status);
                     phase = 2 ;
                     goto failed;
                 }
-                qdf_info("First OTP download and Execute is good address:0x%x return param %d", param, address);
+                qdf_info("%s :First OTP download and Execute is good address:0x%x return param %d",__func__, param,address);
             } else if ( status == -1 ) {
-                qdf_info("ol_transfer_bin_file failed. status :%d ", status);
+                qdf_info("%s : ol_transfer_bin_file failed. status :%d ",__func__,status);
                 return status ;
             }
 
@@ -2075,7 +2060,7 @@ ol_ath_download_firmware(ol_ath_soc_softc_t *soc)
          } else if (target_version == AR6004_VERSION_REV1_3) {
               address = AR6004_REV5_BOARD_DATA_ADDRESS;
          }
-        qdf_info("Target address not known! Using 0x%x", address);
+        qdf_info("%s: Target address not known! Using 0x%x", __func__, address);
     }
 
     if(soc->device_id == AR9887_DEVICE_ID) {
@@ -2103,7 +2088,7 @@ ol_ath_download_firmware(ol_ath_soc_softc_t *soc)
                            (u_int8_t *)&param, 4, bmi_handle);
         }
     } else {
-        qdf_info(": BOARDDATA DOWNLOAD TO address 0x%x", address);
+        qdf_info(KERN_INFO"%s: BOARDDATA DOWNLOAD TO address 0x%x",__func__, address);
         /* Flash is either not available or invalid */
         if ((status = ol_transfer_bin_file(soc, ATH_BOARD_DATA_FILE, address, FALSE)) != EOK) {
             phase = 1 ;
@@ -2121,7 +2106,7 @@ ol_ath_download_firmware(ol_ath_soc_softc_t *soc)
 
         /* Transfer One Time Programmable data */
         address = BMI_SEGMENTED_WRITE_ADDR;
-        qdf_info("Using 0x%x for the remainder of init", address);
+        qdf_info(KERN_INFO"%s: Using 0x%x for the remainder of init", __func__, address);
 #if defined(ATH_CONFIG_FW_SIGN)
         status = ol_transfer_bin_file(soc, ATH_OTP_FILE, address, FALSE);
 #else
@@ -2137,46 +2122,46 @@ ol_ath_download_firmware(ol_ath_soc_softc_t *soc)
                 else {
                     if(ol_validate_otp_mod_param(
                            cfg_get(soc->psoc_obj, CFG_OL_OTP_MOD_PARAM))< 0 ) {
-                           qdf_info("[Flash] : Ignore Module param");
+                           qdf_info("\n [Flash] : Ignore Module param");
                            param = PARAM_FLASH_SECTION_ALL;
                     }
                     else{
                         param = cfg_get(soc->psoc_obj, CFG_OL_OTP_MOD_PARAM);
-                        qdf_info("[Flash] : Module param 0x%x selected",
-                                 cfg_get(soc->psoc_obj, CFG_OL_OTP_MOD_PARAM));
+                        qdf_info("\n [Flash] : Module param 0x%x selected", 
+                                cfg_get(soc->psoc_obj, CFG_OL_OTP_MOD_PARAM));
                     }
                 }
             } // soc->cal_in_flash and soc->cal_in_file
             else {
                 if(ol_validate_otp_mod_param(
                          cfg_get(soc->psoc_obj, CFG_OL_OTP_MOD_PARAM)) < 0) {
-                    qdf_info("[Non-Flash] : Ignore Module param");
+                    qdf_info(KERN_INFO"\n [Non-Flash] : Ignore Module param");
                     param = PARAM_EEPROM_SECTION_MAC | PARAM_EEPROM_SECTION_REGDMN | PARAM_EEPROM_SECTION_CAL;
                 }
                 else {
                     param = cfg_get(soc->psoc_obj, CFG_OL_OTP_MOD_PARAM);
-                    qdf_info("[Non-Flash] mode :  Module param 0x%x selected",
-                             cfg_get(soc->psoc_obj, CFG_OL_OTP_MOD_PARAM));
+                    qdf_info("\n [Non-Flash] mode :  Module param 0x%x selected", 
+                            cfg_get(soc->psoc_obj, CFG_OL_OTP_MOD_PARAM));
                 }
             }
 
-            if (((1 << soc->soc_idx) != 0) && ol_dual_band_5g_radios) {
-                qdf_info("Dual-band configuring with 2.4Ghz");
+            if ((1 << soc->soc_idx) && ol_dual_band_5g_radios) {
+                qdf_info("\n Dual-band configuring with 2.4Ghz");
                 param |= PARAM_DUAL_BAND_5G;
-            } else if (((1 << soc->soc_idx) != 0) && ol_dual_band_2g_radios) {
-                qdf_info("Dual-band configuring with 5Ghz");
+            } else if ((1 << soc->soc_idx) && ol_dual_band_2g_radios) {
+                qdf_info("\n Dual-band configuring with 5Ghz");
                 param |= PARAM_DUAL_BAND_2G;
             }
 
-            qdf_info("Second otp download Param %x ", param);
-            if ((status = BMIExecute(hif_hdl, address, &param, bmi_handle, 1))!= A_OK ) {
-                qdf_info("OTP download and Execute failed . status :%d  ", status);
+            qdf_info(KERN_INFO"\n Second otp download Param %x ", param);
+            if((status = BMIExecute(hif_hdl, address, &param, bmi_handle, 1))!= A_OK ) {
+                qdf_info("%s : OTP download and Execute failed . status :%d  ",__func__,status);
                 phase = 2 ;
                 goto failed;
             }
-            qdf_info("Second OTP download and Execute is good, param=0x%x ", param);
+            qdf_info("%s : Second OTP download and Execute is good, param=0x%x ",__func__,param);
         } else if ( status == -1 ) {
-            qdf_info("ol_transfer_bin_file failed. status :%d ", status);
+            qdf_info("%s : ol_transfer_bin_file failed. status :%d ",__func__,status);
             return status ;
         }
     }
@@ -2261,13 +2246,13 @@ ol_ath_download_firmware(ol_ath_soc_softc_t *soc)
     return EOK;
 
 failed:
-       qdf_info("ol_transfer_bin_file failed. phase:%d ", phase);
+       qdf_info("%s : ol_transfer_bin_file failed. phase:%d ",__func__,phase);
        return status ;
 }
 
-#if !CONFIG_WIFI_EMULATION_WIFI_3_0
+#if !QCA_WIFI_QCA8074_VP
 static QDF_STATUS
-    ol_get_tgt_dump_location(A_UINT32 *fw_io_mem_addr_l, A_UINT32 *fw_io_mem_size_l, uint32_t target_type)
+ol_get_tgt_dump_location(A_UINT32 *fw_io_mem_addr_l, A_UINT32 *fw_io_mem_size_l)
 {
 #if ATH_SUPPORT_FW_RAM_DUMP_FOR_MIPS
     /* MIPS PLATFORM */
@@ -2280,7 +2265,7 @@ static QDF_STATUS
     *fw_io_mem_size_l = vmem_len;
 #else
     /* ARM PLATFORM */
-#if  LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0) && defined(CONFIG_OF)
+#if  LINUX_VERSION_CODE >= KERNEL_VERSION(3,14,0)
     struct device_node *dev_node=NULL;
     int num_addr_cell, num_size_cell, ret;
     unsigned int registerdetails[4]={0};
@@ -2289,11 +2274,8 @@ static QDF_STATUS
     if (dev_node) {
         num_addr_cell = of_n_addr_cells(dev_node);
         num_size_cell = of_n_size_cells(dev_node);
-        if ((ret = qal_devnode_read_u32_array(dev_node,"reg",
-                                              &registerdetails[0],
-                                              (2 * num_addr_cell)))) {
-            qdf_err("Error: While retrieving register details from the reg "
-                    "entry in wifi_dump. error %d",ret);
+        if ((ret = of_property_read_u32_array(dev_node,"reg", &registerdetails[0], (2 * num_addr_cell)))) {
+            qdf_err("Error: While retrieving register details from the reg entry in wifi_dump. error %d",ret);
             return QDF_STATUS_E_FAULT;
         }
         if ((num_addr_cell == 2) && (num_size_cell == 2)) {
@@ -2312,17 +2294,17 @@ static QDF_STATUS
     }
 #else /* for linux version code < 3.14 */
     if (target_type == TARGET_TYPE_AR9888) {
-        fw_io_mem_addr_l = (A_UINT32 *)FW_IO_MEM_ADDR_AR9888;
-        fw_io_mem_size_l = (A_UINT32 *)FW_IO_MEM_SIZE_AR9888;
+        fw_io_mem_addr_l = FW_IO_MEM_ADDR_AR9888;
+        fw_io_mem_size_l = FW_IO_MEM_SIZE_AR9888;
     } else if (target_type == TARGET_TYPE_QCA9984 || target_type == TARGET_TYPE_QCA9888) {
-        fw_io_mem_addr_l = (A_UINT32 *)FW_IO_MEM_ADDR_AR900B;
-        fw_io_mem_size_l = (A_UINT32 *)FW_IO_MEM_SIZE_AR900B;
+        fw_io_mem_addr_l = FW_IO_MEM_ADDR_AR900B;
+        fw_io_mem_size_l = FW_IO_MEM_SIZE_AR900B;
     } else if (target_type == TARGET_TYPE_AR900B){
-        fw_io_mem_addr_l = (A_UINT32 *)FW_IO_MEM_ADDR_AR900B;
-        fw_io_mem_size_l = (A_UINT32 *)FW_IO_MEM_SIZE_AR900B;
+        fw_io_mem_addr_l = FW_IO_MEM_ADDR_AR900B;
+        fw_io_mem_size_l = FW_IO_MEM_SIZE_AR900B;
     } else if (target_type == TARGET_TYPE_IPQ4019) {
-        fw_io_mem_addr_l = (A_UINT32 *)FW_IO_MEM_ADDR_IPQ4019;
-        fw_io_mem_size_l = (A_UINT32 *)FW_IO_MEM_SIZE_IPQ4019;
+        fw_io_mem_addr_l = FW_IO_MEM_ADDR_IPQ4019;
+        fw_io_mem_size_l = FW_IO_MEM_SIZE_IPQ4019;
     } else {
         return QDF_STATUS_E_INVAL;
     }
@@ -2332,9 +2314,9 @@ static QDF_STATUS
     qdf_info("Retrived fw_io_mem_size_l = %x fw_io_mem_addr_l = %x",*fw_io_mem_size_l, *fw_io_mem_addr_l);
     return QDF_STATUS_SUCCESS;
 }
-#endif /* CONFIG_WIFI_EMULATION_WIFI_3_0 */
+#endif /* QCA_WIFI_QCA8074_VP */
 
-#if !CONFIG_WIFI_EMULATION_WIFI_3_0
+#if !QCA_WIFI_QCA8074_VP
 /*
  * API to read the iram content from the target memory and write into the
  * F/W dump location.
@@ -2361,7 +2343,7 @@ ol_ath_copy_tgt_iram(struct ol_ath_soc_softc *soc)
     }
 
     psoc = soc->psoc_obj;
-    tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+    tgt_hdl = (struct target_psoc_info *)wlan_psoc_get_tgt_if_handle(psoc);
     if (!tgt_hdl) {
         qdf_warn("psoc target_psoc_info is null");
         return;
@@ -2369,7 +2351,7 @@ ol_ath_copy_tgt_iram(struct ol_ath_soc_softc *soc)
     hif_hdl = lmac_get_ol_hif_hdl(soc->psoc_obj);
 
     tgt_iram_paddr = TARG_IRAM_START;
-    ret = ol_get_tgt_dump_location(&fw_iram_bkp_addr, &fw_io_mem_size_l, lmac_get_tgt_type(psoc));
+    ret = ol_get_tgt_dump_location(&fw_iram_bkp_addr, &fw_io_mem_size_l);
 
     /* Get crashdump mem addr and size */
 #if ATH_SUPPORT_FW_RAM_DUMP_FOR_MIPS
@@ -2419,7 +2401,7 @@ ol_ath_copy_tgt_iram(struct ol_ath_soc_softc *soc)
     iounmap(org_iram_vaddr);
     return;
 }
-#endif  /* CONFIG_WIFI_EMULATION_WIFI_3_0 */
+#endif  /* QCA_WIFI_QCA8074_VP */
 
 int ol_target_init(ol_ath_soc_softc_t *soc, bool first)
 {
@@ -2435,9 +2417,9 @@ int ol_target_init(ol_ath_soc_softc_t *soc, bool first)
     void *hif_hdl;
 
     psoc = soc->psoc_obj;
-    tgt_hdl = wlan_psoc_get_tgt_if_handle(psoc);
+    tgt_hdl = (struct target_psoc_info *)wlan_psoc_get_tgt_if_handle(psoc);
     if (!tgt_hdl) {
-        qdf_err("psoc target_psoc_info is null");
+        qdf_info("%s: psoc target_psoc_info is null", __func__);
         return -EINVAL;
     }
     target_type = target_psoc_get_target_type(tgt_hdl);
@@ -2450,11 +2432,13 @@ int ol_target_init(ol_ath_soc_softc_t *soc, bool first)
 #ifndef ATH_CAL_NAND_FLASH
     soc->cal_mem = A_IOREMAP(cal_location, HOST_CALDATA_SIZE);
     if (!soc->cal_mem) {
-        qdf_err("A_IOREMAP failed");
+        qdf_info("%s: A_IOREMAP failed", __func__);
         return -1;
-    } else {
-        qdf_info("soc->cal_mem %pK AH_CAL_LOCATIONS_PCI %x HOST_CALDATA_SIZE %x",
-                 soc->cal_mem, cal_location, HOST_CALDATA_SIZE);
+    }
+    else
+    {
+        qdf_info("\n soc->cal_mem %pK AH_CAL_LOCATIONS_PCI %x HOST_CALDATA_SIZE %x",
+                soc->cal_mem, cal_location, HOST_CALDATA_SIZE);
     }
 #endif
 #endif
@@ -2467,12 +2451,12 @@ int ol_target_init(ol_ath_soc_softc_t *soc, bool first)
      * 1. Initialize BMI
      */
     soc->bmi_handle = BMIAlloc();
-    if (soc->bmi_handle == NULL) {
-        qdf_err(" BMI alloc failed ");
+    if(soc->bmi_handle == NULL) {
+        qdf_info(" BMI alloc failed ");
         return -1;
     }
     BMIInit(soc->bmi_handle, soc->sc_osdev);
-    qdf_info("BMI inited.");
+    qdf_info(KERN_INFO"%s() BMI inited.", __func__);
 
     if (!soc->is_sim) {
         unsigned int bmi_user_agent;
@@ -2486,10 +2470,10 @@ int ol_target_init(ol_ath_soc_softc_t *soc, bool first)
             status = -1;
             goto attach_failed;
         }
-        qdf_info("BMI Get Target Info.");
+        qdf_info(KERN_INFO"%s() BMI Get Target Info.", __func__);
 
         target_version = targ_info.target_ver;
-        target_psoc_set_target_ver(tgt_hdl, target_version);
+	target_psoc_set_target_ver(tgt_hdl, target_version);
 
         tgt_info = hif_get_target_info_handle(hif_hdl);
         tgt_info->target_version = target_version;
@@ -2515,7 +2499,7 @@ int ol_target_init(ol_ath_soc_softc_t *soc, bool first)
                 status = -1;
                 goto attach_failed;
             }
-            qdf_info("configure Target .");
+            qdf_info(KERN_INFO"%s() configure Target .", __func__);
 
             /*
              * 4. Download firmware image and data files
@@ -2524,11 +2508,11 @@ int ol_target_init(ol_ath_soc_softc_t *soc, bool first)
             {
                 goto attach_failed;
             }
-            qdf_info("Download FW done. ");
+            qdf_info(KERN_INFO"%s() Download FW done. ", __func__);
         }
     }
 }
-#if !CONFIG_WIFI_EMULATION_WIFI_3_0
+#if !QCA_WIFI_QCA8074_VP
     /* target iram backup for BL family only */
     if (target_type == TARGET_TYPE_QCA9984 ||
         target_type == TARGET_TYPE_IPQ4019 ||
@@ -2552,8 +2536,8 @@ int ol_derive_swap_filename (const char* bin_filename, char* swap_filename, ATH_
     int len =0, dot_count=0, tot_dotcount=0;
     split_name = &temp[0];
 
-    if (!bin_filename) {
-        qdf_err("Bin file not present");
+    if(!bin_filename) {
+        qdf_info("%s: Bin file not present",__func__);
         return -1;
     }
 
@@ -2632,7 +2616,7 @@ ol_transfer_swap_struct(ol_ath_soc_softc_t *soc, ATH_SWAP_INFO swap_info,char *b
     sc = lmac_get_ol_hif_hdl(soc->psoc_obj);
 
     if (!sc) {
-        qdf_err("hif_pci_softc is null");
+        qdf_info("%s: hif_pci_softc is null", __func__);
         return status;
     }
 
@@ -2746,13 +2730,13 @@ ol_transfer_swap_struct(ol_ath_soc_softc_t *soc, ATH_SWAP_INFO swap_info,char *b
     }
 
     if (status !=0 ) {
-        qdf_err("Swap Seg alloc failed for FW bin type %d ", swap_info);
+        qdf_info("%s: Swap Seg alloc failed for FW bin type %d ",__func__,swap_info);
         return status;
     }
 
     /* Parse the code/data swap file and copy to the host memory & get target write addr */
     if (ol_swap_wlan_memory_expansion(soc,seg_info,file_name,&target_write_addr)) {
-        qdf_err("Swap Memory expansion failed for FW bin type %d ", swap_info);
+        qdf_info("%s: Swap Memory expansion failed for FW bin type %d ",__func__,swap_info);
         status = -1;
         return status;
     }
@@ -2761,15 +2745,13 @@ ol_transfer_swap_struct(ol_ath_soc_softc_t *soc, ATH_SWAP_INFO swap_info,char *b
     rv  = BMIWriteMemory(sc, target_write_addr,
             (u_int8_t *)seg_info, sizeof(struct swap_seg_info), soc->bmi_handle);
 
-    qdf_info("soc=%pK  target_write_addr=%x seg_info=%pK ", soc,
-             target_write_addr,(u_int8_t *)seg_info);
+    qdf_info(KERN_INFO"soc=%pK  target_write_addr=%x seg_info=%pK ", soc,target_write_addr,(u_int8_t *)seg_info);
 
     if (rv != A_OK) {
-        qdf_err("Failed to Write for Target Memory Expansion target_addr=%x ",
-                target_write_addr);
+        qdf_info("Failed to Write for Target Memory Expansion target_addr=%x ",target_write_addr);
         return rv;
     }
-    qdf_info(":Code swap structure successfully downloaded for bin type =%d ", swap_info);
+    qdf_info(KERN_INFO"%s:Code swap structure successfully downloaded for bin type =%d ",__func__,swap_info);
     return 0;
 }
 
@@ -2780,6 +2762,7 @@ ol_ath_code_data_swap(ol_ath_soc_softc_t *soc,const char * bin_filename, ATH_BIN
     char swap_filename[FILE_PATH_LEN];
     char filepath [FILE_PATH_LEN];
     const char *filename_path = filepath;
+    struct file *file;
     int status =0;
     int len = 0;
 
@@ -2787,182 +2770,190 @@ ol_ath_code_data_swap(ol_ath_soc_softc_t *soc,const char * bin_filename, ATH_BIN
         return status;
 
     switch (file_type) {
+
         case ATH_OTP_FILE:
-             memset(&swap_filename[0], 0, sizeof(swap_filename));
-             ol_derive_swap_filename(bin_filename, swap_filename,
-                                     ATH_TARGET_OTP_CODE_SWAP);
+    	     memset(&swap_filename[0], 0, sizeof(swap_filename));
+             ol_derive_swap_filename(bin_filename, swap_filename, ATH_TARGET_OTP_CODE_SWAP);
 
              memset(&filepath[0], 0, sizeof(filepath));
              strlcpy(filepath,SWAP_FILE_PATH,FILE_PATH_LEN);
              len = strlen(filepath);
              len += strlen(swap_filename);
-             if (len <= (FILE_PATH_LEN-1)) {
+             if(len <= (FILE_PATH_LEN-1)) {
                 strlcat(filepath,swap_filename,FILE_PATH_LEN);
                 len = 0;
-             } else {
-                 qdf_err("file path len exceeds allowed length");
+             }
+             else {
+                 qdf_info("%s:%d file path len exceeds array len",__func__,__LINE__);
                  return -ENAMETOOLONG;
              }
 
             /* Target OTP  Code Swap & Data swap should always happen
              * before downloading the actual OTP binary  file  */
-             if (check_path_exists(filename_path)) {
+             file = file_open(filename_path, O_RDONLY, 00644);
+             if (file) {
+                 file_close(file);
                  /* Allocate, expand & write otp code swap address to fw */
-                 status = ol_transfer_swap_struct(soc, ATH_TARGET_OTP_CODE_SWAP,
-                                                  swap_filename);
-                 if (status)
+                 status = ol_transfer_swap_struct(soc,ATH_TARGET_OTP_CODE_SWAP,swap_filename);
+                 if(status != 0) {
                      return status;
-                 qdf_info("bin_filename=%s swap_filename=%s", bin_filename,
-                          filepath);
+                 }
+                 qdf_info("bin_filename=%s swap_filename=%s ",bin_filename, filepath);
              }
 
-             memset(&swap_filename[0], 0, sizeof(swap_filename));
-             ol_derive_swap_filename(bin_filename, swap_filename,
-                                     ATH_TARGET_OTP_DATA_SWAP);
+    	     memset(&swap_filename[0], 0, sizeof(swap_filename));
+             ol_derive_swap_filename(bin_filename, swap_filename, ATH_TARGET_OTP_DATA_SWAP);
 
              memset(&filepath[0], 0, sizeof(filepath));
              strlcpy(filepath,SWAP_FILE_PATH,FILE_PATH_LEN);
              len = strlen(filepath);
              len += strlen(swap_filename);
-             if (len <= (FILE_PATH_LEN-1)) {
+             if(len <= (FILE_PATH_LEN-1)) {
                 strlcat(filepath,swap_filename,FILE_PATH_LEN);
                 len = 0;
-             } else {
-                 qdf_err("file path len exceeds allowed length");
+             }
+             else {
+                 qdf_info("%s:%d file path len exceeds array len",__func__,__LINE__);
                  return -ENAMETOOLONG;
              }
 
-             if (check_path_exists(filename_path)) {
+             file = file_open(filename_path, O_RDONLY, 00644);
+             if (file) {
+                 file_close(file);
+
                  /* Allocate, expand & write otp code swap address to fw */
-                 status = ol_transfer_swap_struct(soc, ATH_TARGET_OTP_DATA_SWAP,
-                                                  swap_filename);
-                 if (status)
+                 status = ol_transfer_swap_struct(soc,ATH_TARGET_OTP_DATA_SWAP,swap_filename);
+                 if(status != 0) {
                      return status;
-                 qdf_info("bin_filename=%s swap_filename=%s", bin_filename,
-                          filepath);
+                 }
+                 qdf_info("bin_filename=%s swap_filename=%s ",bin_filename, filepath);
              }
              break;
 
         case ATH_FIRMWARE_FILE:
-             memset(&swap_filename[0], 0, sizeof(swap_filename));
-             ol_derive_swap_filename(bin_filename, swap_filename,
-                                     ATH_TARGET_BIN_CODE_SWAP);
+    	     memset(&swap_filename[0], 0, sizeof(swap_filename));
+             ol_derive_swap_filename(bin_filename, swap_filename, ATH_TARGET_BIN_CODE_SWAP);
 
-             memset(&filepath[0], 0, sizeof(filepath));
+	     memset(&filepath[0], 0, sizeof(filepath));
              strlcpy(filepath,SWAP_FILE_PATH,FILE_PATH_LEN);
              len = strlen(filepath);
              len += strlen(swap_filename);
-             if (len <= (FILE_PATH_LEN-1)) {
+             if(len <= (FILE_PATH_LEN-1)) {
                 strlcat(filepath,swap_filename,FILE_PATH_LEN);
                 len = 0;
-             } else {
-                 qdf_err("file path len exceeds limit");
+             }
+             else {
+                 qdf_info("%s:%d file path len exceeds array len",__func__,__LINE__);
                  return -ENAMETOOLONG;
              }
 
              /* Target fw bin Code Swap & Data swap should always
               * happen before downloading the actual fw binary  file  */
-             if (check_path_exists(filename_path)) {
+	     file = file_open(filename_path, O_RDONLY, 00644);
+             if (file) {
+                 file_close(file);
                  /* Allocate, expand & write otp code swap address to fw */
-                 status = ol_transfer_swap_struct(soc, ATH_TARGET_BIN_CODE_SWAP,
-                                                  swap_filename);
-                 if (status)
+                 status = ol_transfer_swap_struct(soc,ATH_TARGET_BIN_CODE_SWAP,swap_filename);
+                 if(status != 0) {
                     return status;
-                 qdf_info("bin_filename=%s swap_filename=%s", bin_filename,
-                          filepath);
+                 }
+                 qdf_info(KERN_INFO"bin_filename=%s swap_filename=%s ",bin_filename, filepath);
              }
 
-             memset(&swap_filename[0], 0, sizeof(swap_filename));
-             ol_derive_swap_filename(bin_filename, swap_filename,
-                                     ATH_TARGET_BIN_DATA_SWAP);
+    	     memset(&swap_filename[0], 0, sizeof(swap_filename));
+             ol_derive_swap_filename(bin_filename, swap_filename, ATH_TARGET_BIN_DATA_SWAP);
 
-             memset(&filepath[0], 0, sizeof(filepath));
+	     memset(&filepath[0], 0, sizeof(filepath));
              strlcpy(filepath,SWAP_FILE_PATH,FILE_PATH_LEN);
              len = strlen(filepath);
              len += strlen(swap_filename);
-             if (len <= (FILE_PATH_LEN-1)) {
+             if(len <= (FILE_PATH_LEN-1)) {
                 strlcat(filepath,swap_filename,FILE_PATH_LEN);
                 len = 0;
              }
              else {
-                 qdf_err("file path len exceeds limit");
+                 qdf_info("%s:%d file path len exceeds array len",__func__,__LINE__);
                  return -ENAMETOOLONG;
              }
 
-             if (check_path_exists(filename_path)) {
+             file = file_open(filename_path, O_RDONLY, 00644);
+             if (file) {
+                 file_close(file);
                  /* Allocate, expand & write otp code swap address to fw */
-                 status = ol_transfer_swap_struct(soc, ATH_TARGET_BIN_DATA_SWAP,
-                                                  swap_filename);
-                 if (status)
+                 status = ol_transfer_swap_struct(soc,ATH_TARGET_BIN_DATA_SWAP,swap_filename);
+                 if(status != 0) {
                     return status;
-
-                 qdf_info("bin_filename=%s swap_filename=%s", bin_filename,
-                          filepath);
+                 }
+                 qdf_info("bin_filename=%s swap_filename=%s ",bin_filename, filepath);
              }
              break;
 
         case ATH_UTF_FIRMWARE_FILE:
              memset(&swap_filename[0], 0, sizeof(swap_filename));
-             ol_derive_swap_filename(bin_filename, swap_filename,
-                                     ATH_TARGET_BIN_UTF_CODE_SWAP);
+             ol_derive_swap_filename(bin_filename, swap_filename, ATH_TARGET_BIN_UTF_CODE_SWAP);
+
              memset(&filepath[0], 0, sizeof(filepath));
              strlcpy(filepath,SWAP_FILE_PATH,FILE_PATH_LEN);
              len = strlen(filepath);
              len += strlen(swap_filename);
-             if (len <= (FILE_PATH_LEN-1)) {
+             if(len <= (FILE_PATH_LEN-1)) {
                 strlcat(filepath,swap_filename,FILE_PATH_LEN);
                 len = 0;
-             } else {
-                 qdf_err("file path length exceeds limit");
+             }
+             else {
+                 qdf_info("%s:%d file path len exceeds array len",__func__,__LINE__);
                  return -ENAMETOOLONG;
              }
 
              /* Target fw bin Code Swap & Data swap should always
               * happen before downloading the actual fw binary  file  */
-             if (check_path_exists(filename_path)) {
+             file = file_open(filename_path, O_RDONLY, 00644);
+             if (file) {
+                 file_close(file);
                  /* Allocate, expand & write otp code swap address to fw */
-                 status = ol_transfer_swap_struct(soc,
-                                                  ATH_TARGET_BIN_UTF_CODE_SWAP,
-                                                  swap_filename);
-                 if (status)
+                 status = ol_transfer_swap_struct(soc,ATH_TARGET_BIN_UTF_CODE_SWAP,swap_filename);
+                 if(status != 0) {
                     return status;
-                 qdf_info("bin_filename=%s swap_filename=%s", bin_filename,
-                          filepath);
+                 }
+                 qdf_info("bin_filename=%s swap_filename=%s ",bin_filename, filepath);
              }
 
              memset(&swap_filename[0], 0, sizeof(swap_filename));
-             ol_derive_swap_filename(bin_filename, swap_filename,
-                                     ATH_TARGET_BIN_UTF_DATA_SWAP);
+             ol_derive_swap_filename(bin_filename, swap_filename, ATH_TARGET_BIN_UTF_DATA_SWAP);
 
              memset(&filepath[0], 0, sizeof(filepath));
              strlcpy(filepath,SWAP_FILE_PATH, sizeof(filepath));
              len = strlen(filepath);
              len += strlen(swap_filename);
-             if (len <= (FILE_PATH_LEN-1)) {
+             if(len <= (FILE_PATH_LEN-1)) {
                 strlcat(filepath,swap_filename,FILE_PATH_LEN);
                 len = 0;
-             } else {
-                 qdf_err("file path length exceeds limit");
+             }
+             else {
+                 qdf_info("%s:%d file path len exceeds array len",__func__,__LINE__);
                  return -ENAMETOOLONG;
              }
 
-             if (check_path_exists(filename_path)) {
+             file = file_open(filename_path, O_RDONLY, 00644);
+             if (file) {
+                 file_close(file);
                  /* Allocate, expand & write otp code swap address to fw */
-                 status = ol_transfer_swap_struct(soc,
-                                                  ATH_TARGET_BIN_UTF_DATA_SWAP,
-                                                  swap_filename);
-                 if (status)
+                 status = ol_transfer_swap_struct(soc,ATH_TARGET_BIN_UTF_DATA_SWAP,swap_filename);
+                 if(status != 0) {
                     return status;
-                 qdf_info("bin_filename=%s swap_filename=%s", bin_filename,
-                          filepath);
+                 }
+                 qdf_info("bin_filename=%s swap_filename=%s ",bin_filename, filepath);
              }
              break;
 
         default:
              break;
+
     }
     return status;
 }
+
+
 
 #define SOC_PCIE_REGBASE 0x81030
 #define PCIE_BAR0_MASK 0xfffff
@@ -3079,7 +3070,7 @@ char radioasserted[2] = {0,0};
  * This function creates the core dump either into file or pre-allocated
  * memory or into both.
  */
-#if !CONFIG_WIFI_EMULATION_WIFI_3_0
+#if !QCA_WIFI_QCA8074_VP
 static void
 fw_get_core_dump(ol_ath_soc_softc_t *ramdump_soc, A_INT8 *file_path,
         A_UINT32 d_opts)
@@ -3114,7 +3105,7 @@ fw_get_core_dump(ol_ath_soc_softc_t *ramdump_soc, A_INT8 *file_path,
     int total_mem_length = 0;
 
     if (!ramdump_soc) {
-        qdf_err("ramdump soc is NULL");
+        qdf_info("ramdump soc is NULL");
         qdf_target_assert_always(0);
         return;
     }
@@ -3124,7 +3115,7 @@ fw_get_core_dump(ol_ath_soc_softc_t *ramdump_soc, A_INT8 *file_path,
     hif_hdl = lmac_get_ol_hif_hdl(ramdump_soc->psoc_obj);
 
     if (!hif_hdl) {
-        qdf_err("hif handle is NULL");
+        qdf_info("hif handle is NULL: %s ", __func__);
         return;
     }
 
@@ -3142,7 +3133,7 @@ fw_get_core_dump(ol_ath_soc_softc_t *ramdump_soc, A_INT8 *file_path,
        fw_ram_dump_map_cmn = (struct fw_ram_dump_map *)&fw_ram_dump_map_AR900B;
     }
 
-    retv = ol_get_tgt_dump_location(&fw_io_mem_addr_l, &fw_io_mem_size_l, target_type);
+    retv = ol_get_tgt_dump_location(&fw_io_mem_addr_l, &fw_io_mem_size_l);
     /* Get crashdump mem addr and size */
 #if ATH_SUPPORT_FW_RAM_DUMP_FOR_MIPS
     /* MIPS PLATFORM */
@@ -3150,7 +3141,7 @@ fw_get_core_dump(ol_ath_soc_softc_t *ramdump_soc, A_INT8 *file_path,
     (void) coreid; // unused parameter
     if (dump_to_scope) {
         if (retv == QDF_STATUS_E_NOSUPPORT) {
-            qdf_err("Cannot access memory to dump WLAN Firmware data");
+            qdf_info("Cannot access memory to dump WLAN Firmware data");
             goto error_1;
         }
         crash_scope_addr = (void *)fw_io_mem_addr_l;
@@ -3168,10 +3159,10 @@ fw_get_core_dump(ol_ath_soc_softc_t *ramdump_soc, A_INT8 *file_path,
         qdf_target_assert_always(0);
         return;
     } else if (retv == QDF_STATUS_E_INVAL) {
-        qdf_err("ERROR: unknown target type");
+        qdf_info("ERROR: unknown target type");
         return;
     }
-    qdf_err("Retrived fw_io_mem_size_l = %x fw_io_mem_addr_l = %x",fw_io_mem_size_l,fw_io_mem_addr_l);
+    qdf_info("Retrived fw_io_mem_size_l = %x fw_io_mem_addr_l = %x",fw_io_mem_size_l,fw_io_mem_addr_l);
 
     if (fw_io_mem_size_l < (6 << 20)) {
         /* cannot assign slots as fw io memsize < 6MB, use slot0 only */
@@ -3191,20 +3182,20 @@ fw_get_core_dump(ol_ath_soc_softc_t *ramdump_soc, A_INT8 *file_path,
             else if(radioasserted[1] != 1)
                 coreid = 1;
             else {
-                qdf_err("ERROR: No space left to copy the target contents for this radio wifi2.Using 3rd Slot");
+                qdf_info("ERROR: No space left to copy the target contents for this radio wifi2.Using 3rd Slot");
                 coreid = 2;
             }
-            qdf_warn("WARNING: No fixed crashdummp space defined yet to handle target assert for this radio wifi2");
-            qdf_err("For now, copying the target assert in  slot [%d]",coreid);
+            qdf_info("WARNING: No fixed crashdummp space defined yet to handle target assert for this radio wifi2");
+            qdf_info("For now, copying the target assert in  slot [%d]",coreid);
         } else {
-            qdf_err("ERROR: Invalid radio id");
+            qdf_info("ERROR: Invalid radio id");
             qdf_target_assert_always(0);
             return;
         }
         n_buf_wr_offset += (coreid * 0x200000); //choose the appropriate 2MB slot
 
-        if ((n_buf_wr_offset + 0x200000) > fw_io_mem_size_l) {
-            qdf_err("ERROR: Trying write beyond offset %x is invalid.  ",fw_io_mem_size_l);
+        if((n_buf_wr_offset + 0x200000) > fw_io_mem_size_l) {
+            qdf_info("ERROR: Trying write beyond offset %x is invalid.  ",fw_io_mem_size_l);
             qdf_target_assert_always(0);
             return;
         }
@@ -3217,14 +3208,14 @@ fw_get_core_dump(ol_ath_soc_softc_t *ramdump_soc, A_INT8 *file_path,
     if (dump_to_scope) {
         if (!crash_scope_addr) {
             dump_to_scope =  0;
-            qdf_err("** ioremap failure addr:0x%x, size:0x%x",
-                    fw_io_mem_addr_l, fw_io_mem_size_l);
+            qdf_info("** %s: ioremap failure addr:0x%x, size:0x%x",
+                   __func__, fw_io_mem_addr_l, fw_io_mem_size_l);
         } else {
             qdf_mem_set_io(crash_scope_addr+n_buf_wr_offset, 0x200000, 0); //reset the contents in the slot
         }
     }
 
-    qdf_err("Copying %s target assert at offset 0x%x",ramdump_soc->sc_osdev->netdev->name,n_buf_wr_offset);
+    qdf_info("Copying %s target assert at offset 0x%x",ramdump_soc->sc_osdev->netdev->name,n_buf_wr_offset);
 
     /* DRAM is the biggest memory chunk, get the memory of that size,
      * and reuse this buffer for every region
@@ -3260,7 +3251,7 @@ fw_get_core_dump(ol_ath_soc_softc_t *ramdump_soc, A_INT8 *file_path,
         }
     }
     if (!scratch_buf) {
-        qdf_err("** Scratch buff allocation failure, Core dump will not be created");
+        qdf_info("** Scratch buff allocation failure, Core dump will not be created");
         goto error_1;
     }
 
@@ -3274,7 +3265,7 @@ fw_get_core_dump(ol_ath_soc_softc_t *ramdump_soc, A_INT8 *file_path,
         length = fw_ram_dump_map_cmn[i].length;
         remaining = length;
         block_size = adaptive_buff_len;
-        qdf_err("Copying target mem region[%d] 0x%X to crashscope location",i,address);
+        qdf_info("Copying target mem region[%d] 0x%X to crashscope location",i,address);
         if (!fw_ram_dump_map_cmn[i].skip) {
             while (remaining > 0){
                 if (remaining < block_size) {
@@ -3286,7 +3277,7 @@ fw_get_core_dump(ol_ath_soc_softc_t *ramdump_soc, A_INT8 *file_path,
 		if (fw_ram_dump_map_cmn[i].CustomHIFDiagReadMem) {
                     status = (fw_ram_dump_map_cmn[i].CustomHIFDiagReadMem)(hif_hdl, address, (A_UCHAR*)scratch_buf, block_size);
                     if(status != A_OK) {
-                        qdf_err("CustomHIFDiagReadMem failed for region %d will contain zeros", i);
+                        qdf_info("CustomHIFDiagReadMem failed for region %d will contain zeros", i);
                     }
                 }
                 else {
@@ -3299,7 +3290,7 @@ fw_get_core_dump(ol_ath_soc_softc_t *ramdump_soc, A_INT8 *file_path,
                         if (hif_diag_read_mem(hif_hdl, address,
                                     (A_UCHAR*)scratch_buf,
                                     block_size)!= QDF_STATUS_SUCCESS) {
-                            qdf_err("hif_diag_read_mem failed for region %d will contain zeros", i);
+                            qdf_info("hif_diag_read_mem failed for region %d will contain zeros", i);
                         }
                     }
                 }
@@ -3308,7 +3299,7 @@ fw_get_core_dump(ol_ath_soc_softc_t *ramdump_soc, A_INT8 *file_path,
                         qdf_mem_copy_toio((A_UCHAR * )crash_scope_addr + n_buf_wr_offset, (A_UCHAR * )scratch_buf, block_size);
                         n_buf_wr_offset += block_size;
                     } else {
-                        qdf_err("*** dump is overflowing probable loss of data***");
+                        qdf_info("*** dump is overflowing probable loss of data***");
                         dump_to_scope_ovf = 1;
                     }
                 }
@@ -3340,7 +3331,7 @@ fw_get_core_dump(ol_ath_soc_softc_t *ramdump_soc, A_INT8 *file_path,
 
 error_1:
     if (dump_to_file && file){
-        filp_close(file, NULL);
+        file_close(file);
     }
     if(dump_to_scope && crash_scope_addr) {
 #if !ATH_SUPPORT_FW_RAM_DUMP_FOR_MIPS
@@ -3371,42 +3362,41 @@ fw_get_core_dump(ol_ath_soc_softc_t *ramdump_soc, A_INT8 *file_path,
 
 int get_next_dump_file_index(ol_ath_soc_softc_t *soc, char *fw_dump_file)
 {
-    int file_index = 0;
+    int next_file = 0;
     uint32_t target_type;
 
     target_type =  lmac_get_tgt_type(soc->psoc_obj);
 
-    get_fileindex((char*)&file_index);
+    get_fileindex((char*)&next_file);
 
     /* get new file name with number ext */
     OS_MEMZERO(fw_dump_file, sizeof(fw_dump_file));
 
     if (target_type == TARGET_TYPE_AR900B) {
-        snprintf(fw_dump_file, FILE_PATH_LEN, "%s.%d.%s", FW_DUMP_FILE_AR900B,
-                file_index, soc->sc_osdev->netdev->name);
+        snprintf(fw_dump_file, sizeof(FW_DUMP_FILE_AR900B)+sizeof(next_file)+1,
+		"%s.%d",FW_DUMP_FILE_AR900B, next_file);
     } else if (target_type == TARGET_TYPE_QCA9984) {
-        snprintf(fw_dump_file, FILE_PATH_LEN, "%s.%d.%s", FW_DUMP_FILE_QCA9984,
-                file_index, soc->sc_osdev->netdev->name);
+        snprintf(fw_dump_file, sizeof(FW_DUMP_FILE_QCA9984)+sizeof(next_file)+1,
+		"%s.%d",FW_DUMP_FILE_QCA9984, next_file);
     } else if (target_type == TARGET_TYPE_QCA9888) {
-        snprintf(fw_dump_file, FILE_PATH_LEN, "%s.%d.%s", FW_DUMP_FILE_QCA9888,
-                file_index, soc->sc_osdev->netdev->name);
+        snprintf(fw_dump_file, sizeof(FW_DUMP_FILE_QCA9888)+sizeof(next_file)+1,
+		"%s.%d",FW_DUMP_FILE_QCA9888, next_file);
     } else if(target_type == TARGET_TYPE_IPQ4019) {
-        snprintf(fw_dump_file, FILE_PATH_LEN, "%s.%d.%s", FW_DUMP_FILE_IPQ4019,
-                file_index, soc->sc_osdev->netdev->name);
+        snprintf(fw_dump_file, sizeof(FW_DUMP_FILE_IPQ4019)+sizeof(next_file)+1,
+		"%s.%d",FW_DUMP_FILE_IPQ4019, next_file);
     } else {
-        snprintf(fw_dump_file, FILE_PATH_LEN, "%s.%d.%s", FW_DUMP_FILE_AR9888,
-                file_index, soc->sc_osdev->netdev->name);
+        snprintf(fw_dump_file, sizeof(FW_DUMP_FILE_AR9888)+sizeof(next_file)+1,
+		"%s.%d",FW_DUMP_FILE_AR9888, next_file);
     }
-
     /* next time new number */
-    update_fileindex(file_index+1);
-    return file_index;
+    update_fileindex(next_file+1);
+    return next_file;
 }
 
 void
 ol_ath_dump_target(ol_ath_soc_softc_t *soc)
 {
-    char fw_dump_file[FILE_PATH_LEN]={0};
+    char fw_dump_file[128]={0};
 
     get_next_dump_file_index(soc, fw_dump_file);
     qdf_info("** STARTING RUNTIME DUMP TARGET TO %s", fw_dump_file);
@@ -3428,19 +3418,19 @@ void ramdump_work_handler(void *soc)
 #endif
 
     if (!ramdump_soc) {
-        qdf_err("ramdump soc is NULL");
+        qdf_info("ramdump soc is NULL");
         return;
     }
     d_opts = ramdump_soc->sc_dump_opts;
     /* no dump required, just return*/
     if ((d_opts & FW_DUMP_RECOVER_WITHOUT_CORE) &&
-        (ramdump_soc->recovery_enable) ) {
+            (ramdump_soc->recovery_enable) ) {
         return;
     }
 
     /* recovery is enabled, but dump is not requested*/
     if (ramdump_soc->recovery_enable &&
-        (d_opts & FW_DUMP_RECOVER_WITHOUT_CORE)) {
+            (d_opts & FW_DUMP_RECOVER_WITHOUT_CORE)) {
         return;
     }
 
@@ -3448,30 +3438,29 @@ void ramdump_work_handler(void *soc)
 	 * Do not worry now about CrashScope. Dump into file
      */
 #if BUILD_X86
-    qdf_err( "*** DO NOT CRASH X86, YOU SHOULD UNLOAD DRIVER HERE AFTER *** ");
+    qdf_info( "*** DO NOT CRASH X86, YOU SHOULD UNLOAD DRIVER HERE AFTER *** ");
     /* for X86 station version, there is no crash scope, and cannot crash */
     d_opts |= FW_DUMP_NO_HOST_CRASH;
     d_opts  &= ~(FW_DUMP_TO_CRASH_SCOPE);
 #else
     /* get the next dump file */
     get_next_dump_file_index(soc, fw_dump_file);
-    qdf_err("** STARTING DUMP options:%x", d_opts);
+    qdf_info("** STARTING DUMP options:%x", d_opts);
     fw_get_core_dump(ramdump_soc, fw_dump_file, d_opts);
-    qdf_err("*** TARGET ASSERT DUMP COLLECTION COMPLETE ***");
+    qdf_info("*** TARGET ASSERT DUMP COLLECTION COMPLETE ***");
 #endif
 #if UMAC_SUPPORT_ACFG
     oper.type = PDEV_ITER_TARGET_FWDUMP;
     wlan_objmgr_iterate_obj_list(ramdump_soc->psoc_obj, WLAN_PDEV_OP,
-                                 wlan_pdev_operation, &oper, 0,
-                                 WLAN_MLME_NB_ID);
+              wlan_pdev_operation, &oper, 0, WLAN_MLME_NB_ID);
 #endif
     if (!ramdump_soc->recovery_enable && !(d_opts & FW_DUMP_NO_HOST_CRASH)) {
-        if (atomic_dec_and_test(&target_assert_count)) {
-            qdf_target_assert_always(0);
-            /*  this is return of no where, we should ideally wait here */
-        } else {
-            qdf_err("Do not reboot the board now. There is another target assert in the other radio");
-        }
+	    if(atomic_dec_and_test(&target_assert_count)) {
+		    qdf_target_assert_always(0);
+		    /*  this is return of no where, we should ideally wait here */
+	    } else {
+		    qdf_info("Do not reboot the board now. There is another target assert in the other radio");
+	    }
     }
     return;
 }
@@ -3479,7 +3468,7 @@ qdf_export_symbol(ramdump_work_handler);
 
 #ifdef CONFIG_AR900B_SUPPORT
 int
-ol_get_board_id(ol_ath_soc_softc_t *soc, char *boarddata_file)
+ol_get_board_id(ol_ath_soc_softc_t *soc, char *boarddata_file )
 {
     char *filebuf = NULL;
     int buflen = 0;
@@ -3488,8 +3477,8 @@ ol_get_board_id(ol_ath_soc_softc_t *soc, char *boarddata_file)
     filebuf = qdf_mem_malloc(MAX_FILENAMES_SIZE);
     target_type =  lmac_get_tgt_type(soc->psoc_obj);
 
-    if (!filebuf) {
-        qdf_err("Alloc failed");
+    if(!filebuf) {
+        qdf_info("\n %s : Alloc failed",__FUNCTION__);
         return -1;
     }
     /* For besra,there is NO number of boardfiles like cascade.*/
@@ -3500,13 +3489,13 @@ ol_get_board_id(ol_ath_soc_softc_t *soc, char *boarddata_file)
     } else {
         buflen = get_filenames(target_type,(char*)filebuf, MAX_FILENAMES_SIZE);
         if (buflen <= 0) {
-            qdf_err("Failed to read board data file list!");
+            qdf_info(KERN_ERR "%s: Failed to read board data file list!", __func__);
             qdf_mem_free(filebuf);
             return -1;
         }
     }
     if (boardid_to_filename(soc, board_id, filebuf, buflen, boarddata_file) != 0) {
-        qdf_info("Failed to determine board data file name!");
+        qdf_info(KERN_ERR "%s: Failed to determine board data file name!", __func__);
         qdf_mem_free(filebuf);
          /* Made change in boardid_to_filename to fall back to default boarddata file since few boards have Invalid boardID 0 */
         return 0;
@@ -3584,29 +3573,22 @@ ol_target_failure(void *instance, QDF_STATUS status)
     hif_hdl = lmac_get_ol_hif_hdl(soc->psoc_obj);
 
     if (!hif_hdl) {
-        qdf_err("hif handle is NULL");
+        qdf_info("hif handle is NULL: %s ", __func__);
         return;
     }
 
-    tgt_psoc_info = wlan_psoc_get_tgt_if_handle(soc->psoc_obj);
+    tgt_psoc_info = (struct target_psoc_info *)wlan_psoc_get_tgt_if_handle(
+                                                    soc->psoc_obj);
     if (tgt_psoc_info == NULL) {
-        qdf_err("target_psoc_info is null ");
+        qdf_info("%s: target_psoc_info is null ", __func__);
         return;
     }
 
-     set = 1;
-#if QLD
-    /* check if live dump feature is enabled */
-    if (is_qld_enable()) {
-        /*
-         * collect debug memory that is registered with
-         * framework . The registered memory is maintained
-         * as linked list, this routine traverses the list and
-         * sends it to application
-         */
-        qld_process_list(soc);
+    if (!(dbglog_handle = target_psoc_get_dbglog_hdl(tgt_psoc_info))) {
+        qdf_info("%s: dbglog_handle is null ", __func__);
+        return;
     }
-#endif
+     set = 1;
      wlan_objmgr_iterate_obj_list(soc->psoc_obj, WLAN_PDEV_OP,
                 wlan_pdev_set_recovery_inprogress, &set, 0,
 		WLAN_MLME_NB_ID);
@@ -3621,10 +3603,10 @@ ol_target_failure(void *instance, QDF_STATUS status)
 
 #endif
 
-    qdf_err("[%s]: XXX TARGET ASSERTED XXX", soc->sc_osdev->netdev->name);
+    qdf_info("[%s]: XXX TARGET ASSERTED XXX", soc->sc_osdev->netdev->name);
 #ifdef QCA_NSS_WIFI_OFFLOAD_SUPPORT
-    qdf_err("<< NSS WIFI OFFLOAD INFORMATION >>>");
-    qdf_err("SoC ID %d with NSS ifnum %d ",soc->soc_idx, soc->nss_soc.nss_sifnum);
+    qdf_info("<< NSS WIFI OFFLOAD INFORMATION >>>");
+    qdf_info("SoC ID %d with NSS ifnum %d ",soc->soc_idx, soc->nss_soc.nss_sifnum);
 #endif
     soc->target_status = OL_TRGET_STATUS_RESET;
     /* Per Radio tgt_asserts is incremented above, increment for the SOC here */
@@ -3632,12 +3614,13 @@ ol_target_failure(void *instance, QDF_STATUS status)
     if (hif_diag_read_mem(hif_hdl,
                 host_interest_item_address(target_type, offsetof(struct host_interest_s, hi_failure_state)),
                 (A_UCHAR *)&reg_dump_area,
-                sizeof(A_UINT32))!= QDF_STATUS_SUCCESS) {
-        qdf_err("HifDiagReadiMem FW Dump Area Pointer failed");
+                sizeof(A_UINT32))!= QDF_STATUS_SUCCESS)
+    {
+        qdf_info("HifDiagReadiMem FW Dump Area Pointer failed");
         return;
     }
 
-    qdf_err("Target Register Dump Location 0x%08X", reg_dump_area);
+    qdf_info("Target Register Dump Location 0x%08X", reg_dump_area);
 
     if (target_type == TARGET_TYPE_AR6320) {
         reg_dump_cnt = REG_DUMP_COUNT_AR6320;
@@ -3656,28 +3639,29 @@ ol_target_failure(void *instance, QDF_STATUS status)
     if (hif_diag_read_mem(hif_hdl,
                 reg_dump_area,
                 (A_UCHAR*)&reg_dump_values[0],
-                reg_dump_cnt * sizeof(A_UINT32))!= QDF_STATUS_SUCCESS) {
-        qdf_err("HifDiagReadiMem for FW Dump Area failed");
+                reg_dump_cnt * sizeof(A_UINT32))!= QDF_STATUS_SUCCESS)
+    {
+        qdf_info("HifDiagReadiMem for FW Dump Area failed");
         return;
     }
 
-    qdf_err("Target Register Dump");
+    qdf_info("Target Register Dump");
     for (i = 0; i < reg_dump_cnt; i++) {
-        qdf_err("[%02d]   :  0x%08X", i, reg_dump_values[i]);
+        qdf_info("[%02d]   :  0x%08X", i, reg_dump_values[i]);
     }
     /* initial target dump is over, collect the real dumps now */
     /* Schedule a work queue that resets the radio and
        reload the firmware.
     */
     if (soc->pci_reconnect) {
-       qdf_err("Resetting  %s radio", soc->sc_osdev->netdev->name);
+       qdf_info("Resetting  %s radio", soc->sc_osdev->netdev->name);
        soc->pci_reconnect(soc);
     }
 
     //CE Ring Index 2 (0x00057C00 - 0x00057C54)
     //We are interested only in the address region from 0x00057C34.
 #if defined(FIXME_AR900B_CRSH_DUMP)
-    qdf_err("CE Registers...");
+    qdf_info("CE Registers...");
     sc = hif_hdl;
     if (sc != NULL && sc->mem != NULL) {
         A_UINT32 ce_reg_cnt = 9;
@@ -3686,55 +3670,53 @@ ol_target_failure(void *instance, QDF_STATUS status)
         A_UINT32 ce_reg_val = 0;
         for (i = 0; i < ce_reg_cnt; i++) {
             ce_reg_val = hif_reg_read(sc, (ce_reg_start_addr + ce_reg_offset));
-            qdf_err("[0x%08X]   :  0x%08X", (ce_reg_start_addr + ce_reg_offset), ce_reg_val);
+            qdf_info("[0x%08X]   :  0x%08X", (ce_reg_start_addr + ce_reg_offset), ce_reg_val);
             ce_reg_offset += 4;
         }
     }
 #endif
 
     hif_dump_ce_registers(hif_hdl);
-    hif_display_stats(hif_hdl);
-
-    if (!(dbglog_handle = target_psoc_get_dbglog_hdl(tgt_psoc_info))) {
-        qdf_err("dbglog_handle is null ");
-        return;
-    }
 
     if (hif_diag_read_mem(hif_hdl,
                 host_interest_item_address(target_type, offsetof(struct host_interest_s, hi_dbglog_hdr)),
                 (A_UCHAR *)&dbglog_hdr_address,
-                sizeof(dbglog_hdr_address))!= QDF_STATUS_SUCCESS) {
-        qdf_err("HifDiagReadiMem FW dbglog_hdr_address failed");
+                sizeof(dbglog_hdr_address))!= QDF_STATUS_SUCCESS)
+    {
+        qdf_info("HifDiagReadiMem FW dbglog_hdr_address failed");
         return;
     }
 
     if (hif_diag_read_mem(hif_hdl,
                 dbglog_hdr_address,
                 (A_UCHAR *)&dbglog_hdr,
-                sizeof(dbglog_hdr))!= QDF_STATUS_SUCCESS) {
-        qdf_err("HifDiagReadiMem FW dbglog_hdr failed");
+                sizeof(dbglog_hdr))!= QDF_STATUS_SUCCESS)
+    {
+        qdf_info("HifDiagReadiMem FW dbglog_hdr failed");
         return;
     }
     if (hif_diag_read_mem(hif_hdl,
                 (A_UINT32)(uintptr_t)dbglog_hdr.dbuf,
                 (A_UCHAR *)&dbglog_buf,
-                sizeof(dbglog_buf))!= QDF_STATUS_SUCCESS) {
-        qdf_err("HifDiagReadiMem FW dbglog_buf failed");
+                sizeof(dbglog_buf))!= QDF_STATUS_SUCCESS)
+    {
+        qdf_info("HifDiagReadiMem FW dbglog_buf failed");
         return;
     }
 
-    if (dbglog_buf.length) {
+    if(dbglog_buf.length) {
         dbglog_data = qdf_mem_malloc(dbglog_buf.length + 4);
         if (dbglog_data) {
 
             if (hif_diag_read_mem(hif_hdl,
                         (A_UINT32)(uintptr_t)dbglog_buf.buffer,
                         dbglog_data + 4,
-                        dbglog_buf.length)!= QDF_STATUS_SUCCESS) {
-                qdf_err("HifDiagReadiMem FW dbglog_data failed");
+                        dbglog_buf.length)!= QDF_STATUS_SUCCESS)
+            {
+                qdf_info("HifDiagReadiMem FW dbglog_data failed");
             } else {
-                qdf_err("dbglog_hdr.dbuf=%pK dbglog_data=%pK dbglog_buf.buffer=%u dbglog_buf.length=%u",
-                         dbglog_hdr.dbuf, dbglog_data, dbglog_buf.buffer, dbglog_buf.length);
+                qdf_info("dbglog_hdr.dbuf=%pK dbglog_data=%pK dbglog_buf.buffer=%pK dbglog_buf.length=%u",
+                        dbglog_hdr.dbuf, dbglog_data, dbglog_buf.buffer, dbglog_buf.length);
 
                 OS_MEMCPY(dbglog_data, &dbglog_hdr.dropped, 4);
                 (void)fwdbg_parse_debug_logs(dbglog_handle, soc, dbglog_data, dbglog_buf.length + 4, NULL);
@@ -3742,9 +3724,10 @@ ol_target_failure(void *instance, QDF_STATUS status)
             qdf_mem_free(dbglog_data);
         }
     } else {
-        qdf_err("HifDiagReadiMem FW dbglog_data failed since dbglog_buf.length=%u",dbglog_buf.length);
+        qdf_info("HifDiagReadiMem FW dbglog_data failed since dbglog_buf.length=%u",dbglog_buf.length);
     }
     return;
+
 }
 qdf_export_symbol(ol_target_failure);
 
@@ -3780,8 +3763,8 @@ ath_sysfs_BMI_write(struct kobject *kobj,
     bmi_handle = soc->bmi_handle;
     hif_hdl = lmac_get_hif_hdl(soc->psoc_obj);
     if (!hif_hdl) {
-        qdf_err("Invalid hif handle");
-        return A_ERROR;
+	   qdf_info("%s-%d: Invalid hif handle", __func__, __LINE__);
+	   return A_ERROR;
     }
 
     nbytes = min(count, (size_t) BMIGetMaxDataSize());
@@ -3806,8 +3789,8 @@ ath_sysfs_BMI_write(struct kobject *kobj,
         bmi_response_buf = NULL;
         bmi_response_lengthp = NULL;
     } else {
-        qdf_err("BMI sysfs command unknown (%d)", cmd);
-        return A_ERROR;
+	   qdf_info(KERN_ERR "BMI sysfs command unknown (%d)\n", cmd);
+	   return A_ERROR;
     }
 
     if (QDF_STATUS_SUCCESS != hif_exchange_bmi_msg(hif_hdl,
@@ -3817,8 +3800,10 @@ ath_sysfs_BMI_write(struct kobject *kobj,
                                (A_UINT32)nbytes,
                                bmi_response_buf,
                                bmi_response_lengthp,
-                               BMI_EXCHANGE_TIMEOUT_MS)) {
-        qdf_err("BMI sysfs command failed\n");
+                               BMI_EXCHANGE_TIMEOUT_MS))
+
+    {
+        qdf_info(KERN_ERR "BMI sysfs command failed\n");
         return A_ERROR;
     }
 
@@ -3865,7 +3850,7 @@ ol_ath_bmi_user_agent_init(ol_ath_soc_softc_t *soc)
 
     BMI_fsattr = OS_MALLOC(soc->sc_osdev, sizeof(*BMI_fsattr), GFP_KERNEL);
     if (!BMI_fsattr) {
-        qdf_err("Memory allocation failed");
+        qdf_info("%s: Memory allocation failed\n", __func__);
         return 0;
     }
     OS_MEMZERO(BMI_fsattr, sizeof(*BMI_fsattr));
@@ -3877,11 +3862,9 @@ ol_ath_bmi_user_agent_init(ol_ath_soc_softc_t *soc)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
     sysfs_bin_attr_init(BMI_fsattr);
 #endif
-    ret = qdf_vfs_create_binfile(
-                            (struct qdf_dev_obj *)&soc->sc_osdev->device->kobj,
-                            (struct qdf_vf_bin_attr *)BMI_fsattr);
+    ret = sysfs_create_bin_file(&soc->sc_osdev->device->kobj, BMI_fsattr);
     if (ret) {
-        qdf_err("sysfs create failed\n");
+        qdf_info("%s: sysfs create failed\n", __func__);
         OS_FREE(BMI_fsattr);
         return 0;
     }
@@ -3891,7 +3874,7 @@ ol_ath_bmi_user_agent_init(ol_ath_soc_softc_t *soc)
 
     return cfg_get(soc->psoc_obj, CFG_OL_BMI);
 }
-qdf_export_symbol(ol_ath_bmi_user_agent_init);
+EXPORT_SYMBOL(ol_ath_bmi_user_agent_init);
 
 int
 ol_ath_wait_for_bmi_user_agent(ol_ath_soc_softc_t *soc)
@@ -3901,13 +3884,12 @@ ol_ath_wait_for_bmi_user_agent(ol_ath_soc_softc_t *soc)
 
     rv = wait_event_interruptible(soc->sc_osdev->event_queue, (soc->bmi_handle->bmiUADone));
 
-    qdf_vfs_delete_binfile((struct qdf_dev_obj *)&soc->sc_osdev->device->kobj,
-                           (struct qdf_vf_bin_attr *)BMI_fsattr);
+    sysfs_remove_bin_file(&soc->sc_osdev->device->kobj, BMI_fsattr);
     soc->bmi_handle->bmi_ol_priv = NULL; /* sanity */
 
     return rv;
 }
-qdf_export_symbol(ol_ath_wait_for_bmi_user_agent);
+EXPORT_SYMBOL(ol_ath_wait_for_bmi_user_agent);
 
 void
 ol_ath_signal_bmi_user_agent_done(ol_ath_soc_softc_t *soc)
@@ -3915,6 +3897,6 @@ ol_ath_signal_bmi_user_agent_done(ol_ath_soc_softc_t *soc)
     soc->bmi_handle->bmiUADone = TRUE;
     wake_up(&soc->sc_osdev->event_queue);
 }
-qdf_export_symbol(ol_ath_signal_bmi_user_agent_done);
+EXPORT_SYMBOL(ol_ath_signal_bmi_user_agent_done);
 
 #endif

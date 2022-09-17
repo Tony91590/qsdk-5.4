@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013,2017,2019-2021 Qualcomm Innovation Center, Inc.
+ * Copyright (c) 2013,2017,2019 Qualcomm Innovation Center, Inc.
  * All Rights Reserved
  * Confidential and Proprietary - Qualcomm Innovation Center, Inc.
  *
@@ -28,7 +28,7 @@
 #include "ol_if_athvar.h"
 #include "wmi_unified_api.h"
 #include "_ieee80211.h"
-#include <ol_if_athpriv.h>
+#include "ol_if_athpriv.h"
 #include "wlan_utility.h"
 
 #if ATH_PERF_PWR_OFFLOAD
@@ -67,10 +67,11 @@ void ol_cwm_set_extprotspacing(struct ieee80211com *ic, OL_CWM_IEEE80211_EXTPROT
 void ol_cwm_set_enable(struct ieee80211com *ic, u_int32_t val)
 {
     struct ol_ath_softc_net80211 *scn = OL_ATH_SOFTC_NET80211(ic);
-    if (EOK == ol_ath_pdev_set_param(scn->sc_pdev,
-                                     wmi_pdev_param_dynamic_bw, val)) {
+    if(ol_ath_pdev_set_param(scn,
+        wmi_pdev_param_dynamic_bw, val)==0){
         scn->scn_cwmenable = val;
     }
+
     return;
 }
 
@@ -148,7 +149,7 @@ void ol_ath_cwm_switch_to40(struct ieee80211com *ic)
 
     IEEE80211_COMM_LOCK(ic);
     /* 11AX TODO: Recheck future 802.11ax drafts (>D1.0) on coex rules */
-    curchan->ic_flags &= ~IEEE80211_CHAN_40INTOL;
+    curchan->ic_flags &= ~(IEEE80211_CHAN_HT40INTOL | IEEE80211_CHAN_HE40INTOL);
     TAILQ_FOREACH(vap, &ic->ic_vaps, iv_next) {
         if (vap != NULL) {
             ic->ic_vap_set_param(vap, IEEE80211_CHWIDTH, 1);
@@ -177,7 +178,12 @@ ol_cwm_switch_to20(struct ieee80211com *ic)
         }
     }
 
-    curchan->ic_flags |= IEEE80211_CHAN_40INTOL;
+    /* 11AX TODO: Recheck future 802.11ax drafts (>D1.0) on coex rules */
+    if (IEEE80211_IS_CHAN_11AX(curchan)) {
+        curchan->ic_flags |= IEEE80211_CHAN_HE40INTOL;
+    } else {
+        curchan->ic_flags |= IEEE80211_CHAN_HT40INTOL;
+    }
 
     IEEE80211_COMM_UNLOCK(ic);
 
@@ -214,7 +220,7 @@ OL_CWM_IEEE80211_WIDTH ol_cwm_get_width(struct ieee80211com *ic)
     curchan = ic->ic_curchan;
 
     if (IEEE80211_IS_CHAN_11AX(curchan)) {
-        if (IEEE80211_IS_CHAN_5GHZ_6GHZ(curchan)) {
+        if (IEEE80211_IS_CHAN_5GHZ(curchan)) {
             if (IEEE80211_IS_CHAN_11AXA_HE80_80(curchan)) {
                 return IEEE80211_CWM_WIDTH160;
             }
@@ -240,7 +246,7 @@ OL_CWM_IEEE80211_WIDTH ol_cwm_get_width(struct ieee80211com *ic)
                 return IEEE80211_CWM_WIDTH20;
            } else if (ic->ic_flags & IEEE80211_F_COEXT_DISABLE) {
                 return IEEE80211_CWM_WIDTH40;
-           } else if (IEEE80211_IS_CHAN_BW_40INTOL(curchan)) {
+           } else if (curchan->ic_flags & IEEE80211_CHAN_HE40INTOL) {
                 return IEEE80211_CWM_WIDTH20;
            } else {
                 return IEEE80211_CWM_WIDTH40;
@@ -271,7 +277,7 @@ OL_CWM_IEEE80211_WIDTH ol_cwm_get_width(struct ieee80211com *ic)
             return IEEE80211_CWM_WIDTH20;
         } else if ((ic->ic_flags & IEEE80211_F_COEXT_DISABLE) && IEEE80211_IS_CHAN_11NG(curchan)) {
             return IEEE80211_CWM_WIDTH40;
-        } else if((curchan->ic_flags & IEEE80211_CHAN_40INTOL) && IEEE80211_IS_CHAN_2GHZ(curchan)) {
+        } else if((curchan->ic_flags & IEEE80211_CHAN_HT40INTOL) && IEEE80211_IS_CHAN_11NG(curchan)) {
             return IEEE80211_CWM_WIDTH20;
         } else {
             return IEEE80211_CWM_WIDTH40;
@@ -307,8 +313,8 @@ ol_ath_cwm_attach(struct ol_ath_softc_net80211 *scn)
     ic->ic_cwm_set_extoffset = ol_cwm_set_extoffset;
     ic->ic_bss_to40 = ol_ath_cwm_switch_to40;
     ic->ic_bss_to20 = ol_cwm_switch_to20;
-    ic->obss_snr_threshold = DEFAULT_OBSS_SNR_THRESHOLD;
-    ic->obss_rx_snr_threshold = DEFAULT_OBSS_RX_SNR_THRESHOLD;
+    ic->obss_rssi_threshold = DEFAULT_OBSS_RSSI_THRESHOLD;
+    ic->obss_rx_rssi_threshold = DEFAULT_OBSS_RX_RSSI_THRESHOLD;
 
     return 0;
 }

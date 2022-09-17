@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020 Qualcomm Innovation Center, Inc.
+ * Copyright (c) 2017 Qualcomm Innovation Center, Inc.
  * All Rights Reserved
  * Confidential and Proprietary - Qualcomm Innovation Center, Inc.
  *
@@ -22,10 +22,8 @@
  * LMAC offload interface functions for UMAC - for power and performance offload model
  */
 #include "ol_if_athvar.h"
-#include <ol_if_athpriv.h>
-#ifdef WIFI_TARGET_TYPE_2_0
+#include "ol_if_athpriv.h"
 #include "sw_version.h"
-#endif
 #include "targaddrs.h"
 #include "ol_helper.h"
 
@@ -273,7 +271,17 @@ ol_ath_rate_setup(struct ieee80211com *ic, enum ieee80211_phymode mode,
         rs->rs_rates[rix++] = rt->info[i].dot11_rate;
     }
     rs->rs_nrates = (u_int8_t)rix;
-    if (ieee80211_is_phymode_not_basic(mode)) {
+    if ((mode == IEEE80211_MODE_11NA_HT20)     || (mode == IEEE80211_MODE_11NG_HT20)      ||
+        (mode == IEEE80211_MODE_11NA_HT40PLUS) || (mode == IEEE80211_MODE_11NA_HT40MINUS) ||
+        (mode == IEEE80211_MODE_11NG_HT40PLUS) || (mode == IEEE80211_MODE_11NG_HT40MINUS) ||
+        (mode == IEEE80211_MODE_11AC_VHT20) || (mode == IEEE80211_MODE_11AC_VHT40PLUS) ||
+        (mode == IEEE80211_MODE_11AC_VHT40MINUS) || (mode == IEEE80211_MODE_11AC_VHT80) ||
+        (mode == IEEE80211_MODE_11AC_VHT160) || (mode == IEEE80211_MODE_11AC_VHT80_80) ||
+        (mode == IEEE80211_MODE_11AXA_HE20)  || (mode == IEEE80211_MODE_11AXG_HE20) ||
+        (mode == IEEE80211_MODE_11AXA_HE40PLUS) || (mode == IEEE80211_MODE_11AXA_HE40MINUS) ||
+        (mode == IEEE80211_MODE_11AXG_HE40PLUS) || (mode == IEEE80211_MODE_11AXG_HE40MINUS) ||
+        (mode == IEEE80211_MODE_11AXA_HE80) || (mode == IEEE80211_MODE_11AXA_HE160) ||
+        (mode == IEEE80211_MODE_11AXA_HE80_80) ) {
         /* supported rates (HT) */
         rix = 0;
         rs = IEEE80211_HT_RATES(ic, mode);
@@ -286,8 +294,9 @@ ol_ath_rate_setup(struct ieee80211com *ic, enum ieee80211_phymode mode,
     }
 }
 
-void ol_ath_vht_rate_setup(struct ieee80211com *ic, uint32_t mcs_map,
-                           uint16_t max_datarate, uint16_t basic_mcs)
+void
+ol_ath_vht_rate_setup(struct ieee80211com *ic, u_int32_t mcs_map,
+                      u_int16_t max_datarate, u_int16_t basic_mcs)
 {
     /* Set the VHT Supported MCS subset and highest data rate*/
     ieee80211com_set_vht_high_data_rate(ic, max_datarate);
@@ -344,6 +353,7 @@ void ol_ath_setup_rates(struct ieee80211com *ic)
  * definitions.
  */
 #define NUM_SPATIAL_STREAMS 8
+#define SUPPORT_11AX 1
 #define WHAL_160MHZ_SUPPORT
 #define MAX_SPATIAL_STREAMS_SUPPORTED_AT_160MHZ 4  //TODO ratecontrol fix this for hawkeye
 #define VHT_EXTRA_MCS_SUPPORT
