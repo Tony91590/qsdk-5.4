@@ -62,8 +62,7 @@ jobs:
 
       - name: Update feeds
         run: |
-           cp -f ../diy-part1.sh ./
-           chmod +x ./diy-part1.sh && ./diy-part1.sh
+           echo -e "src-git passwall https://github.com/xiaorouji/openwrt-passwall" >> feeds.conf
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
