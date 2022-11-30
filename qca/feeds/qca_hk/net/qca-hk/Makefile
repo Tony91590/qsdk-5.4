@@ -3,14 +3,14 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=qca-wifi-hk-fw
-PKG_VERSION:=IPQ8074-WLAN.HK.2.5.r4-00745-QCAHKSWPL_SILICONZ-1
+PKG_VERSION:=WLAN.HK.2.5.r4-00745-QCAHKSWPL_SILICONZ-1
 PKG_RELEASE:=1
 PKG_LABEL:=$(shell echo $(PKG_VERSION) | cut -d'-' -f2)
 PKG_SPIN:=$(shell echo $(PKG_VERSION) | cut -d'-' -f4)
 
-PKG_SOURCE:=qca-wifi-fw-QCA8074_v1.0-WLAN.HK.2.5.r4-00745-QCAHKSWPL_SILICONZ-1.tar.bz2
-PKG_SOURCE_URL:=http://qcawebsrvr.qualcomm.com/cnss_win/santaclara/dev01/WLAN.HK.2.5.r4/$(PKG_VERSION)
-PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
+PKG_SOURCE:=qca-wifi-fw-src-component-cmn-WLAN.HK.2.5.r4-00745-QCAHKSWPL_SILICONZ-1.tgz
+PKG_SOURCE_URL:=https://github.com/Tony91590/dl-ipq60xx/blob/master/qca-wifi-fw-src-component-cmn-WLAN.HK.2.5.r4-00745-QCAHKSWPL_SILICONZ-1.tgz?raw=true
+PKG_BUILD_DIR:=$(BUILD_DIR)/qca-wifi-fw-src-component-cmn-WLAN.HK.2.5.r4-00745-QCAHKSWPL_SILICONZ-1.tgz
 PKG_MD5SUM:=skip
 
 include $(INCLUDE_DIR)/package.mk
