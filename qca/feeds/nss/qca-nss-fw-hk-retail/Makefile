@@ -11,9 +11,9 @@ NSS_VER:=11.4
 NSS_SOC:=HK
 NSS_PROFILE:=R
 
-PKG_SOURCE:=BIN-NSS.$(NSS_SOC).$(NSS_VER)-$(PKG_VERSION)-$(NSS_PROFILE).tar.bz2
-PKG_SOURCE_URL:=http://qcawebsrvr.qualcomm.com/NSS/NSS.FW/$(NSS_VER)/$(NSS_SOC)/$(PKG_VERSION)/
-PKG_BUILD_DIR:=$(BUILD_DIR)/BIN-NSS.$(NSS_SOC).$(NSS_VER)-$(PKG_VERSION)-$(NSS_PROFILE)
+PKG_SOURCE:=BIN-NSS.HK.11.4.0.5-5-R.tar.bz2
+PKG_SOURCE_URL:=https://github.com/quic/qca-sdk-nss-fw/blob/main/QCA_Networking_2021.SPF_11.4/CS/IPQ8074.ATH.11.4/BIN-NSS.HK.11.4.0.5-5-R.tar.bz2?raw=true
+PKG_BUILD_DIR:=$(BUILD_DIR)/BIN-NSS.HK.11.4.0.5-5-R
 
 include $(INCLUDE_DIR)/package.mk
 
