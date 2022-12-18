@@ -7,7 +7,7 @@ PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=ssh://qca-git01.qualcomm.com:29418/wifi/$(PKG_NAME).git
 PKG_BRANCH:=master
 PKG_RELEASE:=1
-PATCH_DIR:=$(TOPDIR)/qca/src/$(PKG_NAME)/qca-patches
+#PATCH_DIR:=$(TOPDIR)/qca/src/$(PKG_NAME)/qca-patches
 
 include $(INCLUDE_DIR)/local-development.mk
 ifeq ($(DUMP)$(PKG_VERSION),)
@@ -24,13 +24,13 @@ LOCAL_VARIANT=$(patsubst supplicant-%,%,$(BUILD_VARIANT))
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(BUILD_VARIANT)/$(PKG)-$(PKG_VERSION)
 
-PKG_BUILD_DEPENDS:=qca-wifi
+PKG_BUILD_DEPENDS:=kmod-qca-wifi
 
 include $(INCLUDE_DIR)/package.mk
 
 define Package/$(PKG_NAME)/Default
   SECTION:=QCA
-  CATEGORY:=$(QTI_SOFTWARE_CATEGORY)
+  CATEGORY:=QCA Proprietary software
   URL:=http://www.qca.qualcomm.com
   MAINTAINER:=Qualcomm Atheros
 endef
@@ -60,7 +60,7 @@ endef
 define Package/$(PKG_NAME)-macsec
   $(call Package/$(PKG_NAME))
   TITLE:=Hostap authenticator (MACSEC)
-  DEPENDS+= @TARGET_ipq806x||TARGET_ipq||TARGET_ipq807x||TARGET_ipq60xx||TARGET_ipq50xx +kmod-qca-nss-macsec
+  DEPENDS+= @TARGET_ipq806x||TARGET_ipq +kmod-qca-nss-macsec
   VARIANT:=macsec
 endef
 
@@ -105,7 +105,7 @@ endef
 define Package/qca-wpa-supplicant-macsec
   $(call Package/qca-wpa-supplicant)
   TITLE:=WPA Supplicant (MACSEC)
-  DEPENDS+= @TARGET_ipq806x||TARGET_ipq||TARGET_ipq807x||TARGET_ipq60xx||TARGET_ipq50xx +kmod-qca-nss-macsec
+  DEPENDS+= @TARGET_ipq806x||TARGET_ipq +kmod-qca-nss-macsec
   VARIANT:=supplicant-macsec
 endef
 
@@ -237,12 +237,14 @@ define Package/$(PKG_NAME)-lite/install
 endef
 
 define Package/$(PKG_NAME)-macsec/install
-	$(INSTALL_DIR) $(1)/usr/sbin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/hostapd $(1)/usr/sbin/hostapd-macsec
+	$(call Package/$(PKG_NAME)/install,$(1))
+	$(INSTALL_DIR) $(1)/etc/init.d $(1)/etc/config
+	$(INSTALL_BIN) ./files/macsec.init $(1)/etc/init.d/macsec
+	$(INSTALL_BIN) ./files/macsec.config $(1)/etc/config/macsec
+	mv $(1)/usr/sbin/hostapd $(1)/usr/sbin/hostapd-macsec
 endef
 
 ifneq ($(LOCAL_TYPE),supplicant)
-ifneq ($(LOCAL_VARIANT),macsec)
   define Package/qca-hostapd-cli/install
 	$(INSTALL_DIR) $(1)/usr/sbin $(1)/etc/hotplug.d/button
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/hostapd_cli $(1)/usr/sbin/
@@ -274,7 +276,6 @@ ifneq ($(LOCAL_VARIANT),macsec)
 			$(1)/usr/sbin/wpsd
   endef
 endif
-endif
 
 define Package/qca-wpa-supplicant/install
 	$(call Install/qca-wpa-supplicant,$(1))
@@ -287,15 +288,14 @@ define Package/qca-wpa-supplicant-lite/install
 endef
 
 define Package/qca-wpa-supplicant-macsec/install
-	$(INSTALL_DIR) $(1)/usr/sbin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/wpa_supplicant/wpa_supplicant $(1)/usr/sbin/wpa_supplicant-macsec
+	$(call Package/qca-wpa-supplicant/install,$(1))
 	$(INSTALL_DIR) $(1)/etc/init.d $(1)/etc/config
 	$(INSTALL_BIN) ./files/macsec.init $(1)/etc/init.d/macsec
 	$(INSTALL_BIN) ./files/macsec.config $(1)/etc/config/macsec
+	mv $(1)/usr/sbin/wpa_supplicant $(1)/usr/sbin/wpa_supplicant-macsec
 endef
 
 ifneq ($(LOCAL_TYPE),hostap)
-ifneq ($(LOCAL_VARIANT),macsec)
   define Package/qca-wpa-cli/install
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(CP) $(PKG_BUILD_DIR)/wpa_supplicant/wpa_cli $(1)/usr/sbin/
@@ -308,7 +308,6 @@ ifneq ($(LOCAL_VARIANT),macsec)
 	$(INSTALL_BIN) ./files/wps-supplicant-update-uci.sh \
 			$(1)/lib/wifi/wps-supplicant-update-uci
   endef
-endif
 endif
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
