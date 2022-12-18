@@ -32,33 +32,40 @@ PKG_ASLR_PIE:=0
 COPY_TO_BUILD_DIR:=$(shell cp -fpR -u --verbose $(LOCAL_SRC)/* $(PKG_BUILD_DIR)/)
 include $(INCLUDE_DIR)/package.mk
 
-FW_10_2_4:=qca-wifi-fw-10.2.4
-FW_10_4:=qca-wifi-fw-10.4
-FW_HK:=qca-hk
-FW_Cyp:=qca-cyp
+FW_hw2_asic:=qca-wifi-fw-hw2-10.4-asic
+FW_hw3_asic:=qca-wifi-fw-hw3-10.4-asic
+FW_hw4_asic:=qca-wifi-fw-hw4-10.4-asic
+FW_hw4_emu_bb:=qca-wifi-fw-hw4-10.4-emu_bb
+FW_hw4_emu_m2m:=qca-wifi-fw-hw4-10.4-emu_m2m
+FW_hw5_asic:=qca-wifi-fw-hw5-10.4-asic
+FW_hw6_asic:=qca-wifi-fw-hw6-10.4-asic
+FW_hw5_emu_bb:=qca-wifi-fw-hw5-10.4-emu_bb
+FW_hw5_emu_m2m:=qca-wifi-fw-hw5-10.4-emu_m2m
+FW_hw7_asic:=qca-wifi-fw-hw7-10.4-asic
+FW_hw8_asic:=qca-wifi-fw-hw8-10.4-asic
+FW_hw9_asic:=qca-wifi-fw-hw9-10.4-asic
+FW_hw11_asic:=qca-wifi-fw-hw11-10.4-asic
+HK_fw_hw1_asic:=qca-wifi-hk-fw-hw1-10.4-asic
+HK_fw_debug_asic:=qca-wifi-hk-fw-hw1-debug-asic
+Cyp_hw1_emu:=qca-wifi-cyp-fw-hw1-11.0-asic
 
-FW:=$(FW_10_2_4) $(FW_10_4) $(FW_HK) $(FW_Cyp)
-
+FW_10_4:=$(FW_hw2_asic) $(FW_hw3_asic) $(FW_hw4_emu_bb) $(FW_hw4_emu_m2m) $(FW_hw4_asic) $(FW_hw5_asic) $(FW_hw6_asic) $(FW_hw5_emu_bb) $(FW_hw5_emu_m2m) $(FW_hw7_asic) $(FW_hw8_asic) $(FW_hw9_asic) $(FW_hw11_asic) $(HK_fw_hw1_asic) $(HK_fw_debug_asic) $(Cyp_hw1_emu)
 
 ifeq ($(CONFIG_TARGET_ipq_ipq807x_QSDK_Deluxe),y)
 export COPY_6290_HEADER:=1
 endif
 
-ifeq ($(CONFIG_TARGET_ipq_ipq60xx)$(CONFIG_TARGET_ipq_ipq60xx_64)$(CONFIG_TARGET_ipq60xx),y)
+ifeq ($(CONFIG_TARGET_ipq_ipq60xx)$(CONFIG_TARGET_ipq_ipq60xx_64),y)
 export ENABLE_6018_HEADER:=1
 endif
 
-ifeq ($(CONFIG_TARGET_ipq_ipq50xx)$(CONFIG_TARGET_ipq_ipq50xx_64)$(CONFIG_TARGET_ipq50xx),y)
+ifeq ($(CONFIG_TARGET_ipq_ipq50xx)$(CONFIG_TARGET_ipq_ipq50xx_64),y)
 export ENABLE_QCA5018_HEADER:=1
 endif
 
 ifeq ($(CONFIG_WHUNT),y)
 export CONFIG_WHUNT=1
 export QCA_SINGLE_WIFI_3_0=1
-endif
-
-ifeq ($(CONFIG_GCC_USE_VERSION_7),y)
-export QCA_GCC_7_SUPPORT=1
 endif
 
 #Set QCAWLAN_MAKEOPTS according to selected BUILD_VARIANT and platform
@@ -73,10 +80,6 @@ endif
 
 ifeq ($(CONFIG_KERNEL_KASAN),y)
 	export QDF_TIMER_MULTIPLIER_FRAC=1
-endif
-
-ifeq ($(CONFIG_LINUX_5_4),y)
-export QCA_WIFI_KERNEL_VERSION_5_4=1
 endif
 
 ifeq ($(ARCH),mips)
@@ -100,21 +103,17 @@ QCAWLAN_MODULE_NAME:= $(notdir $(basename $(strip $(QCAWLAN_MODULE_LIST))))
 
 define KernelPackage/$(PKG_NAME)/Default
   SECTION:=QCA
-  CATEGORY:=$(QTI_SOFTWARE_CATEGORY)
+  CATEGORY:=QCA Proprietary software
   URL:=http://www.qca.qualcomm.com
   MAINTAINER:=Qualcomm Atheros
   TITLE:=QCA Wireless LAN Driver
-  DEPENDS:=+libgcc +libc +wireless-tools +librt +kmod-cfg80211-linux +libroxml +libnl +qca-cfg80211 \
+  DEPENDS:=+libgcc +libc +wireless-tools +librt +iproute2 +kmod-cfg80211-linux +libxml2 +libroxml +libnl +qca-cfg80211 \
 	  @(!(PACKAGE_kmod-ath&&PACKAGE_kmod-mac80211)) +TARGET_ipq_ipq807x:kmod-msm-mproc +TARGET_ipq_ipq807x_64:kmod-msm-mproc \
-	  +TARGET_ipq_ipq60xx:kmod-msm-mproc +TARGET_ipq_ipq60xx_64:kmod-msm-mproc +TARGET_ipq_ipq50xx:kmod-msm-mproc +TARGET_ipq_ipq50xx_64:kmod-msm-mproc +WHUNT:qca-whunt-noship \
-	  +!(LINUX_5_4||WHUNT||TARGET_ipq_ipq806x||TARGET_ipq_ipq40xx):qca-qrtr
-  PKG_BUILD_DEPENDS+=$(FW) iproute2
+	  +TARGET_ipq_ipq60xx:kmod-msm-mproc +TARGET_ipq_ipq60xx_64:kmod-msm-mproc +TARGET_ipq_ipq50xx:kmod-msm-mproc +TARGET_ipq_ipq50xx_64:kmod-msm-mproc +WHUNT:qca-whunt-noship
+  PKG_BUILD_DEPENDS+=$(FW_10_4)
   FILES:= $(strip $(QCAWLAN_MODULE_LIST))
   MENU:=1
   PROVIDES:=kmod-qca-wifi
-ifeq ($(CONFIG_LINUX_5_4),y)
-  AUTOLOAD :=$(call AutoLoad,51,mem_manager qdf asf umac qca_spectral qca_ol wifi_3_0 wifi_2_0 smart_antenna)
-endif
 endef
 
 $(eval $(call RequireCommand,uuencode, \
@@ -167,7 +166,7 @@ if TARGET_ipq_ipq806x
 	help
 	   This option enables support for WiFi 3.0 in boards
 endif
-if (TARGET_ipq_ipq807x||TARGET_ipq807x_ipq807x_32)
+if TARGET_ipq_ipq807x
    config WIFI_TARGET_WIFI_2_0
 	bool "Enable WIFI_2_0 support for IPQ807x platform"
 	default y
@@ -184,7 +183,7 @@ if (TARGET_ipq_ipq807x||TARGET_ipq807x_ipq807x_32)
 	help
 	   This option enables support for Emulation/VP WiFi 3.0 on RUMI
 endif
-if (TARGET_ipq_ipq807x_64||TARGET_ipq807x_generic)
+if TARGET_ipq_ipq807x_64
    config WIFI_TARGET_WIFI_2_0
 	bool "Enable WIFI_2_0 support for IPQ807x 64bit platform"
 	default y
@@ -201,7 +200,7 @@ if (TARGET_ipq_ipq807x_64||TARGET_ipq807x_generic)
 	help
 	   This option enables support for Emulation/VP WiFi 3.0 on RUMI
 endif
-if (TARGET_ipq_ipq60xx||TARGET_ipq60xx_ipq60xx_32)
+if TARGET_ipq_ipq60xx
    config WIFI_TARGET_WIFI_2_0
 	bool "Enable WIFI_2_0 support for IPQ60xx platform"
 	default y
@@ -218,7 +217,7 @@ if (TARGET_ipq_ipq60xx||TARGET_ipq60xx_ipq60xx_32)
 	help
 	   This option enables support for Emulation/VP WiFi 3.0 on RUMI
 endif
-if (TARGET_ipq_ipq60xx_64||TARGET_ipq60xx_generic)
+if TARGET_ipq_ipq60xx_64
    config WIFI_TARGET_WIFI_2_0
 	bool "Enable WIFI_2_0 support for IPQ60xx 64bit platform"
 	default y
@@ -235,7 +234,7 @@ if (TARGET_ipq_ipq60xx_64||TARGET_ipq60xx_generic)
 	help
 	   This option enables support for Emulation/VP WiFi 3.0 on RUMI
 endif
-if (TARGET_ipq_ipq50xx||TARGET_ipq50xx_ipq50xx_32)
+if TARGET_ipq_ipq50xx
    config WIFI_TARGET_WIFI_2_0
 	bool "Enable WIFI_2_0 support for IPQ50xx platform"
 	default y
@@ -252,7 +251,7 @@ if (TARGET_ipq_ipq50xx||TARGET_ipq50xx_ipq50xx_32)
 	help
 	   This option enables support for Emulation/VP WiFi 3.0 on RUMI
 endif
-if (TARGET_ipq_ipq50xx_64||TARGET_ipq50xx_generic)
+if TARGET_ipq_ipq50xx_64
    config WIFI_TARGET_WIFI_2_0
 	bool "Enable WIFI_2_0 support for IPQ50xx 64bit platform"
 	default y
@@ -312,11 +311,6 @@ config WIFI_VDEV_PEER_PROT_TESTING
     default n
     help
        This tracks selected protocol packets per peer and maintains count entering and exiting driver on both tx and rx side
-config WLAN_IOT_SIM_SUPPORT
-    bool "Enable iot simulation feature"
-    default n
-    help
-       This enables iot simulation feature
 endef
 
 #########################################################
@@ -324,11 +318,8 @@ endef
 #########################################################
 define Build/InstallDev
 	$(INSTALL_DIR) $(STAGING_DIR)/usr/include
-	$(INSTALL_DIR) $(STAGING_DIR)/usr/include/qca-wifi
 	$(MAKE) -C $(PKG_BUILD_DIR) INSTALL_DEST="$(STAGING_DIR)/usr/include/" install_headers
 	$(CP) $(TOPDIR)/qca/src/qca-hostap/src/drivers/nl80211_copy.h $(STAGING_DIR)/usr/include
-	$(CP) -f $(DRIVER_PATH)/component_dev/qca_mscs/inc/qca_mscs_if.h $(STAGING_DIR)/usr/include/qca-wifi
-	$(CP) -f $(DRIVER_PATH)/component_dev/qca_mesh_latency/inc/qca_mesh_latency_if.h $(STAGING_DIR)/usr/include/qca-wifi
 endef
 
 #########################################################
@@ -344,7 +335,6 @@ endef
 
 define Build/Compile
 		$(CP) $(TOPDIR)/qca/src/qca-hostap/src/drivers/nl80211_copy.h $(STAGING_DIR)/usr/include
-		$(CP) -f $(DRIVER_PATH)/component_dev/tools/linux/cfg80211_ven_cmd.h $(STAGING_DIR)/usr/include
 		export CONFIG_WIFI_TARGET_WIFI_2_0="$(CONFIG_WIFI_TARGET_WIFI_2_0)"; \
 		export CONFIG_WIFI_TARGET_WIFI_3_0="$(CONFIG_WIFI_TARGET_WIFI_3_0)"; \
 		export FW_INCLUDE_PATH="$(FW_INCLUDE_PATH)"; \
@@ -373,28 +363,11 @@ define Build/Compile
 		export CONFIG_WIFI_IPQ_MEM_PROFILE="$(CONFIG_KERNEL_IPQ_MEM_PROFILE)"; \
 		export CONFIG_TARGET_ipq_ipq807x_64_QSDK_Enterprise="$(CONFIG_TARGET_ipq_ipq807x_64_QSDK_Enterprise)"; \
 		export CONFIG_TARGET_ipq_ipq807x_QSDK_Enterprise="$(CONFIG_TARGET_ipq_ipq807x_QSDK_Enterprise)"; \
-		export CONFIG_TARGET_ipq_ipq806x="$(CONFIG_TARGET_ipq_ipq806x)"; \
-		export CONFIG_TARGET_ipq_ipq40xx="$(CONFIG_TARGET_ipq_ipq40xx)"; \
 		export CONFIG_64BIT="$(CONFIG_64BIT)"; \
 		export CONFIG_KERNEL_KASAN="$(CONFIG_KERNEL_KASAN)"; \
 		export CONFIG_KERNEL_SKB_DEBUG="$(CONFIG_KERNEL_SKB_DEBUG)"; \
 		export CONFIG_KERNEL_SLUB_DEBUG="$(CONFIG_KERNEL_SLUB_DEBUG)"; \
-		export CONFIG_WLAN_IOT_SIM_SUPPORT="$(CONFIG_WLAN_IOT_SIM_SUPPORT)"; \
-		export CONFIG_LOWMEM_FLASH="$(CONFIG_LOWMEM_FLASH)"; \
-		export CONFIG_DEBUG="$(CONFIG_DEBUG)"; \
 		$(MAKE) -C $(PKG_BUILD_DIR) src_prepare all_build
-		$(CP) $(PKG_BUILD_DIR)/os/linux/tools/libqca_tools.so $(STAGING_DIR)/usr/lib/
-ifneq ($(CONFIG_LOWMEM_FLASH),y)
-		$(CP) $(PKG_BUILD_DIR)/os/linux/tools/libwlanfw_htt.so $(STAGING_DIR)/usr/lib/
-		$(CP) $(PKG_BUILD_DIR)/os/linux/tools/libapstats.so $(STAGING_DIR)/usr/lib/
-		$(CP) $(PKG_BUILD_DIR)/os/linux/tools/libwifistats.so $(STAGING_DIR)/usr/lib/
-else
-ifeq ($(CONFIG_DEBUG),y)
-		$(CP) $(PKG_BUILD_DIR)/os/linux/tools/libwlanfw_htt.so $(STAGING_DIR)/usr/lib/
-		$(CP) $(PKG_BUILD_DIR)/os/linux/tools/libapstats.so $(STAGING_DIR)/usr/lib/
-		$(CP) $(PKG_BUILD_DIR)/os/linux/tools/libwifistats.so $(STAGING_DIR)/usr/lib/
-endif
-endif
 endef
 
 define KernelPackage/$(PKG_NAME)/install/Default
@@ -408,8 +381,6 @@ define KernelPackage/$(PKG_NAME)/install/Default
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_DIR) $(1)/data/vendor/wifi
-	$(INSTALL_DIR) $(1)/etc/hotplug.d/ieee80211
-	$(INSTALL_DIR) $(1)/etc/hotplug.d/firmware
 
 	$(INSTALL_DATA) ./files/qcawifi.sh $(1)/lib/wifi
 	$(INSTALL_BIN) ./files/boot-ftm $(1)/etc/init.d/
@@ -422,16 +393,10 @@ define KernelPackage/$(PKG_NAME)/install/Default
 	echo $(QCAWLAN_MODULE_NAME) | sed 's, ,\n,g' > $(1)/lib/wifi/qca-wifi-modules
 
 	$(INSTALL_DATA) ./files/qcawificfg80211.sh $(1)/lib/wifi
-	$(INSTALL_DATA) ./files/wifi-fw.hotplug $(1)/etc/hotplug.d/firmware/11-wifi-fw
 	$(INSTALL_CONF) ./files/qcacfg80211.config $(1)/etc/config/qcacfg80211
 	$(INSTALL_DATA) ./files/qcawifi_countrycode.txt $(1)/lib/wifi
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/cfg80211_configs/cfg80211tool $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/cfg80211_configs/*.xml $(1)/lib/wifi
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/umac/son/cfg80211_configs/*.xml $(1)/lib/wifi
-	ln -s /usr/sbin/cfg80211tool $(1)/usr/sbin/cfg80211tool_mesh
-
-	$(INSTALL_DIR) $(1)/lib/upgrade/keep.d
-	$(INSTALL_DATA) ./files/wifi_nss.upgrade $(1)/lib/upgrade/keep.d/wifi_nss
 
 	$(INSTALL_BIN) ./files/wifi_try $(1)/usr/sbin/
 	$(INSTALL_BIN) ./files/wifi_try $(1)/lib/sbin/
@@ -444,16 +409,11 @@ define KernelPackage/$(PKG_NAME)/install/Default
 	$(INSTALL_CONF) ./files/ini/*.ini $(1)/ini/
 	$(INSTALL_CONF) ./files/ini/internal/*.ini $(1)/ini/internal/
 	$(INSTALL_DATA) ./files/tools_config $(1)/lib/wifi
-#ifeq ($(CONFIG_LINUX_5_4),y)
-#	$(INSTALL_DATA) ./files/qcawifi-config-cmd $(1)/etc/hotplug.d/ieee80211/01-qcawifi-detect
-#endif
 
 	[ ! -d files-$(PKG_BRANCH) ] || \
 		$(CP) ./files-$(PKG_BRANCH)/* $(1)/
 	export INSTALL_BIN="$(INSTALL_BIN)"; \
 	export INSTALL_DATA="$(INSTALL_DATA)"; \
-	export CONFIG_WIFI_TARGET_WIFI_2_0="$(CONFIG_WIFI_TARGET_WIFI_2_0)"; \
-	export CONFIG_WIFI_TARGET_WIFI_3_0="$(CONFIG_WIFI_TARGET_WIFI_3_0)"; \
 	$(MAKE) -C $(PKG_BUILD_DIR) QCAWLAN_TOOL_LIST="$(QCAWLAN_TOOL_LIST)" INSTALL_BIN_DEST="$(1)/usr/sbin" INSTALL_LIB_DEST="$(1)/usr/lib" tools_installonly
 endef
 define KernelPackage/$(PKG_NAME)/install/Lowmem
@@ -467,54 +427,39 @@ define KernelPackage/$(PKG_NAME)/install/Lowmem
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_DIR) $(1)/data/vendor/wifi
-	$(INSTALL_DIR) $(1)/etc/hotplug.d/firmware
 
 	echo $(QCAWLAN_MODULE_NAME) | sed 's, ,\n,g' > ./files/qca-wifi-modules
 	$(INSTALL_DATA) ./files/qca-wifi-modules $(1)/lib/wifi
 
 	$(INSTALL_DATA) ./files/qcawificfg80211.sh $(1)/lib/wifi
-	$(INSTALL_DATA) ./files/wifi-fw.hotplug $(1)/etc/hotplug.d/firmware/11-wifi-fw
 	$(INSTALL_CONF) ./files/qcacfg80211.config $(1)/etc/config/qcacfg80211
 	$(INSTALL_DATA) ./files/qcawifi_countrycode.txt $(1)/lib/wifi
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/cfg80211_configs/cfg80211tool $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/cfg80211_configs/*.xml $(1)/lib/wifi
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/umac/son/cfg80211_configs/*.xml $(1)/lib/wifi
-	ln -s /usr/sbin/cfg80211tool $(1)/usr/sbin/cfg80211tool_mesh
-ifeq ($(CONFIG_PACKAGE_qca-diag),y)
-	$(INSTALL_BIN) ./files/diag_socket_app $(1)/etc/init.d/
-endif
 
 	$(INSTALL_CONF) ./files/ini/global.ini $(1)/ini/
 	$(INSTALL_CONF) ./files/ini/internal/global_i.ini $(1)/ini/internal/
 
 	$(INSTALL_CONF) ./files/ini/QCA5018.ini $(1)/ini/
 	$(INSTALL_CONF) ./files/ini/internal/QCA5018_i.ini $(1)/ini/internal/
-	$(INSTALL_CONF) ./files/ini/QCN9000.ini $(1)/ini/
-	$(INSTALL_CONF) ./files/ini/internal/QCN9000_i.ini $(1)/ini/internal/
 
-	$(INSTALL_CONF) ./files/ini/QCN6122.ini $(1)/ini/
-	$(INSTALL_CONF) ./files/ini/internal/QCN6122_i.ini $(1)/ini/internal/
-
-	$(INSTALL_DATA) ./files/tools_config $(1)/lib/wifi
 	[ ! -d files-$(PKG_BRANCH) ] || \
 		$(CP) ./files-$(PKG_BRANCH)/* $(1)/
 	export INSTALL_BIN="$(INSTALL_BIN)"; \
 	export INSTALL_DATA="$(INSTALL_DATA)"; \
-	export CONFIG_WIFI_TARGET_WIFI_2_0="$(CONFIG_WIFI_TARGET_WIFI_2_0)"; \
-	export CONFIG_WIFI_TARGET_WIFI_3_0="$(CONFIG_WIFI_TARGET_WIFI_3_0)"; \
 	$(MAKE) -C $(PKG_BUILD_DIR) QCAWLAN_TOOL_LIST="$(QCAWLAN_TOOL_LIST)" INSTALL_BIN_DEST="$(1)/usr/sbin" INSTALL_LIB_DEST="$(1)/usr/lib" tools_installonly
 endef
 
 #########################################################
 ################# VARIANTS DEFINITION ###################
 #########################################################
-ifeq ($(CONFIG_TARGET_ipq)$(CONFIG_TARGET_ipq807x)$(CONFIG_TARGET_ipq60xx)$(CONFIG_TARGET_ipq50xx),y)
+ifeq ($(CONFIG_TARGET_ipq),y)
 subtarget:=$(SUBTARGET)
 else
 subtarget:=$(CONFIG_TARGET_BOARD)
 endif
 
-ifeq ($(subtarget),$(filter $(subtarget),ipq806x ipq807x ipq807x_64 generic ipq807x_32 ipq60xx ipq60xx_64 ipq50xx ipq50xx_64 ipq50xx_32))
+ifeq ($(subtarget),$(filter $(subtarget),ipq806x ipq807x ipq807x_64 ipq60xx ipq60xx_64))
  QCA_NSS_ENABLED:=1
  export QCA_NSS_ENABLED
 endif
@@ -530,11 +475,9 @@ define KernelPackage/$(PKG_NAME)-akronite-perf/Description
 $(call define KernelPackage/$(PKG_NAME)/Description/Default)
 endef
 
-ifneq ($(CONFIG_TARGET_ipq806x),)
 define KernelPackage/$(PKG_NAME)-akronite-perf/config
 $(call KernelPackage/$(PKG_NAME)/config/Default,-akronite-perf)
 endef
-endif
 
 define KernelPackage/$(PKG_NAME)-akronite-perf/install
 $(call KernelPackage/$(PKG_NAME)/install/Default,$(1))
@@ -552,11 +495,9 @@ define KernelPackage/$(PKG_NAME)-akronite-perf-emu/Description
 $(call define KernelPackage/$(PKG_NAME)/Description/Default)
 endef
 
-ifneq ($(CONFIG_TARGET_ipq806x),)
 define KernelPackage/$(PKG_NAME)-akronite-perf-emu/config
 $(call KernelPackage/$(PKG_NAME)/config/Default,-akronite-perf-emu)
 endef
-endif
 
 define KernelPackage/$(PKG_NAME)-akronite-perf-emu/install
 $(call KernelPackage/$(PKG_NAME)/install/Default,$(1))
@@ -574,11 +515,9 @@ define KernelPackage/$(PKG_NAME)-perf/Description
 $(call define KernelPackage/$(PKG_NAME)/Description/Default)
 endef
 
-ifneq ($(CONFIG_TARGET_ar71xx),)
 define KernelPackage/$(PKG_NAME)-perf/config
 $(call KernelPackage/$(PKG_NAME)/config/Default,-perf)
 endef
-endif
 
 define KernelPackage/$(PKG_NAME)-perf/install
 $(call KernelPackage/$(PKG_NAME)/install/Default,$(1))
@@ -596,11 +535,9 @@ define KernelPackage/$(PKG_NAME)-unified-perf/Description
 $(call define KernelPackage/$(PKG_NAME)/Description/Default)
 endef
 
-ifneq ($(CONFIG_TARGET_ar71xx),)
 define KernelPackage/$(PKG_NAME)-unified-perf/config
 $(call KernelPackage/$(PKG_NAME)/config/Default,-unified-perf)
 endef
-endif
 
 define KernelPackage/$(PKG_NAME)-unified-perf/install
 $(call KernelPackage/$(PKG_NAME)/install/Default,$(1))
@@ -618,11 +555,9 @@ define KernelPackage/$(PKG_NAME)-dakota-perf/Description
 $(call define KernelPackage/$(PKG_NAME)/Description/Default)
 endef
 
-ifneq ($(CONFIG_TARGET_ipq806x)$(CONFIG_TARGET_ipq),)
 define KernelPackage/$(PKG_NAME)-dakota-perf/config
 $(call KernelPackage/$(PKG_NAME)/config/Default,-dakota-perf)
 endef
-endif
 
 define KernelPackage/$(PKG_NAME)-dakota-perf/install
 $(call KernelPackage/$(PKG_NAME)/install/Default,$(1))
@@ -633,13 +568,10 @@ $(eval $(call KernelPackage,$(PKG_NAME)-dakota-perf))
 define KernelPackage/$(PKG_NAME)-unified-profile
 $(call KernelPackage/$(PKG_NAME)/Default)
   VARIANT:=unified-profile
-  DEPENDS+=@TARGET_ipq806x||TARGET_ar71xx||TARGET_ipq||TARGET_ipq807x||TARGET_ipq60xx||TARGET_ipq50xx||TARGET_x86 \
+  DEPENDS+=@TARGET_ipq806x||TARGET_ar71xx||TARGET_ipq||TARGET_x86 \
 	   +TARGET_ipq_ipq806x:kmod-qca-nss-drv +TARGET_ipq_ipq807x:kmod-qca-nss-drv \
 	   +TARGET_ipq_ipq807x_64:kmod-qca-nss-drv +TARGET_ipq_ipq60xx:kmod-qca-nss-drv \
-	   +TARGET_ipq_ipq60xx_64:kmod-qca-nss-drv +TARGET_ipq_ipq50xx:kmod-qca-nss-drv \
-	   +TARGET_ipq_ipq50xx_64:kmod-qca-nss-drv +TARGET_ipq807x:kmod-qca-nss-drv \
-	   +TARGET_ipq50xx:kmod-qca-nss-drv +TARGET_ipq60xx:kmod-qca-nss-drv \
-	   +TARGET_ipq807x:qca-wifi-hk-fw-hw1-10.4-asic +TARGET_ipq60xx:qca-wifi-cyp-fw-hw1-11.0-asic
+	   +TARGET_ipq_ipq60xx_64:kmod-qca-nss-drv
 endef
 
 define KernelPackage/$(PKG_NAME)-unified-profile/Description
@@ -659,11 +591,10 @@ $(eval $(call KernelPackage,$(PKG_NAME)-unified-profile))
 define KernelPackage/$(PKG_NAME)-custc-profile
 $(call KernelPackage/$(PKG_NAME)/Default)
   VARIANT:=custc-profile
-  DEPENDS+=@TARGET_ipq806x||TARGET_ar71xx||TARGET_ipq||TARGET_x86||TARGET_ipq60xx||TARGET_ipq807x \
+  DEPENDS+=@TARGET_ipq806x||TARGET_ar71xx||TARGET_ipq||TARGET_x86 \
 	   +TARGET_ipq_ipq806x:kmod-qca-nss-drv +TARGET_ipq_ipq807x:kmod-qca-nss-drv \
 	   +TARGET_ipq_ipq807x_64:kmod-qca-nss-drv +TARGET_ipq_ipq60xx:kmod-qca-nss-drv \
-	   +TARGET_ipq_ipq60xx_64:kmod-qca-nss-drv +TARGET_ipq_ipq50xx:kmod-qca-nss-drv \
-	   +TARGET_ipq_ipq50xx_64:kmod-qca-nss-drv
+	   +TARGET_ipq_ipq60xx_64:kmod-qca-nss-drv
 endef
 
 define KernelPackage/$(PKG_NAME)-custc-profile/Description
@@ -683,10 +614,8 @@ $(eval $(call KernelPackage,$(PKG_NAME)-custc-profile))
 define KernelPackage/$(PKG_NAME)-lowmem-profile
 $(call KernelPackage/$(PKG_NAME)/Default)
   VARIANT:=lowmem-profile
-  DEPENDS+=+TARGET_ipq_ipq807x:kmod-qca-nss-drv \
-	   +TARGET_ipq_ipq50xx:kmod-qca-nss-drv \
-	   +TARGET_ipq50xx:kmod-qca-nss-drv \
-	   +TARGET_ipq807x:kmod-qca-nss-drv
+  DEPENDS+=@TARGET_ipq \
+	   +TARGET_ipq_ipq807x:kmod-qca-nss-drv
 endef
 
 define KernelPackage/$(PKG_NAME)-lowmem-profile/Description
@@ -706,9 +635,7 @@ $(eval $(call KernelPackage,$(PKG_NAME)-lowmem-profile))
 define KernelPackage/$(PKG_NAME)-flash_16mb-profile
 $(call KernelPackage/$(PKG_NAME)/Default)
   VARIANT:=flash_16mb-profile
-  DEPENDS+=@TARGET_ipq||TARGET_ipq50xx \
-	   +TARGET_ipq_ipq50xx:kmod-qca-nss-drv \
-	   +TARGET_ipq50xx:kmod-qca-nss-drv
+  DEPENDS+=@TARGET_ipq
 endef
 
 define KernelPackage/$(PKG_NAME)-flash_16mb-profile/Description
