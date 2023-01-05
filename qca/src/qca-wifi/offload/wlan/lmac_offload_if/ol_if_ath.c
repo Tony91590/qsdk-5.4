@@ -13152,4 +13152,4 @@ void qld_print_table(struct qld_event *dump_table)
 }
 qdf_export_symbol(qld_print_table);
 #endif /* QLD */
-#endif
+#endi
