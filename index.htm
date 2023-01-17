@@ -9,18 +9,9 @@
 	local util = require "luci.util"
 	local stat = require "luci.tools.status"
 	local ver = require "luci.version"
-        local uci = require("luci.model.uci").cursor()
-
 	local has_ipv6 = fs.access("/usr/sbin/ip6tables")
 	local has_dhcp = fs.access("/etc/config/dhcp")
 	local has_wifi = ((fs.stat("/etc/config/wireless", "size") or 0) > 0)
-	local has_switch = false
-
-	uci:foreach("network", "switch",
-			function(s)
-				has_switch = true
-				return false
-			end)
 
 	local sysinfo = luci.util.ubus("system", "info") or { }
 	local boardinfo = luci.util.ubus("system", "board") or { }
@@ -34,6 +25,10 @@
 	}
 	
 	local mem_cached = luci.sys.exec("sed -e '/^Cached: /!d; s#Cached: *##; s# kB##g' /proc/meminfo")
+
+	local cpu_use = luci.sys.exec("echo $( echo $(cat /proc/stat | grep \"^cpu \" | awk '{print $1+$2+$3+$4+$5+$6+$7 \" \" $1+$2+$3+$6+$7}') $(sleep 1 && cat /proc/stat | grep \"^cpu \" | awk '{print $1+$2+$3+$4+$5+$6+$7 \" \" $1+$2+$3+$6+$7}') | awk '{print (($4-$2)/($3-$1))*100}' )")
+
+	local cpu_hz = luci.sys.exec  ("echo -e `expr $(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq) / 1000`")
 
 	local swapinfo = sysinfo.swap or {
 		total = 0,
@@ -53,28 +48,15 @@
 		local conn_max = tonumber(luci.sys.exec(
 			"sysctl -n -e net.nf_conntrack_max net.ipv4.netfilter.ip_conntrack_max"
 		):match("%d+")) or 4096
-		
-		local user_info = luci.sys.exec("cat /proc/net/arp | grep 'br-lan' | grep '0x2' | wc -l")
-		
-		local cpu_usage = (luci.sys.exec("expr 100 - $(top -n 1 | grep 'CPU:' | awk -F '%' '{print$4}' | awk -F ' ' '{print$2}')") or "6") .. "%"
-
-		local cpu_hz = luci.sys.exec  ("echo -e `expr $(cat /sys/devices/system/cpu/cpufreq/policy0/scaling_cur_freq) / 1000`")
-	
-		local eth_info = ""
-		if not has_switch then
-			eth_info = luci.sys.exec("/sbin/ethinfo")
-		end
 
 		local rv = {
-			cpuusage    = cpu_usage,
-			cpu_mhz	    = cpu_hz,
-	                ethinfo    = eth_info,
-			userinfo    = user_info,
 			uptime     = sysinfo.uptime or 0,
 			localtime  = os.date("%Y-%m-%d") .. " " .. translate(os.date("%A")) .. " " .. os.date("%X"),
 			loadavg    = sysinfo.load or { 0, 0, 0 },
 			memory     = meminfo,
 			memcached  = mem_cached,
+			cpuavg     = cpu_use,                        
+			cpu_mhz	   = cpu_hz,
 			swap       = swapinfo,
 			connmax    = conn_max,
 			conncount  = conn_count,
@@ -132,7 +114,7 @@
 
 <%+header%>
 
-<script type="text/javascript" src="<%=resource%>/cbi.js"></script>
+<script type="text/javascript" src="<%=resource%>/cbi.js?v=git-20.085.19816-df13074"></script>
 <script type="text/javascript">//<![CDATA[
 	function progressbar(v, m)
 	{
@@ -157,22 +139,13 @@
 					.format(bss[p+'rate'] / 1000, bss[p+'mhz']),
 		    ht = bss[p+'ht'], vht = bss[p+'vht'],
 			mhz = bss[p+'mhz'], nss = bss[p+'nss'],
-			mcs = bss[p+'mcs'], sgi = bss[p+'short_gi'],
-			he = bss[p+'he'], he_gi = bss[p+'he_gi'],
-			he_dcm = bss[p+'he_dcm'];
+			mcs = bss[p+'mcs'], sgi = bss[p+'short_gi'];
 
 		if (ht || vht) {
 			if (vht) s += ', VHT-MCS %d'.format(mcs);
 			if (nss) s += ', VHT-NSS %d'.format(nss);
 			if (ht)  s += ', MCS %s'.format(mcs);
 			if (sgi) s += ', <%:Short GI%>';
-		}
-		
-		if (he) {
-			s += ', HE-MCS %d'.format(mcs);
-			if (nss) s += ', HE-NSS %d'.format(nss);
-			if (he_gi) s += ', HE-GI %d'.format(he_gi);
-			if (he_dcm) s += ', HE-DCM %d'.format(he_dcm);
 		}
 
 		return s;
@@ -514,7 +487,7 @@
 						if (!is_assoc)
 							icon = "<%=resource%>/icons/signal-none.png";
 						else if (net.quality == 0)
-							icon = "<%=resource%>/icons/signal-75-100.png";
+							icon = "<%=resource%>/icons/signal-0.png";
 						else if (net.quality < 25)
 							icon = "<%=resource%>/icons/signal-0-25.png";
 						else if (net.quality < 50)
@@ -534,7 +507,7 @@
 								'<strong><%:Channel%>:</strong> %d (%.3f <%:GHz%>)<br />' +
 								'<strong><%:Bitrate%>:</strong> %s <%:Mbit/s%><br />',
 								icon, net.signal, net.noise,
-								(net.quality == 0) ? 100 : net.quality,
+								net.quality,
 								net.link, net.ssid || '?',
 								net.mode,
 								net.channel, net.frequency,
@@ -657,35 +630,12 @@
 			<% end %>
 
 			var e;
-		
-			if (e = document.getElementById('ethinfo'))			{
-				var ports = eval('(' + info.ethinfo + ')');
-				var tmp = "";
-				for (var i in ports)
-				{
-					tmp = tmp + String.format(
-							'<td style="text-align:center"><span style="line-height:25px">%s</span><br /><small><img src="<%=resource%>/icons/%s" /><br />%s<br />%s</small></td>',							ports[i].name,
-							ports[i].status ? 'port_up.png' : 'port_down.png',
-							ports[i].speed,
-							ports[i].duplex ? '<%:full-duplex%>' : '<%:half-duplex%>');
-				};
-				e.innerHTML = "<tr>" + tmp + "</tr>";
-			}
-	
+
 			if (e = document.getElementById('localtime'))
 				e.innerHTML = info.localtime;
 
 			if (e = document.getElementById('uptime'))
 				e.innerHTML = String.format('%t', info.uptime);
-				
-			if (e = document.getElementById('userinfo'))
-				e.innerHTML = info.userinfo;
-				
-			if (e = document.getElementById('cpuusage'))
-				e.innerHTML = info.cpuusage;
-
-			if (e = document.getElementById('cpumhz'))
-				e.innerHTML = String.format( '%d Mhz', info.cpu_mhz );
 
 			if (e = document.getElementById('loadavg'))
 				e.innerHTML = String.format(
@@ -701,11 +651,23 @@
 					Math.floor(info.memory.total / 1048576) + " <%:MB%>"
 				);
 
+			if (e = document.getElementById('memfree'))
+				e.innerHTML = progressbar(
+					(info.memory.free / 1048576) + " <%:MB%>",
+					(info.memory.total / 1048576) + " <%:MB%>"
+				);
+
 			if (e = document.getElementById('membuff'))
 				e.innerHTML = progressbar(
 					Math.floor(info.memory.buffered / 1048576) + " <%:MB%>",
 					Math.floor(info.memory.total / 1048576) + " <%:MB%>"
 				);
+
+			if (e = document.getElementById('cpuagv'))
+				e.innerHTML = String.format('%.02f\%', info.cpuavg);
+
+			if (e = document.getElementById('cpumhz'))
+				e.innerHTML = String.format( '%d Mhz', info.cpu_mhz );
 
 			if (e = document.getElementById('swaptotal'))
 				e.innerHTML = progressbar(
@@ -734,7 +696,7 @@
 	<table width="100%" cellspacing="10">
 		<tr><td width="33%"><%:Hostname%></td><td><%=luci.sys.hostname() or "?"%></td></tr>
 		<tr><td width="33%"><%:Model%></td><td><%=pcdata(boardinfo.model or "?")%> <%=luci.sys.exec("cat /etc/bench.log") or " "%></td></tr>
-		<tr><td width="33%"><%:Architecture%></td><td><%=pcdata(boardinfo.system or "ARMv8 Processor")%> x <%=luci.sys.exec("cat /proc/cpuinfo | grep 'processor' | wc -l") or "1"%></td></tr>
+		<tr><td width="33%"><%:Architecture%></td><td><%=(boardinfo.system or "ARMv8 Processor")%> x <%=luci.sys.exec("cat /proc/cpuinfo | grep 'processor' | wc -l") or "1"%></td></tr>
 		<tr><td width="33%"><%:Firmware Version%></td><td>
 			<%=pcdata(ver.distname)%> <%=pcdata(ver.distversion)%> /
 			<%=pcdata(ver.luciname)%> (<%=pcdata(ver.luciversion)%>)
@@ -743,9 +705,9 @@
 		<tr><td width="33%"><%:Local Time%></td><td id="localtime">-</td></tr>
 		<tr><td width="33%"><%:Uptime%></td><td id="uptime">-</td></tr>
 		<tr><td width="33%"><%:Load Average%></td><td id="loadavg">-</td></tr>
-		<tr><td width="33%"><%:CPU usage (%)%></td><td id="cpuusage">-</td></tr>
 		<tr><td width="33%"><%:Load Mhz%></td><td id="cpumhz">-</td></tr>
 		<tr><td width="33%"><%:Temperature%></td><td><%=luci.sys.exec("/sbin/tempinfo") or "?"%></td></tr>
+		<tr><td width="33%"><%:CPU usage (%)%></td><td id="cpuagv">-</td></tr>
 	</table>
 </fieldset>
 
@@ -755,6 +717,7 @@
 	<table width="100%" cellspacing="10">
                 <tr><td width="33%"><%:Free Memory%></td><td><input type="button" class="cbi-button cbi-button-apply" name="Free_Memory" value="<%:Free Memory%>" onclick="location.href='<%=luci.dispatcher.build_url("admin/system/Free_Memory")%>'" /></td></tr>
 		<tr><td width="33%"><%:Total Available%></td><td id="memtotal">-</td></tr>
+		<tr><td width="33%"><%:Free%></td><td id="memfree">-</td></tr>
 		<tr><td width="33%"><%:Buffered%></td><td id="membuff">-</td></tr>
 	</table>
 </fieldset>
@@ -766,15 +729,6 @@
 	<table width="100%" cellspacing="10">
 		<tr><td width="33%"><%:Total Available%></td><td id="swaptotal">-</td></tr>
 		<tr><td width="33%"><%:Free%></td><td id="swapfree">-</td></tr>
-	</table>
-</fieldset>
-<% end %>
-	
-<% if not has_switch then %>
-<fieldset class="cbi-section">
-	<legend><%:Interfaces%></legend>
-
-	<table width="100%" cellspacing="10" id="ethinfo">
 	</table>
 </fieldset>
 <% end %>
@@ -797,7 +751,6 @@
 			</tr></table>
 		</td></tr>
 		<% end %>
-		<tr><td width="33%"><%:Online Users%></td><td id="userinfo">0</td></tr>
 		<tr><td width="33%"><%:Active Connections%></td><td id="conns">-</td></tr>
 	</table>
 </fieldset>
@@ -863,4 +816,3 @@
 <% end %>
 
 <%+footer%>
-
