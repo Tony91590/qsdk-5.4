@@ -1,0 +1,4137 @@
+Package: kmod-vxlan
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-iptunnel, kmod-udptunnel4, kmod-udptunnel6
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-usb-storage
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-scsi-core, kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: terminfo
+Version: 6.1-5
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-sched-connmark
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-sched-core, kmod-ipt-core, kmod-ipt-conntrack-extra
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libuci-lua
+Version: 2019-09-01-415f9e48-4
+Depends: libc, libuci20130104, liblua5.1.5
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-theme-material
+Version: git-21.280.14233-9b796b1-1
+Depends: libc
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: luci-i18n-cpufreq-zh-cn
+Version: 1-6
+Depends: libc, luci-app-cpufreq
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-ipt-nfqueue
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core, kmod-nfnetlink-queue
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ip6tables-extra
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ip6tables
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libpam
+Version: 1.5.1-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-lib-textsearch
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libc
+Version: 1.1.24-2
+Depends: libgcc1
+Status: install hold installed
+Essential: yes
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-l2tp
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-udptunnel4, kmod-udptunnel6
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-macvlan
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: sysstat
+Version: 12.0.5-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/sysstat/sysstat.ioconf ec8fe4b312f8df673b9235409238e56daa56641d38c367d77dcea4baf44e435b
+Installed-Time: 1651061521
+
+Package: libbz2-1.0
+Version: 1.0.8-1
+Depends: libc
+Provides: libbz2
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: avahi-dbus-daemon
+Version: 0.8-1
+Depends: libc, libavahi-dbus-support, libexpat, librt, libdaemon
+Provides: avahi-daemon
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/avahi/avahi-daemon.conf 65650c663773acb2c2e25e5a4158a5970cc74def4ff7f26f927819e6ab66c33a
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: ftm
+Version: g-1
+Depends: libc, libnl200, libtcmd, qca-diag, librt, qti-mfg-provision
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: mkf2fs
+Version: 1.12.0-3
+Depends: libc, libf2fs6
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ip6-tunnel
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-iptunnel6
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: shadowsocksr-libev-ssr-check
+Version: 2.5.6-9
+Depends: libc, libev, libsodium, libopenssl1.1, libpthread, libpcre, libudns, zlib
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-crypto-gf128
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-app-mwan3
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, mwan3, libuci-lua, luci-mod-admin-full, luci-app-firewall, luci-lib-nixio
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-ledtrig-oneshot
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: opkg
+Version: 2021-01-31-c5dccea9-1
+Depends: libc, uclient-fetch, libpthread, libubox20191228
+Status: install user installed
+Essential: yes
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/opkg.conf f38c19f696ea87c0b30eb5bfeb8657237f4625e1a749c58b99f01595edfb6446
+ /etc/opkg/customfeeds.conf 61d1f3aa62fe977614ed0c2f0ad3b2ee2f7b451bfb34812071d86d31a4d43d4a
+Installed-Time: 1651061521
+
+Package: libwebsockets-full
+Version: 3.1.0-1
+Depends: libc, zlib, libcap, libopenssl1.1, libuv1
+Provides: libwebsockets
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: iptables-mod-extra
+Version: 1.8.3-1
+Depends: libc, iptables, kmod-ipt-extra
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-rmnet-core
+Version: 5.4.164+g63ebcad-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-rmnet-ctl
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-app-adbyby-plus
+Version: 2.0-75
+Depends: libc, adbyby, uclient-fetch, ipset, dnsmasq-full
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-usb-core
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nls-base
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-bonding
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-qca-mcs
+Version: 5.4.164+g31f5cd4-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-ovsmgr
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-usb-configfs
+Version: 5.4.164+1-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libpthread
+Version: 1.1.24-2
+Depends: libgcc1
+Status: install hold installed
+Essential: yes
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: ubus
+Version: 2022-02-21-b32a0e17-1
+Depends: libc, libubus20210603, libblobmsg-json, ubusd
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: iw
+Version: 5.9-1
+Depends: libc, libnl-tiny
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-crypto-manager
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-aead, kmod-crypto-hash, kmod-crypto-pcompress
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-crypto-pcompress
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libuci20130104
+Version: 2019-09-01-415f9e48-4
+Depends: libc, libubox20191228
+Provides: libuci
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-qca-nss-drv-netlink
+Version: 5.4.164+ga735f0f-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv, kmod-qca-nss-drv-ipsecmgr
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: rpcd
+Version: 2020-05-26-67c8a3fd-1
+Depends: libc, libubus20210603, libubox20191228, libuci20130104, libblobmsg-json, libjson-c2
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/config/rpcd 81a24774226d42c6ea53b531992335cc910094a7e17f80a803e680e2eededd4f
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-gre6
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-iptunnel, kmod-ip6-tunnel, kmod-gre
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: busybox
+Version: 1.33.2
+Depends: libc, jsonfilter
+Conflicts: busybox-selinux
+Status: install user installed
+Essential: yes
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: ntfs3-mount
+Version: 2
+Depends: libc, kmod-fs-ntfs3
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-crypto-ctr
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-manager, kmod-crypto-seqiv, kmod-crypto-iv
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-lib-zlib-deflate
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-qca-nss-drv-tunipip6
+Version: 5.4.164+ga735f0f-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv, kmod-iptunnel6, kmod-ip6-tunnel
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libpci
+Version: 3.6.2-3
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-usb-net-qmi-wwan
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-net, kmod-usb-wdm
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-lib-ip
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, liblua5.1.5, libnl-tiny
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-qca-nss-drv-vlan-mgr
+Version: 5.4.164+ga735f0f-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv, kmod-bonding
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: ip-full
+Version: 5.0.0-2.1
+Depends: libc, libnl-tiny, libelf1, libcap
+Provides: ip
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+Alternatives: 300:/sbin/ip:/usr/libexec/ip-full
+
+Package: libroxml3.0.2
+Version: 3.0.2-1
+Depends: libc
+Provides: libroxml
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: breakpad
+Version: 0.1-1
+Depends: libc, libstdcpp6
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: qca-ssdk-shell
+Version: geecdfac-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-nfnetlink
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-crypto-iv
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-manager, kmod-crypto-rng, kmod-crypto-wq
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libubus-lua
+Version: 2022-02-21-b32a0e17-1
+Depends: libc, libubus20210603, liblua5.1.5
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libwifisoncfg
+Version: g-1
+Depends: libc, qca-cfg80211, libhyficommon, libnl200, qca-son-mem-debug
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-ipt-tproxy
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-conntrack, kmod-nf-conntrack6, kmod-ip6tables, kmod-ipt-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ipt-ulog
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-crypto-hash
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-nf-reject6
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-ipt-fullconenat
+Version: 5.4.164+2022-02-13-108a36cb-6
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nf-ipt, kmod-nf-nat
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-tun
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: athtestcmd-lith
+Version: g-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-crypto-aead
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-null
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libiwinfo-lua
+Version: 2018-12-25-dd508af4
+Depends: libc, libiwinfodd508af4, liblua5.1.5
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-usb-wdm
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-qca-nss-drv-tun6rd
+Version: 5.4.164+ga735f0f-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv, kmod-sit
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-crypto-deflate
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-lib-zlib-inflate, kmod-lib-zlib-deflate, kmod-crypto-acompress
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: qca-lowi
+Version: g-1
+Depends: libc, librt, libpthread, libnl200, libroxml3.0.2, uclibcxx
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: arptables
+Version: 2015-05-20-f4ab8f63-1
+Depends: libc, kmod-arptables
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: bash
+Version: 5.1-2
+Depends: libc, libncurses6, libreadline8
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/bash.bashrc 096d8e6a4da75033f12dc764cd45055e922cdba8292f3c22216f7d5c9ed6e454
+Installed-Time: 1651061521
+
+Package: libtasn1
+Version: 4.15.0-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: swconfig
+Version: 12
+Depends: libc, libuci20130104, libnl-tiny
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: ruby-dbm
+Version: 3.0.4-1
+Depends: libc, ruby, libdb47
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libiwinfodd508af4
+Version: 2018-12-25-dd508af4
+Depends: libc, libuci20130104, libubus20210603
+Provides: libiwinfo
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libubus20210603
+Version: 2022-02-21-b32a0e17-1
+Depends: libc, libubox20191228
+Provides: libubus
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libdbus
+Version: 1.13.12-1
+Depends: libc, libpthread
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-br-netfilter
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: qca-wifi-scripts
+Version: 1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: hysteria
+Version: 1.2.0-1
+Depends: libc, ca-bundle
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-crypto-md4
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-hash
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: liblzma
+Version: 5.2.5-1
+Depends: libc, libpthread
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-crypto-md5
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-hash
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-app-autoreboot
+Version: 1.0-8
+Depends: libc, luci
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: openssl-util
+Version: 1.1.1m-1
+Depends: libc, libopenssl1.1, libopenssl-conf
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-nf-flow
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nf-conntrack
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-lib-crc-ccitt
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-ipt-filter
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core, kmod-lib-textsearch, kmod-ipt-conntrack
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-i18n-filetransfer-zh-cn
+Version: 1-2
+Depends: libc, luci-app-filetransfer
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: qca-wpa-supplicant
+Version: g-1
+Depends: libc, libopenssl1.1, libnl200, breakpad-wrapper
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: liblzo2
+Version: 2.10-2
+Depends: libc
+Provides: liblzo
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-rmnet-nss
+Version: 5.4.164+gec6c502-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv, kmod-rmnet-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-cfg80211-linux
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), iw
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: getrandom
+Version: 2019-06-16-4df34a4d-4
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ipt-nat-extra
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core, kmod-ipt-nat
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-theme-ifit
+Version: 20200706-0
+Depends: libc
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: qca-mcs-apps
+Version: g-1
+Depends: libc, kmod-qca-mcs, kmod-cfg80211-linux, qca-cfg80211, libhyficommon, libpthread
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: pdnsd-alt
+Version: 1.2.9b-par-3
+Depends: libc, libpthread
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ipsec
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-authenc, kmod-crypto-cbc, kmod-crypto-deflate, kmod-crypto-des, kmod-crypto-echainiv, kmod-crypto-hmac, kmod-crypto-iv, kmod-crypto-md5, kmod-crypto-sha1
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: minicom
+Version: 2.7.1-1
+Depends: libc, libncurses6
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-asn1-decoder
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: dmesg
+Version: 2.34-1
+Depends: libc, libncursesw6
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libustream-openssl20201210
+Version: 2022-01-16-868fd881-1
+Depends: libc, libubox20191228, libopenssl1.1
+Provides: libustream-openssl
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: qca-hostap
+Version: g-1
+Depends: libc, libnl200, libopenssl1.1, breakpad-wrapper
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libev
+Version: 4.25-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: qca-thermald
+Version: g-1
+Depends: libc, libpthread
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-gre
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-iptunnel
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-usb-f-diag
+Version: 5.4.164+1-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-lib-composite, kmod-usb-configfs, kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-app-unblockmusic
+Version: 2.3.5-18
+Depends: libc, dnsmasq-full, ipset, uclient-fetch, UnblockNeteaseMusic-Go
+Status: install user installed
+Architecture: all
+Conffiles:
+ /etc/config/unblockmusic 9225b41fd303e6773088851f457d613b5503877eb21beba269ea0c8bbef37ac2
+Installed-Time: 1651061521
+
+Package: luci-theme-bootstrap
+Version: git-21.280.14233-9b796b1-1
+Depends: libc
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libusb-1.0-0
+Version: 1.0.22-2
+Depends: libc, libpthread, librt
+Provides: libusb-1.0
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-pppoe
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ppp, kmod-pppox
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-nf-nathelper
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nf-nat
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libuuid1
+Version: 2.34-1
+Depends: libc, librt
+Provides: libuuid
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: ipt2socks
+Version: 1.1.3-3
+Depends: libc, libpthread
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libcap
+Version: 2.27-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libavahi-client
+Version: 0.8-1
+Depends: libc, avahi-dbus-daemon
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-pppox
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ppp
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libhyficommon
+Version: g-1
+Depends: libc, qca-son-mem-debug
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-ipt-conntrack
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core, kmod-nf-conntrack
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: shellsync
+Version: 0.2-2
+Depends: libc, libpthread, kmod-macvlan
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-nf-reject
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: hd-idle
+Version: 1.05-2
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/config/hd-idle 4733fa40955720209aaba3fbd194b2b89cd845c36ada16f2c76f8efb138d7878
+Installed-Time: 1651061521
+
+Package: base-files
+Version: 204.4-r0
+Depends: libc, netifd, procd, jsonfilter, usign, openwrt-keyring, ubi-utils, fstools, fwtool
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/ethers 56bda09b0aa3d1e88107bfa8a1c6e4449d5c1f47245dc1c4037ff9b5db163b7c
+ /etc/group 45e8cab268d4a2254d48ccb1f889630047e81758de54a614cad5449fdbebe19c
+ /etc/hosts c1a978d90673437b35fa9494e0a54294062c152bb653d490b718052ab88447fd
+ /etc/inittab 68712891b1522b278594076d397d04e6ef6d40f4e1994fbd45b42706233f6235
+ /etc/iproute2/rt_protos a0712b1771c8d5f3e0dcf9a6314880e71aa3498ea1ae873535bdfcf70d814061
+ /etc/iproute2/rt_tables f771e2b81741f70e3faf658dc504f0dc048672fc8caaadea15e46c35da3de8f8
+ /etc/passwd 6a451aa33393f47ade89b8bce4d9711818c2630394c3967265ffed276bb25a55
+ /etc/profile 9e36315e247bae64a6027c973cb421ff6fd76b8eae5adbac824cc8ad63f5a996
+ /etc/protocols 7d551355d5540b07b9d86e623cbbc4abecbb94d2a662b3afcc917940eb0e3d52
+ /etc/rc.local 515018aa94eb4937dade12dc0d69890b352af35a5ab5fb8203f9ed10990ac06f
+ /etc/services 754ccc71ca347bc79ac4c45139d416b7cf1e65a919dad1db15613a216cd6b9cc
+ /etc/shadow ccbbfeee2dd560403fea13f7f431ebd21d9bb4b3d41e48e892013fa451f91cc4
+ /etc/shells 8b35ce73c18161a7d7ed16fa244410993bd031515260e3e0c11749047df48d0a
+ /etc/sysctl.conf c02fe88dc055a1eaee9e7cb631760a3a5a9cea55610b42aa45196838c6f1a55e
+ /etc/sysupgrade.conf 9e87b05fe2f12c84d1c465b396322748479f64bc40e5bab061887f0bd95020a6
+Installed-Time: 1651061521
+
+Package: kmod-lib-crc16
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-nf-nat
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nf-conntrack
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-input-core
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libpcre
+Version: 8.43-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: squashfs4
+Version: 4.2
+Depends: libc, liblzma, zlib
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: ttyd
+Version: 1.5.2-2
+Depends: libc, libopenssl1.1, libjson-c2, libpthread, libwebsockets-full
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-crypto-crc32c
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-hash
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-app-adguardhome
+Version: 15
+Depends: libc, wget
+Status: install user installed
+Architecture: all
+Conffiles:
+ /usr/share/AdGuardHome/links.txt f8efc814a42294e58180abea0f0ca2075c0f5200b18ab47bec69e40c6da535a7
+ /etc/config/AdGuardHome f34d065f2455a30249c0c9d2006c47c01b34f6077efe294bcd8437dd82a40783
+Installed-Time: 1651061521
+
+Package: coreutils-base64
+Version: 9.0-2
+Depends: libc, coreutils
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+Alternatives: 300:/bin/base64:/usr/libexec/base64-coreutils
+
+Package: luci-app-ttyd
+Version: 1.0-3
+Depends: libc, ttyd
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-qca-nss-drv-pppoe
+Version: 5.4.164+ga735f0f-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv, kmod-pppoe, kmod-bonding
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: netifd
+Version: 2021-01-09-753c351b-1
+Depends: libc, libuci20130104, libnl-tiny, libubus20210603, ubus, ubusd, jshn, libubox20191228
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: coreutils
+Version: 9.0-2
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: qca-cnss-daemon
+Version: g-1
+Depends: libc, libnl200, libpthread, qca-qmi-framework, breakpad-wrapper
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ipt-raw
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libf2fs6
+Version: 1.12.0-3
+Depends: libc, libuuid1
+Provides: libf2fs
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: ddns-scripts
+Version: 2.7.8-14
+Status: install user installed
+Architecture: all
+Conffiles:
+ /etc/config/ddns ccdb2a41b8c7d0d42eed42995a86b2bdc8dc689df3fe6c80de8ab9fdb0b15b86
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libnl-route200
+Version: 3.4.0-2
+Depends: libc, libnl-core200
+Provides: libnl-route
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libsmartcols1
+Version: 2.34-1
+Depends: libc, librt
+Provides: libsmartcols
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-app-uhttpd
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, uhttpd
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-ipt-nflog
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core, kmod-nfnetlink-log
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: pciutils
+Version: 3.6.2-3
+Depends: libc, libkmod, libpci
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: uboot-envtools
+Version: 2018.03-3.1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-usb-ohci
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: zerotier
+Version: 1.6.5-1
+Depends: libc, libpthread, libstdcpp6, kmod-tun, ip, libminiupnpc, libnatpmp
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/config/zerotier 014ecc64dbb71443fadb4515982299c51205952b5d7bd4d6c02f16c8572e55bf
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: qca-diag
+Version: g-1
+Depends: libc, libpthread
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-qca-nss-drv-igs
+Version: 5.4.164+ga735f0f-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv, kmod-sched-core, kmod-ifb, kmod-qca-nss-drv-qdisc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-mii
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: procd
+Version: 2020-03-07-09b9bd82-1
+Depends: libc, ubusd, ubus, libjson-script, ubox, libubox20191228, libubus20210603, libblobmsg-json, libjson-c2
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: resolveip
+Version: 2
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libuclient20160123
+Version: 2020-06-17-51e16ebf-1
+Depends: libc, libubox20191228
+Provides: libuclient
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: adbyby
+Version: 2.7-20200315
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: usbutils
+Version: 007-10
+Depends: libc, libusb-1.0-0, librt, libpthread
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: attr
+Version: 2.4.48-1
+Depends: libc, libattr
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-app-zerotier
+Version: 1.0-20
+Depends: libc, zerotier
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: luci-proto-bonding
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, proto-bonding
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-crypto-hmac
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-hash, kmod-crypto-manager
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-crypto-sha256
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-hash
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-ledtrig-heartbeat
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libkmod
+Version: 20-2
+Depends: libc, zlib
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libnl200
+Version: 3.4.0-2
+Depends: libc, libnl-genl200, libnl-route200, libnl-nf200
+Provides: libnl
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: ubusd
+Version: 2022-02-21-b32a0e17-1
+Depends: libc, libubox20191228, libblobmsg-json
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: minidump
+Version: g-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libnetfilter-conntrack3
+Version: 2018-05-01-3ccae9f5-2
+Depends: libc, libnfnetlink0, kmod-nf-conntrack-netlink, libmnl0
+Provides: libnetfilter-conntrack
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-dm
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-manager
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: ruby-pstore
+Version: 3.0.4-1
+Depends: libc, ruby, ruby-digest, ruby-enc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: redsocks2
+Version: 0.67-4
+Depends: libc, libevent2-7, libopenssl1.1
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-nf-nat6
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nf-conntrack6, kmod-nf-nat
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-crypto-acompress
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-qca-ovsmgr
+Version: 5.4.164+g2764cf9-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-openvswitch
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-i18n-autoreboot-zh-cn
+Version: 1.0-8
+Depends: libc, luci-app-autoreboot
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: dns2socks
+Version: 2.1-2
+Depends: libc, libpthread
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-lib-crc32c
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-crc32c
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libelf1
+Version: 0.177-1
+Depends: libc, zlib
+Provides: libelf, libelf1-1
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-ledtrig-gpio
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: etherwake
+Version: 1.09-4
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/config/etherwake 96ceb2e8389056a00013f49118ee2edbfc5b147c8a2b3fa886710df8c31f7ec0
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-qca-nss-drv-match
+Version: 5.4.164+ga735f0f-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: iptables-mod-ipsec
+Version: 1.8.3-1
+Depends: libc, iptables, kmod-ipt-ipsec
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-iptunnel
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-i18n-vsftpd-zh-cn
+Version: 1.0-3
+Depends: libc, luci-app-vsftpd
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: libxtables12
+Version: 1.8.3-1
+Depends: libc
+Provides: libxtables
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: ruby-digest
+Version: 3.0.4-1
+Depends: libc, ruby
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: iptables-mod-physdev
+Version: 1.8.3-1
+Depends: libc, iptables, kmod-ipt-physdev
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ipt-raw6
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core, kmod-ip6tables
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: athdiag
+Version: g-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-qca-nss-drv-map-t
+Version: 5.4.164+ga735f0f-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv, kmod-nat46
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-qca-wifi-unified-profile
+Version: 5.4.164+g-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), libgcc1, libc, wireless-tools, librt, kmod-cfg80211-linux, libroxml3.0.2, libnl200, qca-cfg80211, kmod-qca-nss-drv
+Provides: kmod-qca-wifi
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-crypto-sha512
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-hash
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: qca-hostapd-cli
+Version: g-1
+Depends: libc, librt, libnl200, libopenssl1.1, breakpad-wrapper, kmod-qca-nss-macsec
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-pptp
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ppp, kmod-gre, kmod-pppox
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: qca-time-services
+Version: g-1
+Depends: libc, libpthread, qca-qmi-framework
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-i18n-unblockmusic-zh-cn
+Version: 2.3.5-18
+Depends: libc, luci-app-unblockmusic
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: block-mount
+Version: 2022-06-02-93369be0
+Depends: libc, ubox, libubox20191228, libuci20130104, libblobmsg-json, libjson-c2
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-crypto-seqiv
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-aead, kmod-crypto-rng
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: qca-cfg80211
+Version: g-1
+Depends: libc, libnl200, libpthread, iw
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-fs-vfat
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nls-base, kmod-nls-cp437, kmod-nls-iso8859-1, kmod-nls-utf8
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-nft-nat
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nft-core, kmod-nf-nat
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-app-ddns
+Version: 2.4.9-8
+Depends: libc, luci-mod-admin-full, ddns-scripts
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-qca-nss-drv-bridge-mgr
+Version: 5.4.164+ga735f0f-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv-vlan-mgr, kmod-bonding, kmod-qca-ovsmgr
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: miniupnpd
+Version: 2.2.0-5
+Depends: libc, iptables, libip4tc2, libip6tc2, ip6tables, libuuid1, libcap
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/config/upnpd 53ff2bc0f89e5660f717b037a1a428d6319640b1640e40fcc44d964cbb5b7447
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-usb-serial-option
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-serial, kmod-usb-serial-wwan
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-usb3
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ipt-compat-xtables
+Version: 5.4.164+2.14-9
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core, kmod-ip6tables
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-fs-exfat
+Version: 5.4.164+5.12.3-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nls-base
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: firewall
+Version: 2019-11-22-8174814a-3
+Depends: libc, libubox20191228, libubus20210603, libuci20130104, libip4tc2, libip6tc2, libxtables12, kmod-ipt-core, kmod-ipt-conntrack, kmod-nf-conntrack6, kmod-ipt-nat
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/config/firewall 1f4f13b5bb8449011f2ab57e53eab7f3a917598ce3d950ad26c8f8a6c8d86f52
+ /etc/firewall.user bd68324966481011f5e36570258ad97dd422655c16f3119d48325ed8459de510
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: UnblockNeteaseMusic-Go
+Version: 0.2.13
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libmagic
+Version: 5.38-1
+Depends: libc, zlib, liblzma, libbz2-1.0
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: ruby-forwardable
+Version: 3.0.4-1
+Depends: libc, ruby
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libxml2
+Version: 2.9.12-1
+Depends: libc, libpthread, zlib
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-app-cpufreq
+Version: 1-6
+Depends: libc
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: luci-app-firewall
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, firewall
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: dns2tcp
+Version: 1.1.0-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: ruby-stringio
+Version: 3.0.4-1
+Depends: libc, ruby
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: qti-encrypt
+Version: 1.0-1
+Depends: libc, openssl-util
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: AdGuardHome
+Version: v0.106.3-2
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: ruby
+Version: 3.0.4-1
+Depends: libc, libruby3.0
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: ruby-yaml
+Version: 3.0.4-1
+Depends: libc, ruby, ruby-dbm, ruby-pstore, ruby-psych
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ipt-conntrack-extra
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core, kmod-ipt-conntrack
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-nf-ipt
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libsodium
+Version: 1.0.18-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: breakpad-wrapper
+Version: 1.0-1
+Depends: libc, breakpad, libstdcpp6
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libmnl0
+Version: 1.0.4-2
+Depends: libc
+Provides: libmnl
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-app-mwan3helper
+Version: 1-3
+Depends: libc, luci-app-mwan3, pdnsd-alt, dnsmasq-full, ipset
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: libblkid1
+Version: 2.34-1
+Depends: libc, libuuid1
+Provides: libblkid
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-app-ssr-plus
+Version: 186-6
+Depends: libc, coreutils, coreutils-base64, dns2socks, dns2tcp, dnsmasq-full, ipset, kmod-ipt-nat, ip-full, iptables, iptables-mod-tproxy, lua, lua-neturl, libuci-lua, microsocks, tcping, resolveip, shadowsocksr-libev-ssr-check, uclient-fetch, curl, v2ray-core, hysteria, ipt2socks, redsocks2, shadowsocks-rust-sslocal, shadowsocksr-libev-ssr-local, shadowsocksr-libev-ssr-redir
+Status: install user installed
+Architecture: all
+Conffiles:
+ /etc/config/shadowsocksr e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+ /etc/ssrplus/netflix.list d508e5d0fb81aaf358fb93f6ee026af10dc462d76153f8c483f5ab6de9a426da
+ /etc/ssrplus/black.list e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+ /etc/ssrplus/ad.conf e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+ /etc/ssrplus/gfw_base.conf b21cf78e266b13eb66cc73718b0556f1a1fbb1b03d554308af7acbc8c7d6390a
+ /etc/ssrplus/gfw_list.conf 648f90f8bba4593ad43db8d6ee9ab32f2891f1207d184de827426ba993470487
+ /etc/ssrplus/oversea_list.conf 2cda73b29d200fa3157c27d4b70db6897e5b5a07c2ad23f76fa4cfce29273f91
+ /etc/ssrplus/netflixip.list 8bb1acf30c9ce1c45463dacc75afa4f44a69ad90795fc852fd69622cc242520d
+ /etc/ssrplus/china_ssr.txt b83f23b0ad1c73ab133e35363ff05d880b6bd943320dd106a4b108224e1ab111
+ /etc/ssrplus/deny.list 73a21a4b48cdd11d0116744554218093f8d036bfe244aa29eea2dcff54852855
+ /etc/ssrplus/white.list c64b33dad5f7ccd5b69e433df53101d4098257ffa3aed912b445eaa0fd4eddc8
+Installed-Time: 1651061521
+
+Package: libgnutls
+Version: 3.6.15-2
+Depends: libc, libnettle7, libgmp10, libatomic1
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: tc
+Version: 5.0.0-2.1
+Depends: libc, kmod-sched-core, libxtables12, libelf1, libcap
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: ubi-utils
+Version: 2.1.1-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-crypto-qce
+Version: 5.4.164+1-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-manager, kmod-crypto-hash
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ip6tables
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nf-reject6, kmod-nf-ipt6, kmod-ipt-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-qca-nss-drv
+Version: 5.4.164+gb0c81df-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-dp
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: odhcp6c
+Version: 2021-01-09-64e1b4e7-16
+Depends: libc, libubox20191228
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: fstools
+Version: 2022-06-02-93369be0
+Depends: libc, ubox, ubi-utils
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-udptunnel4
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libdaemon
+Version: 0.14-5
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: uclient-fetch
+Version: 2020-06-17-51e16ebf-1
+Depends: libc, libuclient20160123
+Provides: wget
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+Alternatives: 200:/usr/bin/wget:/bin/uclient-fetch
+
+Package: kmod-udptunnel6
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-crypto-ghash
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-gf128, kmod-crypto-hash
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-ipt-extra
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: rp-pppoe-server
+Version: 3.12-7
+Depends: libc, rp-pppoe-common, ppp-mod-pppoe
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/ppp/pppoe-server-options 7289baf12d09b62c94bb2471e4b72c806b7d4e548b7e07adb056e93064894e1a
+ /etc/ppp/options a0509db666fc831a3f9332ca6e911ba9a32e7f1ce13733e539a719f0413794b9
+ /etc/ppp/pap-secrets cd6c8bdb06107c3c441abda1791bb7860f6290f29ca41c0da239f22334cceddc
+Installed-Time: 1651061521
+
+Package: iptables-mod-ipopt
+Version: 1.8.3-1
+Depends: libc, iptables, kmod-ipt-ipopt
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-lib-zlib-inflate
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libtcmd
+Version: g-1
+Depends: libc, libpthread, libnl200
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: ethtool
+Version: 5.2-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: uci
+Version: 2019-09-01-415f9e48-4
+Depends: libc, libuci20130104
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: lua
+Version: 5.1.5-3
+Depends: libc, liblua5.1.5
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-fs-ext4
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-lib-crc16, kmod-crypto-hash, kmod-crypto-crc32c
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: qca-qmi-framework
+Version: g-1
+Depends: libc, libpthread
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: rp-pppoe-common
+Version: 3.12-7
+Depends: libc, ppp
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/config/pppoe 2302ed0d44f428303d8ec5d9da47ec1d2927ef8083c5081b633d93f27cc1f3f4
+Installed-Time: 1651061521
+
+Package: ppp-mod-pppol2tp
+Version: 2.4.7.git-2019-05-25-3
+Depends: libc, kmod-pppol2tp
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: losetup
+Version: 2.34-1
+Depends: libc, libsmartcols1
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: qca-cfg80211tool
+Version: g-1
+Depends: libc, libnl200, libpthread, libroxml3.0.2, iw
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libip4tc2
+Version: 1.8.3-1
+Depends: libc, libxtables12
+Provides: libip4tc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libubox20191228
+Version: 2020-05-25-66195aee-1
+Depends: libc
+Provides: libubox
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: dbus
+Version: 1.13.12-1
+Depends: libc, libexpat, libdbus
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: dropbear
+Version: 2019.78-2
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/dropbear/dropbear_rsa_host_key e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+ /etc/config/dropbear 0198dbc97b5a9aac76a5c6233684571ccdcc91fcb735e91c36d2b06a98158589
+Installed-Time: 1651061521
+Alternatives: 100:/usr/bin/ssh:/usr/sbin/dropbear, 100:/usr/bin/scp:/usr/sbin/dropbear
+
+Package: flock
+Version: 2.34-1
+Depends: libc, librt
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Alternatives: 200:/usr/bin/flock:/usr/bin/util-linux-flock
+
+Package: kmod-ledtrig-timer
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-theme-argon
+Version: 1.0-2
+Depends: libc
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: curl
+Version: 7.80.0
+Depends: libc, libcurl4
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-cryptodev
+Version: 5.4.164+1.10-ipq807x-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-authenc, kmod-crypto-hash
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-nls-utf8
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nls-base
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-usb-serial-wwan
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-serial
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libnftnl11
+Version: 1.1.4-1
+Depends: libc, libmnl0
+Provides: libnftnl
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libgmp10
+Version: 6.1.2-2
+Depends: libc
+Provides: libgmp
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: microsocks
+Version: 1.0.3
+Depends: libc, libpthread
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-app-vsftpd
+Version: 1.0-3
+Depends: libc, vsftpd-alt
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-nls-cp437
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nls-base
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: vsftpd-alt
+Version: 3.0.5-1
+Depends: libc, libuci20130104
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: mtd
+Version: 24
+Depends: libc, libubox20191228
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-usb-lib-composite
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-gadget, kmod-fs-configfs, kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: odhcpd-ipv6only
+Version: 2020-05-03-49e4949c-3
+Depends: libc, libubox20191228, libuci20130104, libubus20210603, libnl-tiny
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ledtrig-transient
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-rmnet-ctl
+Version: 5.4.164+g63ebcad-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-crypto-cbc
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-manager
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-qca-nss-drv-gre
+Version: 5.4.164+ga735f0f-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv, kmod-gre6
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ipt-lua
+Version: 5.4.164+2.14-9
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core, kmod-ipt-conntrack-extra
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-theme-opentomcat
+Version: 0.2.50-1
+Depends: libc
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-ipt-hashlimit
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-qca-nss-drv-lag-mgr
+Version: 5.4.164+ga735f0f-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv, kmod-qca-nss-drv-vlan-mgr, kmod-bonding
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: samba4-server
+Version: 4.11.17-2
+Depends: libc, samba4-libs
+Conflicts: samba36-server
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/config/samba4 874cfeaa5b2a5d739121fc630e5ae4fb5826a50e96fb17a542776ae72d80c486
+ /etc/samba/smb.conf.template ef9d3b7541d8f8acf3c3068a8cdb20bcc4d5cdaa14bb0dcb46188b7feca3e276
+Installed-Time: 1651061521
+
+Package: kmod-sched
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-sched-core, kmod-ipt-core, kmod-lib-crc32c
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libwolfssl30
+Version: 5.1.1-stable-2
+Depends: libc
+Provides: libcyassl, libwolfssl, libcyassl30
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-i18n-zerotier-zh-cn
+Version: 1.0-20
+Depends: libc, luci-app-zerotier
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-crypto-echainiv
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-aead
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-crypto-authenc
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-manager, kmod-crypto-null
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: proto-bonding
+Version: 2018-06-11-1
+Depends: libc, kmod-bonding
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-qca-ssdk-nohnat
+Version: 5.4.164+g4398b4da-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Provides: qca-ssdk
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: urandom-seed
+Version: 1.0-1
+Depends: libc, getrandom
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: wsdd2
+Version: 2020-11-19-e0cf50d5-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: ipset
+Version: 7.3-1
+Depends: libc, kmod-ipt-ipset, libmnl0, libipset13
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libnatpmp
+Version: 20150609-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-proto-ppp
+Version: git-21.280.14233-9b796b1-1
+Depends: libc
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-fs-configfs
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-crypto-wq
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: blockd
+Version: 2022-06-02-93369be0
+Depends: libc, block-mount, fstools, libubus20210603, kmod-fs-autofs4, libblobmsg-json, libjson-c2
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libcomerr0
+Version: 1.44.5-2
+Depends: libc, libuuid1
+Provides: libcomerr
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-mod-admin-full
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, luci-base
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: ppp
+Version: 2.4.7.git-2019-05-25-3
+Depends: libc, kmod-ppp
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/ppp/chap-secrets 6981fa176a79f8c12be5826c421b16253a616747018ba7e76752a9d36d1d51d4
+ /etc/ppp/filter 579583b318e0cff706ffc134620b42d3fbce8fc31aeb0ad7eea1cc859868e902
+ /etc/ppp/options 01f7358a5528be037dde329a2ecfb7a63382aababf21d4f5bc085f5acef95133
+Installed-Time: 1651061521
+
+Package: kmod-nft-netdev
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nft-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-base
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, lua, libuci-lua, luci-lib-nixio, luci-lib-ip, rpcd, libubus-lua, luci-lib-jsonc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/luci-uploads/.placeholder e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+ /etc/config/luci 7e04b593f6a54853b284c1dadfa0df9a90d16661977382978a56443152348329
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libnettle7
+Version: 3.5.1-1
+Depends: libc, libgmp10
+Provides: libnettle
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-theme-argon_new
+Version: 1.7.1-20201022
+Depends: libc
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-leds-gpio
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-i18n-ssr-plus-zh-cn
+Version: 186-6
+Depends: libc, luci-app-ssr-plus
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-gpio-button-hotplug
+Version: 5.4.164-3
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: ruby-enc
+Version: 3.0.4-1
+Depends: libc, ruby
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: logd
+Version: 2019-06-16-4df34a4d-4
+Depends: libc, libubox20191228, libubus20210603, libblobmsg-json
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: ppp-mod-pptp
+Version: 2.4.7.git-2019-05-25-3
+Depends: libc, kmod-pptp, kmod-mppe, resolveip
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: samba4-libs
+Version: 4.11.17-2
+Depends: libc, libtirpc, libreadline8, libpopt0, libcap, zlib, libgnutls, libtasn1, libuuid1, libopenssl1.1, libpthread, attr, libavahi-client, libpam
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-theme-edge
+Version: 2.4-20201128
+Depends: libc
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-ata-ahci
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ata-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libreadline8
+Version: 8.0-1
+Depends: libc, libncursesw6
+Provides: libreadline
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-qca-nss-cfi-cryptoapi
+Version: 5.4.164+ge0234ed-dirty-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-crypto, kmod-crypto-authenc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-usb-net
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-mii, kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: librt
+Version: 1.1.24-2
+Depends: libpthread
+Status: install hold installed
+Essential: yes
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: boost-date_time
+Version: 1.79.0
+Depends: libc, libstdcpp6, libpthread, librt
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: shadowsocks-rust-sslocal
+Version: 1.14.3-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-qca-nss-drv-vxlanmgr
+Version: 5.4.164+ga735f0f-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv, kmod-vxlan
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: iptables-mod-tproxy
+Version: 1.8.3-1
+Depends: libc, iptables, kmod-ipt-tproxy
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-usb-dwc3-internal
+Version: 5.4.164+1-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-gadget, kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: qti-mfg-provision
+Version: 1.0-1
+Depends: libc, libjson-c2, qti-encrypt
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libopenssl1.1
+Version: 1.1.1m-1
+Depends: libc, kmod-cryptodev
+Provides: libopenssl
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: ruby-date
+Version: 3.0.4-1
+Depends: libc, ruby
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-usb-serial
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-qca-nss-dp
+Version: 5.4.164+gdfef4cf-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-ssdk-nohnat
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-qca-nss-drv-mirror
+Version: 5.4.164+ga735f0f-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: wififw_mount_script
+Version: 1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libjson-script
+Version: 2020-05-25-66195aee-1
+Depends: libc, libubox20191228
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: findfs
+Version: 2.34-1
+Depends: libc, libblkid1
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-i18n-openvpn-zh-cn
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, luci-app-openvpn
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-qca-nss-crypto
+Version: 5.4.164+g2271a3a-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libipset13
+Version: 7.3-1
+Depends: libc, kmod-ipt-ipset, libmnl0
+Provides: libipset
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-proto-ipv6
+Version: git-21.280.14233-9b796b1-1
+Depends: libc
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: uclibcxx
+Version: 0.2.5-3
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libblobmsg-json
+Version: 2020-05-25-66195aee-1
+Depends: libc, libjson-c2, libubox20191228
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libminiupnpc
+Version: 2.1.20190408-2
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libruby3.0
+Version: 3.0.4-1
+Depends: libc, libpthread, librt, libgmp10, zlib
+Provides: libruby
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-fs-ntfs3
+Version: 5.4.164+2021-07-05-46d199e7-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nls-utf8
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libip6tc2
+Version: 1.8.3-1
+Depends: libc, libxtables12
+Provides: libip6tc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-nfnetlink-log
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nfnetlink
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-crypto-ecb
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-manager
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libudns
+Version: 0.4-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: iptables
+Version: 1.8.3-1
+Depends: libc, kmod-ipt-core, libip4tc2, libip6tc2, libxtables12
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: iptables-mod-filter
+Version: 1.8.3-1
+Depends: libc, iptables, kmod-ipt-filter
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: openwrt-keyring
+Version: 2021-02-20-49283916-2
+Depends: libc
+Provides: lede-keyring
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: shadowsocksr-libev-ssr-local
+Version: 2.5.6-9
+Depends: libc, libev, libsodium, libopenssl1.1, libpthread, libpcre, libudns, zlib
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: openvpn-openssl
+Version: 2.4.11-1
+Depends: libc, kmod-qca-nss-drv-ovpn-mgr, kmod-tun, liblzo2, libopenssl1.1
+Provides: openvpn, openvpn-crypto
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/config/openvpn 13b9ee9a1bb35e4608a8ded651949738378b48e328f15ea4b42269721ff68f5a
+Installed-Time: 1651061521
+
+Package: libnl-core200
+Version: 3.4.0-2
+Depends: libc, libpthread
+Provides: libnl-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: qca-icm
+Version: g-1
+Depends: libc, kmod-qca-wifi, libpthread, qca-spectral, libnl200
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-i18n-ddns-zh-cn
+Version: 2.4.9-8
+Depends: libc, luci-app-ddns
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-nf-conntrack-netlink
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nfnetlink, kmod-ipt-conntrack
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-i18n-smartdns-zh-cn
+Version: 1-3
+Depends: libc, luci-app-smartdns
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-nsh
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-crypto-des
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libext2fs2
+Version: 1.44.5-2
+Depends: libc, libuuid1, libblkid1, libss2, libcomerr0
+Provides: libext2fs
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-qca-nss-macsec
+Version: 5.4.164+g98f5198-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), libpthread, libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-sit
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-iptunnel, kmod-iptunnel4
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: lua-neturl
+Version: 1.1-1-1
+Depends: libc, lua
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-nf-nathelper-extra
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nf-nat, kmod-lib-textsearch, kmod-ipt-raw, kmod-asn1-decoder
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: bridge
+Version: 1.6-3
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Alternatives: 300:/usr/sbin/brctl:/usr/libexec/bridge-utils-brctl
+
+Package: ds-lite
+Version: 7-4
+Depends: libc, kmod-ip6-tunnel, resolveip
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: jshn
+Version: 2020-05-25-66195aee-1
+Depends: libc, libjson-c2, libubox20191228, libblobmsg-json
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: ipq8074-firwame
+Version: 1
+Depends: libc
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: qca-son-cli
+Version: g-1
+Depends: libc, libpthread, libnl200, libnl-genl200, libhyficommon, qca-cfg80211
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ipt-core
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nf-reject, kmod-nf-ipt
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: e2fsprogs
+Version: 1.44.5-2
+Depends: libc, libuuid1, libext2fs2
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/e2fsck.conf dece11e2b15f487d7d2bf9f96abe2eaaf9cd33f02d7b9725b9116023d7786cac
+Installed-Time: 1651061521
+
+Package: kmod-ledtrig-default-on
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-i18n-adbyby-plus-zh-cn
+Version: 2.0-75
+Depends: libc, luci-app-adbyby-plus
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-ata-core
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-scsi-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libcares
+Version: 1.15.0-5
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: rng-tools
+Version: 6.6-1
+Depends: libc, libsysfs2
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ipt-ipsec
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ppp
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-lib-crc-ccitt, kmod-slhc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-nft-offload
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nf-flow, kmod-nft-nat
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: ruby-strscan
+Version: 3.0.4-1
+Depends: libc, ruby
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libopenssl-conf
+Version: 1.1.1m-1
+Depends: libc, libopenssl1.1
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/ssl/openssl.cnf 58e084d4ae684846199e34a6e427ee75bdbf60ecb44311011906784b652a4e75
+Installed-Time: 1651061521
+
+Package: kmod-fs-f2fs
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-hash, kmod-crypto-crc32, kmod-nls-base
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libncurses6
+Version: 6.1-5
+Depends: libc, terminfo
+Provides: libncursesw, libncurses, libncursesw6
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: sysupgrade-helper
+Version: g664e854ab0-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ipt-ipset
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core, kmod-nfnetlink
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-app-wol
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, etherwake
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: pm-utils
+Version: 1.4.1-1
+Depends: libc, flock
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-app-syncdial
+Version: 2.0-25
+Depends: libc, kmod-macvlan, luci-app-mwan3
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-crypto-null
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-hash
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-i18n-wol-zh-cn
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, luci-app-wol
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: luci-app-upnp
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, miniupnpd
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: libss2
+Version: 1.44.5-2
+Depends: libc, libcomerr0
+Provides: libss
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libjson-c2
+Version: 0.12.1-3.1
+Depends: libc
+Provides: libjson-c
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: ruby-psych
+Version: 3.0.4-1
+Depends: libc, ruby, ruby-bigdecimal, ruby-date, ruby-enc, ruby-forwardable, ruby-stringio, ruby-strscan, libyaml
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: uhttpd
+Version: 2020-10-01-3abcc891-1
+Depends: libc, libubox20191228, libblobmsg-json, libjson-script, libjson-c2
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/config/uhttpd 829706a523df0cbfee8814e73ed99093c59d14c60f4663bd6d7ceb4686928000
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-i18n-mwan3-zh-cn
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, luci-app-mwan3
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-iptunnel4
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-nf-conntrack
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-pptp
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-qca-nss-ecm-premium
+Version: 5.4.164+g4c39b23-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv, iptables-mod-extra, kmod-ipt-conntrack, kmod-pppoe, kmod-qca-ovsmgr, kmod-qca-mcs, kmod-nat46, kmod-l2tp, kmod-pppol2tp, kmod-pptp, kmod-qca-nss-sfe, kmod-bonding
+Provides: kmod-qca-nss-ecm
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-iptunnel6
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-qca-nss-drv-l2tpv2
+Version: 5.4.164+ga735f0f-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv, kmod-ppp, kmod-l2tp
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ipsec4
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipsec, kmod-iptunnel4
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libcurl4
+Version: 7.80.0
+Depends: libc, libwolfssl30, libnghttp2-14, ca-bundle
+Provides: libcurl
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libsysfs2
+Version: 2.1.0-3
+Depends: libc
+Provides: libsysfs
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: aq-fw-download
+Version: 1.0-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ipsec6
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipsec, kmod-iptunnel6
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: iptables-mod-conntrack-extra
+Version: 1.8.3-1
+Depends: libc, iptables, kmod-ipt-conntrack-extra, kmod-ipt-raw
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: default-settings
+Version: 1.0-29
+Depends: libc
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: usign
+Version: 2020-05-23-f1f65026-1
+Depends: libc, libubox20191228
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: boost
+Version: 1.79.0
+Depends: libc, libstdcpp6, libpthread, librt
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: ip6tables
+Version: 1.8.3-1
+Depends: libc, kmod-ip6tables, iptables
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: liblua5.1.5
+Version: 5.1.5-3
+Depends: libc
+Provides: liblua
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: zlib
+Version: 1.2.11-4
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: qca-acfg
+Version: g-1
+Depends: libc, libgcc1, wireless-tools, librt, kmod-cfg80211-linux, libnl200, qca-cfg80211
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: qca-wifi-hk-fw-hw1-10.4-asic
+Version: WLAN.HK.2.7.r6-00017-QCAHKSWPL_SILICONZ-1-1
+Depends: libc
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-arptables
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-i18n-ttyd-zh-cn
+Version: 1.0-3
+Depends: libc, luci-app-ttyd
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-nf-ipt6
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nf-ipt
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-crypto-gcm
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-ctr, kmod-crypto-ghash, kmod-crypto-null
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-theme-netgear
+Version: unknown-3
+Depends: libc
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: file
+Version: 5.38-1
+Depends: libc, libmagic
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: qca-wrapd
+Version: g-1
+Depends: libc, libpthread, libnl200, qca-cfg80211
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: shadowsocksr-libev-ssr-redir
+Version: 2.5.6-9
+Depends: libc, libev, libsodium, libopenssl1.1, libpthread, libpcre, libudns, zlib
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-fs-autofs4
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-lib-nixio
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, libopenssl1.1, liblua5.1.5
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: mwan3
+Version: 2.8.16-1
+Depends: libc, rpcd, ip, ipset, iptables, iptables-mod-conntrack-extra, iptables-mod-ipopt, jshn
+Status: install user installed
+Architecture: all
+Conffiles:
+ /etc/config/mwan3 16ba4988b2913f69176f16ede822d7723d27faeba7c6d615a66a78bc531b1f58
+ /etc/mwan3.user 6226c1286a55bbdee865a24321e8a4ca80ca7553b5d81adb41ed774eddc4d192
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-ipt-tarpit
+Version: 5.4.164+2.14-9
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core, kmod-ipt-compat-xtables
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-nls-cp936
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nls-base
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-qca-nss-drv-ovpn-mgr
+Version: 5.4.164+ga735f0f-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv, kmod-qca-nss-cfi-cryptoapi, kmod-tun, kmod-ipt-conntrack
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libyaml
+Version: 0.2.2-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: ca-bundle
+Version: 20210119-1
+Depends: libc
+Provides: ca-certs
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-qca-nss-drv-ipsecmgr
+Version: 5.4.164+ga735f0f-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv, kmod-qca-nss-cfi-cryptoapi, kmod-qca-nss-drv-l2tpv2
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-i18n-base-zh-cn
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, luci-base
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: qca-wpa-supplicant-macsec
+Version: g-1
+Depends: libc, libopenssl1.1, libnl200, breakpad-wrapper, kmod-qca-nss-macsec
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: boost-program_options
+Version: 1.79.0
+Depends: libc, libstdcpp6, libpthread, librt
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-nls-iso8859-1
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nls-base
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: boost-system
+Version: 1.79.0
+Depends: libc, libstdcpp6, libpthread, librt
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-lib-jsonc
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, liblua5.1.5, libjson-c2
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-ipt-ipopt
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core, kmod-ipt-conntrack
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-nat46
+Version: 5.4.164+2020-06-26-1182f307-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nf-conntrack6
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: tcping
+Version: 0.3
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-usb-gdiag
+Version: 5.4.164+1-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-gadget, kmod-usb-lib-composite, kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-crypto-rng
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-hash, kmod-crypto-hmac, kmod-crypto-sha256
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, uhttpd, uhttpd-mod-ubus, luci-mod-admin-full, luci-theme-bootstrap, luci-app-firewall, luci-proto-ppp, libiwinfo-lua, rpcd-mod-rrdns
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-usb-phy-ipq807x
+Version: 5.4.164+1-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: ruby-bigdecimal
+Version: 3.0.4-1
+Depends: libc, ruby
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-nf-conntrack6
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nf-conntrack
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libgcc1
+Version: 7.5.0-2
+Provides: libgcc
+Status: install hold installed
+Essential: yes
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: qcmbr
+Version: g-1
+Depends: libc, libpthread, librt
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-usb-ledtrig-usbport
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-diag-char
+Version: 5.4.164+1-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-lib-crc-ccitt, kmod-usb-f-diag, kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-usb-uhci
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libstdcpp6
+Version: 7.5.0-2
+Provides: libstdcpp
+Status: install hold installed
+Essential: yes
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: rp-pppoe-relay
+Version: 3.12-7
+Depends: libc, rp-pppoe-common
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-nls-cp950
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nls-base
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: qca-hostap-macsec
+Version: g-1
+Depends: libc, libnl200, libopenssl1.1, breakpad-wrapper, kmod-qca-nss-macsec
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ipt-nat6
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core, kmod-nf-nat6, kmod-ipt-core, kmod-ipt-conntrack, kmod-ipt-core, kmod-ipt-nat, kmod-ipt-core, kmod-ip6tables
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-app-filetransfer
+Version: 1-2
+Depends: libc, luci-lib-fs
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: nftables
+Version: 0.9.2-1
+Depends: libc, kmod-nft-core, libnftnl11
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libexpat
+Version: 2.2.9-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: upx
+Version: 3.96-amd64_linux
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: ubox
+Version: 2019-06-16-4df34a4d-4
+Depends: libc, libubox20191228, ubusd, ubus, libubus20210603, libuci20130104
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kernel
+Version: 5.4.164-1-d8e667556d66543ae99f7999cc781dcb
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-ipt-ipv4options
+Version: 5.4.164+2.14-9
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libnl-tiny
+Version: 0.1-5
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-crypto-crc32
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-hash
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: blkid
+Version: 2.34-1
+Depends: libc, libblkid1, libuuid1
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-usb-dwc3-qcom-internal
+Version: 5.4.164+1-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-dwc3-internal, kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: dashboard
+Version: 1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: v2ray-core
+Version: 5.0.7-1
+Depends: libc, ca-bundle
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: qca-nss-fw-eip-hk
+Version: 2.5.7-1
+Depends: libc
+Provides: qca-nss-fw-eip
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libevent2-7
+Version: 2.1.11-1
+Depends: libc
+Provides: libevent2
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-nfnetlink-queue
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nfnetlink
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-nft-core
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-nfnetlink, kmod-nf-reject, kmod-nf-reject6, kmod-nf-conntrack6, kmod-nf-nat
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-i18n-upnp-zh-cn
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, luci-app-upnp
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-usb-uas
+Version: 5.4.164+1-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-scsi-core, kmod-usb-storage, kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-i18n-mwan3helper-zh-cn
+Version: 1-3
+Depends: libc, luci-app-mwan3helper
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: kmod-usb-gadget
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libdevmapper
+Version: 2.03.02-2
+Depends: libc, kmod-dm, libpthread, libuuid1, librt, libblkid1
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-bootconfig
+Version: 5.4.164+1-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-button-hotplug
+Version: 5.4.164-3
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-input-core
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libatomic1
+Version: 7.5.0-2
+Depends: libgcc1
+Provides: libatomic
+Status: install hold installed
+Essential: yes
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-qca-nss-drv-qdisc
+Version: 5.4.164+ga735f0f-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-qca-nss-drv
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ifb
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-mppe
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ppp, kmod-crypto-sha1, kmod-crypto-ecb
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: picocom
+Version: 3.1-3
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: smartdns
+Version: 9.2020.24-1
+Depends: libc, libpthread, libopenssl1.1
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/config/smartdns fade6d4c1b2bf5009ac1b6cf8795244c5f51343bb35295e6d5bc6a7fe7d07ba1
+ /etc/smartdns/address.conf bc2779f73c5cd22510cb5ae477d0f00463eb7f2bd73fe3264c73586f79025780
+ /etc/smartdns/blacklist-ip.conf a0a6331a6f17151353d011c306ce3b5ef0f492a681b121d31e3d2c26058c8093
+ /etc/smartdns/anti-ad-smartdns.conf 7aa77a7e275508acf29a45dee061288d2f47fd0ab145dce83e0231c6565fca18
+ /etc/smartdns/custom.conf 4e8dda32d99a0e663f9d45a456101febe7677cc5b553f5a020207170ecda0145
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: cnssdiag
+Version: g
+Depends: libc, qca-diag, libnl200
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-nls-base
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: qca-nss-fw-hk-retail
+Version: 001-1
+Depends: libc
+Provides: qca-nss-fw-hk
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libnfnetlink0
+Version: 1.0.1-3
+Depends: libc
+Provides: libnfnetlink
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: uhttpd-mod-ubus
+Version: 2020-10-01-3abcc891-1
+Depends: libc, uhttpd, libubus20210603, libblobmsg-json
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-app-smartdns
+Version: 1-3
+Depends: libc, smartdns
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: wget-ssl
+Version: 1.21.2
+Depends: libc, libpcre, zlib, libopenssl1.1, librt
+Provides: gnu-wget, wget
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Alternatives: 300:/usr/bin/wget:/usr/libexec/wget-ssl
+
+Package: libtirpc
+Version: 1.2.6-2
+Depends: libc, libpthread
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: fwtool
+Version: 2
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: jsonfilter
+Version: 2018-02-04-c7e938d6-1
+Depends: libc, libubox20191228, libjson-c2
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libnl-nf200
+Version: 3.4.0-2
+Depends: libc, libnl-route200
+Provides: libnl-nf
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libpopt0
+Version: 1.16-2
+Depends: libc
+Provides: libpopt
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: wireless-tools
+Version: 29-6
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-ipt-offload
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core, kmod-nf-flow
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: qca-iface-mgr
+Version: g-1
+Depends: libc, libpthread, libnl200, libwifisoncfg
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: qca-wpa-cli
+Version: g-1
+Depends: libc, librt, libopenssl1.1, libnl200, breakpad-wrapper
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libattr
+Version: 2.4.48-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-openvswitch
+Version: 5.4.164+2.12.0-2
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-lib-crc32c, kmod-nf-nat, kmod-nf-nat6, kmod-nf-conntrack, kmod-nf-conntrack6, kmod-nsh, kmod-ipt-conntrack-extra
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-usb-net-cdc-ether
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-usb-net
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libuv1
+Version: 1.40.0-2
+Depends: libc, libpthread, librt
+Provides: libuv
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-crypto-sha1
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-hash
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-ipt-physdev
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core, kmod-br-netfilter
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-pppol2tp
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ppp, kmod-pppox, kmod-l2tp
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-qca-nss-sfe
+Version: 5.4.164+g3f7b02d-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-scsi-core
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: qca-spectral
+Version: g-1
+Depends: libc, libpthread, libnl200, qca-cfg80211
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: urngd
+Version: 2020-01-21-c7f7b6b6-1
+Depends: libc, libubox20191228
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: kmod-slhc
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-lib-crc-ccitt
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libavahi-dbus-support
+Version: 0.8-1
+Depends: libc, dbus
+Provides: libavahi
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: libdb47
+Version: 4.7.25.4.NC-5
+Depends: libc, libxml2
+Provides: libdb47-full
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: iptables-mod-fullconenat
+Version: 2022-02-13-108a36cb-6
+Depends: libc, iptables, kmod-ipt-fullconenat
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-i18n-firewall-zh-cn
+Version: git-21.280.14233-9b796b1-1
+Depends: libc, luci-app-firewall
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: rpcd-mod-rrdns
+Version: 20170710
+Depends: libc, rpcd, libubox20191228, libubus20210603
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: ppp-mod-pppoe
+Version: 2.4.7.git-2019-05-25-3
+Depends: libc, kmod-pppoe
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: luci-app-openvpn
+Version: git-21.280.14233-9b796b1-1
+Depends: libc
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+
+Package: libnghttp2-14
+Version: 1.41.0-1
+Depends: libc
+Provides: libnghttp2
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-crypto-hw-padlock
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-crypto-manager
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: coreutils-nohup
+Version: 9.0-2
+Depends: libc, coreutils
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Alternatives: 300:/usr/bin/nohup:/usr/libexec/nohup-coreutils
+
+Package: qca-son-mem-debug
+Version: g-1
+Depends: libc
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-sched-core
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-ipt-nat
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-ipt-core, kmod-nf-nat
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: libnl-genl200
+Version: 3.4.0-2
+Depends: libc, libnl-core200
+Provides: libnl-genl
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: kmod-ledtrig-netdev
+Version: 5.4.164-1
+Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb)
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Installed-Time: 1651061521
+
+Package: dnsmasq-full
+Version: 2.80-16.3
+Depends: libc, libubus20210603, libnettle7, kmod-ipt-ipset, libnetfilter-conntrack3
+Provides: dnsmasq
+Status: install user installed
+Architecture: aarch64_cortex-a53_neon-vfpv4
+Conffiles:
+ /etc/config/dhcp 6ced69081608575d9e42a71a7120e5d35393afbd779eed70fc1a1ec0b0277463
+ /etc/dnsmasq.conf 1e6ab19c1ae5e70d609ac7b6246541d52042e4dee1892f825266507ef52d7dfd
+Installed-Time: 1651061521
+Auto-Installed: yes
+
+Package: luci-lib-fs
+Version: 1.0-1
+Depends: libc, luci, luci-lib-nixio
+Status: install user installed
+Architecture: all
+Installed-Time: 1651061521
+Auto-Installed: yes
+
