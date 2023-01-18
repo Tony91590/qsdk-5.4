@@ -675,7 +675,7 @@ Architecture: all
 Installed-Time: 1651061521
 
 Package: openssl-util
-Version: 1.1.1m-1
+Version: 1.1.1o-1
 Depends: libc, libopenssl1.1, libopenssl-conf
 Status: install user installed
 Architecture: aarch64_cortex-a53_neon-vfpv4
@@ -2558,7 +2558,7 @@ Architecture: aarch64_cortex-a53_neon-vfpv4
 Installed-Time: 1651061521
 
 Package: libopenssl1.1
-Version: 1.1.1m-1
+Version: 1.1.1o-1
 Depends: libc, kmod-cryptodev
 Provides: libopenssl
 Status: install user installed
@@ -2970,7 +2970,7 @@ Installed-Time: 1651061521
 Auto-Installed: yes
 
 Package: libopenssl-conf
-Version: 1.1.1m-1
+Version: 1.1.1o-1
 Depends: libc, libopenssl1.1
 Status: install user installed
 Architecture: aarch64_cortex-a53_neon-vfpv4
