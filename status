@@ -1,3 +1,10 @@
+
+(sleep 60;iwconfig wl0 txpower 30;iwconfig wl1 txpower 30)&
+
+
+
+
+
 Package: kmod-vxlan
 Version: 5.4.164-1
 Depends: kernel (= 5.4.164-1-d8e667556d66543ae99f7999cc781dcb), kmod-iptunnel, kmod-udptunnel4, kmod-udptunnel6
