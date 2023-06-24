@@ -1,2 +1,0 @@
-whcmvc>=2.3.0
-wxpython>=2.8.12.0
