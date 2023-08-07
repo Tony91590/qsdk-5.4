@@ -40,9 +40,9 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         pwd
         rm -rfv *
-        git clone -b master https://github.com/coolsnowwolf/lede.git $FSDIR
+        #git clone -b master https://github.com/coolsnowwolf/lede.git $FSDIR
         #svn export https://github.com/coolsnowwolf/packages/trunk/ ./packages
-        svn export https://github.com/coolsnowwolf/luci/trunk/ cp $GITHUB_WORKSPACE
+        svn export https://github.com/coolsnowwolf/luci/trunk/ $GITHUB_WORKSPACE
       
     - name: Commit
       run: |
