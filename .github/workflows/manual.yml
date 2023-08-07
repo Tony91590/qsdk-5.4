@@ -42,7 +42,7 @@ jobs:
         rm -rfv *
         git clone -b master https://github.com/coolsnowwolf/lede.git $FSDIR
         #svn export https://github.com/coolsnowwolf/packages/trunk/ ./packages
-        svn export https://github.com/coolsnowwolf/luci/trunk/ ../
+        svn export https://github.com/coolsnowwolf/luci/trunk/ output/
       
     - name: Commit
       run: |
