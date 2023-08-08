@@ -8,8 +8,8 @@ on:
 #      - master
 #    paths:
 #      - '.config'
-  schedule:
-    - cron: 30 16 * * *
+#  schedule:
+#    - cron: 30 16 * * *
   workflow_dispatch:
     inputs:
       SSH:
