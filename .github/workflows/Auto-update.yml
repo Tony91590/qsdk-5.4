@@ -40,7 +40,8 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         pwd
         rm -rfv *
-        svn export --force https://github.com/coolsnowwolf/lede/trunk/ $GITHUB_WORKSPACE
+        svn export --force https://github.com/coolsnowwolf/lede/trunk/package/kernel
+/mt76 $GITHUB_WORKSPACE
       
     - name: Commit
       run: |
