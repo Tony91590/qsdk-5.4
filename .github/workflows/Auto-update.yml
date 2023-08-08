@@ -18,7 +18,7 @@ on:
         default: 'false'   
         
 env:
-  REPO_BRANCH: master
+  REPO_BRANCH: hostapd
   TZ: Asia/Shanghai
   
 jobs:
