@@ -3,9 +3,9 @@ name: Auto-update
 on:
 #  release:
 #    types: published
-#  push:
-#    branches:
-#      - master
+  push:
+    branches:
+      - mac80211
 #    paths:
 #      - '.config'
   #schedule:
