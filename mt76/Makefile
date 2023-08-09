@@ -180,6 +180,7 @@ define KernelPackage/mt7615e
   TITLE:=MediaTek MT7615e wireless driver
   DEPENDS+=@PCI_SUPPORT +kmod-mt7615-common
   FILES:= $(PKG_BUILD_DIR)/mt7615/mt7615e.ko
+  MODPARAMS.mt7915e:=wed_enable=Y
   AUTOLOAD:=$(call AutoProbe,mt7615e)
 endef
 
