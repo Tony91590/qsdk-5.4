@@ -8,8 +8,8 @@ on:
 #      - master
 #    paths:
 #      - '.config'
-  schedule:
-    - cron: 30 16 * * *
+#  schedule:
+#    - cron: 30 16 * * *
   workflow_dispatch:
     inputs:
       SSH:
@@ -18,7 +18,7 @@ on:
         default: 'false'   
         
 env:
-  REPO_BRANCH: master
+  REPO_BRANCH: wireless-regdb
   TZ: Asia/Shanghai
   
 jobs:
@@ -40,7 +40,7 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         pwd
         rm -rfv *
-        svn export --force https://github.com/coolsnowwolf/lede/trunk/ $GITHUB_WORKSPACE
+        svn export --force https://github.com/Tony91590/openwrt/trunk/ $GITHUB_WORKSPACE
       
     - name: Commit
       run: |
