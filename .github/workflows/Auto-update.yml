@@ -40,8 +40,10 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         pwd
         rm -rfv *
-        svn export --force https://github.com/Tony91590/openwrt/trunk/ $GITHUB_WORKSPACE
-      
+        svn export --force https://github.com/Tony91590/openwrt/trunk/package/firmware/wireless-regdb $GITHUB_WORKSPACE
+
+
+    
     - name: Commit
       run: |
         git config --global user.email Tony91590@hotmail.com
