@@ -181,6 +181,7 @@ define KernelPackage/mt7615e
   DEPENDS+=@PCI_SUPPORT +kmod-mt7615-common
   FILES:= $(PKG_BUILD_DIR)/mt7615/mt7615e.ko
   AUTOLOAD:=$(call AutoProbe,mt7615e)
+  MODPARAMS.mt7915e:=wed_enable=Y
 endef
 
 define KernelPackage/mt7622-firmware
