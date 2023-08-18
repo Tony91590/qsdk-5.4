@@ -40,7 +40,7 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         pwd
         rm -rfv *
-        svn export --force https://github.com/Tony91590/lede/trunk/package/network/services/hostapd ./hostapd
+        svn export --force https://github.com/Tony91590/immortalwrt/trunk/package/network/services/hostapd ./hostapd
       
     - name: Commit
       run: |
