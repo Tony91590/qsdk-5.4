@@ -40,7 +40,7 @@ jobs:
         sudo timedatectl set-timezone "$TZ"
         pwd
         rm -rfv *
-        svn export --force https://github.com/Tony91590/lede/trunk/package/kernel/mt76 ./mt76
+        svn export --force https://github.com/Tony91590/immortalwrt/trunk/package/kernel/mt76 ./mt76
       
     - name: Commit
       run: |
