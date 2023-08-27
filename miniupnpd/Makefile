@@ -23,7 +23,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/miniupnpd
   SECTION:=net
   CATEGORY:=Network
-  DEPENDS:=+iptables +libip4tc +libuuid
+  DEPENDS:=+iptables-zz-legacy +libip4tc +libuuid
   TITLE:=Lightweight UPnP IGD, NAT-PMP & PCP daemon
   SUBMENU:=Firewall
   URL:=http://miniupnp.free.fr/
