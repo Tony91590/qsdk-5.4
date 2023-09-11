@@ -1,557 +1,823 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Copyright (C) 2006-2021 OpenWrt.org
+
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=mt76
-PKG_RELEASE=5
+PKG_NAME:=hostapd
+PKG_RELEASE:=$(AUTORELEASE).2
 
-PKG_LICENSE:=GPLv2
-PKG_LICENSE_FILES:=
-
-PKG_SOURCE_URL:=https://github.com/openwrt/mt76
+PKG_SOURCE_URL:=http://w1.fi/hostap.git
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_DATE:=2022-12-22
-PKG_SOURCE_VERSION:=5b509e80384ab019ac11aa90c81ec0dbb5b0d7f2
-PKG_MIRROR_HASH:=6fc25df4d28becd010ff4971b23731c08b53e69381a9e4c868091899712f78a9
+PKG_SOURCE_DATE:=2022-07-29
+PKG_SOURCE_VERSION:=b704dc72ef824dfdd96674b90179b274d1d38105
+PKG_MIRROR_HASH:=6c9dd359ef5a4595b6576e07928566d6864957c4af6466d641d6c3f7717f4689
 
 PKG_MAINTAINER:=Felix Fietkau <nbd@nbd.name>
-PKG_USE_NINJA:=0
+PKG_LICENSE:=BSD-3-Clause
+PKG_CPE_ID:=cpe:/a:w1.fi:hostapd
+
 PKG_BUILD_PARALLEL:=1
+PKG_ASLR_PIE_REGULAR:=1
 
-PKG_CONFIG_DEPENDS += \
-	CONFIG_PACKAGE_kmod-mt76-usb \
-	CONFIG_PACKAGE_kmod-mt76x02-common \
-	CONFIG_PACKAGE_kmod-mt76x0-common \
-	CONFIG_PACKAGE_kmod-mt76x0u \
-	CONFIG_PACKAGE_kmod-mt76x2-common \
-	CONFIG_PACKAGE_kmod-mt76x2 \
-	CONFIG_PACKAGE_kmod-mt76x2u \
-	CONFIG_PACKAGE_kmod-mt7603 \
-	CONFIG_PACKAGE_CFG80211_TESTMODE
+PKG_CONFIG_DEPENDS:= \
+	CONFIG_PACKAGE_kmod-ath9k \
+	CONFIG_PACKAGE_kmod-cfg80211 \
+	CONFIG_PACKAGE_hostapd \
+	CONFIG_PACKAGE_hostapd-basic \
+	CONFIG_PACKAGE_hostapd-mini \
+	CONFIG_WPA_RFKILL_SUPPORT \
+	CONFIG_DRIVER_WEXT_SUPPORT \
+	CONFIG_DRIVER_11AC_SUPPORT \
+	CONFIG_DRIVER_11AX_SUPPORT \
+	CONFIG_WPA_ENABLE_WEP
 
-STAMP_CONFIGURED_DEPENDS := $(STAGING_DIR)/usr/include/mac80211-backport/backport/autoconf.h
+EAPOL_TEST_PROVIDERS:=eapol-test eapol-test-openssl eapol-test-wolfssl
 
-include $(INCLUDE_DIR)/kernel.mk
+SUPPLICANT_PROVIDERS:=
+HOSTAPD_PROVIDERS:=
+
+LOCAL_TYPE=$(strip \
+		$(if $(findstring wpad,$(BUILD_VARIANT)),wpad, \
+		$(if $(findstring supplicant,$(BUILD_VARIANT)),supplicant, \
+		hostapd \
+		)))
+
+LOCAL_AND_LIB_VARIANT=$(patsubst hostapd-%,%,\
+		      $(patsubst wpad-%,%,\
+		      $(patsubst supplicant-%,%,\
+		      $(BUILD_VARIANT)\
+		      )))
+
+LOCAL_VARIANT=$(patsubst %-internal,%,\
+	      $(patsubst %-openssl,%,\
+	      $(patsubst %-wolfssl,%,\
+	      $(patsubst %-mbedtls,%,\
+	      $(LOCAL_AND_LIB_VARIANT)\
+	      ))))
+
+SSL_VARIANT=$(strip \
+		$(if $(findstring openssl,$(LOCAL_AND_LIB_VARIANT)),openssl,\
+		$(if $(findstring wolfssl,$(LOCAL_AND_LIB_VARIANT)),wolfssl,\
+		$(if $(findstring mbedtls,$(LOCAL_AND_LIB_VARIANT)),mbedtls,\
+		internal\
+		))))
+
+CONFIG_VARIANT:=$(LOCAL_VARIANT)
+ifeq ($(LOCAL_VARIANT),mesh)
+  CONFIG_VARIANT:=full
+endif
+
 include $(INCLUDE_DIR)/package.mk
-include $(INCLUDE_DIR)/cmake.mk
 
-CMAKE_SOURCE_DIR:=$(PKG_BUILD_DIR)/tools
-CMAKE_BINARY_DIR:=$(PKG_BUILD_DIR)/tools
+STAMP_CONFIGURED:=$(STAMP_CONFIGURED)_$(CONFIG_WPA_MSG_MIN_PRIORITY)
 
-define KernelPackage/mt76-default
-  SUBMENU:=Wireless Drivers
-  DEPENDS:= \
-	+kmod-mac80211 \
-	+@DRIVER_11AC_SUPPORT
-endef
-
-define KernelPackage/mt76
-  SUBMENU:=Wireless Drivers
-  TITLE:=MediaTek MT76x2/MT7603 wireless driver (metapackage)
-  DEPENDS:= \
-	+kmod-mt76-core +kmod-mt76x2 +kmod-mt7603
-endef
-
-define KernelPackage/mt76-core
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT76xx wireless driver
-  HIDDEN:=1
-  FILES:=\
-	$(PKG_BUILD_DIR)/mt76.ko
-endef
-
-define KernelPackage/mt76-usb
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT76xx wireless driver USB support
-  DEPENDS += +kmod-usb-core +kmod-mt76-core
-  HIDDEN:=1
-  FILES:=\
-	$(PKG_BUILD_DIR)/mt76-usb.ko
-endef
-
-define KernelPackage/mt76x02-usb
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT76x0/MT76x2 USB wireless driver common code
-  DEPENDS+=+kmod-mt76-usb +kmod-mt76x02-common
-  HIDDEN:=1
-  FILES:=$(PKG_BUILD_DIR)/mt76x02-usb.ko
-endef
-
-define KernelPackage/mt76x02-common
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT76x0/MT76x2 wireless driver common code
-  DEPENDS+=+kmod-mt76-core
-  HIDDEN:=1
-  FILES:=$(PKG_BUILD_DIR)/mt76x02-lib.ko
-endef
-
-define KernelPackage/mt76x0-common
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT76x0 wireless driver common code
-  DEPENDS+=+kmod-mt76x02-common
-  HIDDEN:=1
-  FILES:=$(PKG_BUILD_DIR)/mt76x0/mt76x0-common.ko
-endef
-
-define KernelPackage/mt76x0e
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT76x0E wireless driver
-  DEPENDS+=@PCI_SUPPORT +kmod-mt76x0-common
-  FILES:=\
-	$(PKG_BUILD_DIR)/mt76x0/mt76x0e.ko
-  AUTOLOAD:=$(call AutoProbe,mt76x0e)
-endef
-
-define KernelPackage/mt76x0u
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT76x0U wireless driver
-  DEPENDS+=+kmod-mt76x0-common +kmod-mt76x02-usb
-  FILES:=\
-	$(PKG_BUILD_DIR)/mt76x0/mt76x0u.ko
-  AUTOLOAD:=$(call AutoProbe,mt76x0u)
-endef
-
-define KernelPackage/mt76x2-common
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT76x2 wireless driver common code
-  DEPENDS+=+kmod-mt76-core +kmod-mt76x02-common
-  HIDDEN:=1
-  FILES:=$(PKG_BUILD_DIR)/mt76x2/mt76x2-common.ko
-endef
-
-define KernelPackage/mt76x2u
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT76x2U wireless driver
-  DEPENDS+=+kmod-mt76x2-common +kmod-mt76x02-usb
-  FILES:=\
-	$(PKG_BUILD_DIR)/mt76x2/mt76x2u.ko
-  AUTOLOAD:=$(call AutoProbe,mt76x2u)
-endef
-
-define KernelPackage/mt76x2
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT76x2 wireless driver
-  DEPENDS+=@PCI_SUPPORT +kmod-mt76x2-common
-  FILES:=\
-	$(PKG_BUILD_DIR)/mt76x2/mt76x2e.ko
-  AUTOLOAD:=$(call AutoProbe,mt76x2e)
-endef
-
-define KernelPackage/mt7603
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7603 wireless driver
-  DEPENDS+=@PCI_SUPPORT +kmod-mt76-core
-  FILES:=\
-	$(PKG_BUILD_DIR)/mt7603/mt7603e.ko
-  AUTOLOAD:=$(call AutoProbe,mt7603e)
-endef
-
-define KernelPackage/mt76-connac
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7615/MT79xx wireless driver common code
-  HIDDEN:=1
-  DEPENDS+=+kmod-mt76-core
-  FILES:= $(PKG_BUILD_DIR)/mt76-connac-lib.ko
-endef
-
-define KernelPackage/mt76-sdio
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7615/MT79xx SDIO driver common code
-  HIDDEN:=1
-  DEPENDS+=+kmod-mt76-core +kmod-mmc
-  FILES:= $(PKG_BUILD_DIR)/mt76-sdio.ko
-endef
-
-define KernelPackage/mt7615-common
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7615 wireless driver common code
-  HIDDEN:=1
-  DEPENDS+=@PCI_SUPPORT +kmod-mt76-core +kmod-mt76-connac +kmod-hwmon-core
-  FILES:= $(PKG_BUILD_DIR)/mt7615/mt7615-common.ko
-endef
-
-define KernelPackage/mt7615-firmware
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7615e firmware
-  DEPENDS+=+kmod-mt7615e
-endef
-
-define KernelPackage/mt7615e
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7615e wireless driver
-  DEPENDS+=@PCI_SUPPORT +kmod-mt7615-common
-  FILES:= $(PKG_BUILD_DIR)/mt7615/mt7615e.ko
-  AUTOLOAD:=$(call AutoProbe,mt7615e)
-endef
-
-define KernelPackage/mt7622-firmware
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7622 firmware
-  DEPENDS+=+kmod-mt7615e
-endef
-
-define KernelPackage/mt7663-firmware-ap
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7663e firmware (optimized for AP)
-endef
-
-define KernelPackage/mt7663-firmware-sta
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7663e firmware (client mode offload)
-endef
-
-define KernelPackage/mt7663-usb-sdio
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7663 USB/SDIO shared code
-  DEPENDS+=+kmod-mt7615-common
-  HIDDEN:=1
-  FILES:= \
-	$(PKG_BUILD_DIR)/mt7615/mt7663-usb-sdio-common.ko
-endef
-
-define KernelPackage/mt7663s
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7663s wireless driver
-  DEPENDS+=+kmod-mt76-sdio +kmod-mt7615-common +kmod-mt7663-usb-sdio
-  FILES:= \
-	$(PKG_BUILD_DIR)/mt7615/mt7663s.ko
-  AUTOLOAD:=$(call AutoProbe,mt7663s)
-endef
-
-define KernelPackage/mt7663u
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7663u wireless driver
-  DEPENDS+=+kmod-mt76-usb +kmod-mt7615-common +kmod-mt7663-usb-sdio
-  FILES:= $(PKG_BUILD_DIR)/mt7615/mt7663u.ko
-  AUTOLOAD:=$(call AutoProbe,mt7663u)
-endef
-
-define KernelPackage/mt7915-firmware
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7915 firmware
-  DEPENDS+=+kmod-mt7915e
-endef
-
-define KernelPackage/mt7915e
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7915e wireless driver
-  DEPENDS+=@PCI_SUPPORT +kmod-mt76-connac +kmod-hwmon-core +kmod-thermal +@DRIVER_11AX_SUPPORT +@KERNEL_RELAY
-  FILES:= $(PKG_BUILD_DIR)/mt7915/mt7915e.ko
-  AUTOLOAD:=$(call AutoProbe,mt7915e)
-endef
-
-define KernelPackage/mt7916-firmware
-  $(KernelPackage/mt76-default)
-  DEPENDS+=+kmod-mt7915e
-  TITLE:=MediaTek MT7916 firmware
-endef
-
-define KernelPackage/mt7986-firmware
-  $(KernelPackage/mt76-default)
-  DEPENDS:=@TARGET_mediatek_filogic
-  TITLE:=MediaTek MT7986 firmware
-endef
-
-define KernelPackage/mt7921-firmware
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7921 firmware
-endef
-
-define KernelPackage/mt7921-common
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7615 wireless driver common code
-  HIDDEN:=1
-  DEPENDS+=+kmod-mt76-connac +kmod-mt7921-firmware +@DRIVER_11AX_SUPPORT
-  FILES:= $(PKG_BUILD_DIR)/mt7921/mt7921-common.ko
-endef
-
-define KernelPackage/mt7921u
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7921U wireless driver
-  DEPENDS+=+kmod-mt76-usb +kmod-mt7921-common
-  FILES:= $(PKG_BUILD_DIR)/mt7921/mt7921u.ko
-  AUTOLOAD:=$(call AutoProbe,mt7921u)
-endef
-
-define KernelPackage/mt7921s
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7921S wireless driver
-  DEPENDS+=+kmod-mt76-sdio +kmod-mt7921-common
-  FILES:= $(PKG_BUILD_DIR)/mt7921/mt7921s.ko
-  AUTOLOAD:=$(call AutoProbe,mt7921s)
-endef
-
-define KernelPackage/mt7921e
-  $(KernelPackage/mt76-default)
-  TITLE:=MediaTek MT7921e wireless driver
-  DEPENDS+=@PCI_SUPPORT +kmod-mt7921-common
-  FILES:= $(PKG_BUILD_DIR)/mt7921/mt7921e.ko
-  AUTOLOAD:=$(call AutoProbe,mt7921e)
-endef
-
-define Package/mt76-test
-  SECTION:=devel
-  CATEGORY:=Development
-  TITLE:=mt76 testmode CLI
-  DEPENDS:=kmod-mt76-core +libnl-tiny
-endef
-
-TARGET_CFLAGS += -I$(STAGING_DIR)/usr/include/libnl-tiny
-
-NOSTDINC_FLAGS := \
-	$(KERNEL_NOSTDINC_FLAGS) \
-	-I$(PKG_BUILD_DIR) \
-	-I$(STAGING_DIR)/usr/include/mac80211-backport/uapi \
-	-I$(STAGING_DIR)/usr/include/mac80211-backport \
-	-I$(STAGING_DIR)/usr/include/mac80211/uapi \
-	-I$(STAGING_DIR)/usr/include/mac80211 \
-	-include backport/autoconf.h \
-	-include backport/backport.h
-
-ifdef CONFIG_PACKAGE_MAC80211_MESH
-  NOSTDINC_FLAGS += -DCONFIG_MAC80211_MESH
+ifneq ($(CONFIG_DRIVER_11AC_SUPPORT),)
+  HOSTAPD_IEEE80211AC:=y
 endif
 
-ifdef CONFIG_PACKAGE_CFG80211_TESTMODE
-  NOSTDINC_FLAGS += -DCONFIG_NL80211_TESTMODE
-  PKG_MAKE_FLAGS += CONFIG_NL80211_TESTMODE=y
+ifneq ($(CONFIG_DRIVER_11AX_SUPPORT),)
+  HOSTAPD_IEEE80211AX:=y
 endif
 
-ifdef CONFIG_PACKAGE_kmod-mt76-usb
-  PKG_MAKE_FLAGS += CONFIG_MT76_USB=m
-endif
-ifdef CONFIG_PACKAGE_kmod-mt76x02-common
-  PKG_MAKE_FLAGS += CONFIG_MT76x02_LIB=m
-endif
-ifdef CONFIG_PACKAGE_kmod-mt76x02-usb
-  PKG_MAKE_FLAGS += CONFIG_MT76x02_USB=m
-endif
-ifdef CONFIG_PACKAGE_kmod-mt76x0-common
-  PKG_MAKE_FLAGS += CONFIG_MT76x0_COMMON=m
-endif
-ifdef CONFIG_PACKAGE_kmod-mt76x0e
-  PKG_MAKE_FLAGS += CONFIG_MT76x0E=m
-endif
-ifdef CONFIG_PACKAGE_kmod-mt76x0u
-  PKG_MAKE_FLAGS += CONFIG_MT76x0U=m
-endif
-ifdef CONFIG_PACKAGE_kmod-mt76x2-common
-  PKG_MAKE_FLAGS += CONFIG_MT76x2_COMMON=m
-endif
-ifdef CONFIG_PACKAGE_kmod-mt76x2
-  PKG_MAKE_FLAGS += CONFIG_MT76x2E=m
-endif
-ifdef CONFIG_PACKAGE_kmod-mt76x2u
-  PKG_MAKE_FLAGS += CONFIG_MT76x2U=m
-endif
-ifdef CONFIG_PACKAGE_kmod-mt7603
-  PKG_MAKE_FLAGS += CONFIG_MT7603E=m
-endif
-ifdef CONFIG_PACKAGE_kmod-mt76-connac
-  PKG_MAKE_FLAGS += CONFIG_MT76_CONNAC_LIB=m
-endif
-ifdef CONFIG_PACKAGE_kmod-mt76-sdio
-  PKG_MAKE_FLAGS += CONFIG_MT76_SDIO=m
-endif
-ifdef CONFIG_PACKAGE_kmod-mt7615-common
-  PKG_MAKE_FLAGS += CONFIG_MT7615_COMMON=m
-endif
-ifdef CONFIG_PACKAGE_kmod-mt7615e
-  PKG_MAKE_FLAGS += CONFIG_MT7615E=m
-  ifdef CONFIG_TARGET_mediatek_mt7622
-    PKG_MAKE_FLAGS += CONFIG_MT7622_WMAC=y
-    NOSTDINC_FLAGS += -DCONFIG_MT7622_WMAC
+DRIVER_MAKEOPTS= \
+	CONFIG_ACS=$(CONFIG_PACKAGE_kmod-cfg80211) \
+	CONFIG_DRIVER_NL80211=$(CONFIG_PACKAGE_kmod-cfg80211) \
+	CONFIG_IEEE80211AC=$(HOSTAPD_IEEE80211AC) \
+	CONFIG_IEEE80211AX=$(HOSTAPD_IEEE80211AX) \
+	CONFIG_DRIVER_WEXT=$(CONFIG_DRIVER_WEXT_SUPPORT) \
+	CONFIG_MBO=$(CONFIG_WPA_MBO_SUPPORT)
+
+ifeq ($(SSL_VARIANT),openssl)
+  DRIVER_MAKEOPTS += CONFIG_TLS=openssl CONFIG_SAE=y
+  TARGET_LDFLAGS += -lcrypto -lssl
+
+  ifeq ($(LOCAL_VARIANT),basic)
+    DRIVER_MAKEOPTS += CONFIG_OWE=y
+  endif
+  ifeq ($(LOCAL_VARIANT),mesh)
+    DRIVER_MAKEOPTS += CONFIG_AP=y CONFIG_MESH=y
+  endif
+  ifeq ($(LOCAL_VARIANT),full)
+    DRIVER_MAKEOPTS += CONFIG_OWE=y CONFIG_SUITEB192=y CONFIG_AP=y CONFIG_MESH=y
   endif
 endif
-ifdef CONFIG_PACKAGE_kmod-mt7663-usb-sdio
-  PKG_MAKE_FLAGS += CONFIG_MT7663_USB_SDIO_COMMON=m
-endif
-ifdef CONFIG_PACKAGE_kmod-mt7663s
-  PKG_MAKE_FLAGS += CONFIG_MT7663S=m
-endif
-ifdef CONFIG_PACKAGE_kmod-mt7663u
-  PKG_MAKE_FLAGS += CONFIG_MT7663U=m
-endif
-ifdef CONFIG_PACKAGE_kmod-mt7915e
-  PKG_MAKE_FLAGS += CONFIG_MT7915E=m
-  ifdef CONFIG_TARGET_mediatek_filogic
-    PKG_MAKE_FLAGS += CONFIG_MT7986_WMAC=y
-    NOSTDINC_FLAGS += -DCONFIG_MT7986_WMAC
+
+ifeq ($(SSL_VARIANT),wolfssl)
+  DRIVER_MAKEOPTS += CONFIG_TLS=wolfssl CONFIG_SAE=y
+  TARGET_LDFLAGS += -lwolfssl
+
+  ifeq ($(LOCAL_VARIANT),basic)
+    DRIVER_MAKEOPTS += CONFIG_OWE=y
+  endif
+  ifeq ($(LOCAL_VARIANT),mesh)
+    DRIVER_MAKEOPTS += CONFIG_AP=y CONFIG_MESH=y CONFIG_WPS_NFC=1
+  endif
+  ifeq ($(LOCAL_VARIANT),full)
+    DRIVER_MAKEOPTS += CONFIG_OWE=y CONFIG_SUITEB192=y CONFIG_AP=y CONFIG_MESH=y CONFIG_WPS_NFC=1
   endif
 endif
-ifdef CONFIG_PACKAGE_kmod-mt7921-common
-  PKG_MAKE_FLAGS += CONFIG_MT7921_COMMON=m
+
+ifeq ($(SSL_VARIANT),mbedtls)
+  DRIVER_MAKEOPTS += CONFIG_TLS=mbedtls CONFIG_SAE=y
+  TARGET_LDFLAGS += -lmbedcrypto -lmbedx509 -lmbedtls
+
+  ifeq ($(LOCAL_VARIANT),basic)
+    DRIVER_MAKEOPTS += CONFIG_OWE=y
+  endif
+  ifeq ($(LOCAL_VARIANT),mesh)
+    DRIVER_MAKEOPTS += CONFIG_AP=y CONFIG_MESH=y CONFIG_WPS_NFC=1
+  endif
+  ifeq ($(LOCAL_VARIANT),full)
+    DRIVER_MAKEOPTS += CONFIG_OWE=y CONFIG_SUITEB192=y CONFIG_AP=y CONFIG_MESH=y CONFIG_WPS_NFC=1
+  endif
 endif
-ifdef CONFIG_PACKAGE_kmod-mt7921u
-  PKG_MAKE_FLAGS += CONFIG_MT7921U=m
+
+ifneq ($(LOCAL_TYPE),hostapd)
+  ifdef CONFIG_WPA_RFKILL_SUPPORT
+    DRIVER_MAKEOPTS += NEED_RFKILL=y
+  endif
 endif
-ifdef CONFIG_PACKAGE_kmod-mt7921s
-  PKG_MAKE_FLAGS += CONFIG_MT7921S=m
+
+DRV_DEPENDS:=+PACKAGE_kmod-cfg80211:libnl-tiny
+
+
+define Package/hostapd/Default
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=WirelessAPD
+  TITLE:=IEEE 802.1x Authenticator
+  URL:=http://hostap.epitest.fi/
+  DEPENDS:=$(DRV_DEPENDS) +hostapd-common +libubus
+  EXTRA_DEPENDS:=hostapd-common (=$(PKG_VERSION)-$(PKG_RELEASE))
+  USERID:=network=101:network=101
+  PROVIDES:=hostapd
+  CONFLICTS:=$(HOSTAPD_PROVIDERS)
+  HOSTAPD_PROVIDERS+=$(1)
+endef
+
+define Package/hostapd
+$(call Package/hostapd/Default,$(1))
+  TITLE+= (built-in full)
+  VARIANT:=full-internal
+endef
+
+define Package/hostapd/description
+ This package contains a full featured IEEE 802.1x/WPA/EAP/RADIUS
+ Authenticator.
+endef
+
+define Package/hostapd-openssl
+$(call Package/hostapd/Default,$(1))
+  TITLE+= (OpenSSL full)
+  VARIANT:=full-openssl
+  DEPENDS+=+PACKAGE_hostapd-openssl:libopenssl
+endef
+
+Package/hostapd-openssl/description = $(Package/hostapd/description)
+
+define Package/hostapd-wolfssl
+$(call Package/hostapd/Default,$(1))
+  TITLE+= (wolfSSL full)
+  VARIANT:=full-wolfssl
+  DEPENDS+=+PACKAGE_hostapd-wolfssl:libwolfssl
+endef
+
+Package/hostapd-wolfssl/description = $(Package/hostapd/description)
+
+define Package/hostapd-mbedtls
+$(call Package/hostapd/Default,$(1))
+  TITLE+= (mbedTLS full)
+  VARIANT:=full-mbedtls
+  DEPENDS+=+PACKAGE_hostapd-mbedtls:libmbedtls
+endef
+
+Package/hostapd-mbedtls/description = $(Package/hostapd/description)
+
+define Package/hostapd-basic
+$(call Package/hostapd/Default,$(1))
+  TITLE+= (WPA-PSK, 11r, 11w)
+  VARIANT:=basic
+endef
+
+define Package/hostapd-basic/description
+ This package contains a basic IEEE 802.1x/WPA Authenticator with WPA-PSK, 802.11r and 802.11w support.
+endef
+
+define Package/hostapd-basic-openssl
+$(call Package/hostapd/Default,$(1))
+  TITLE+= (WPA-PSK, 11r and 11w)
+  VARIANT:=basic-openssl
+  DEPENDS+=+PACKAGE_hostapd-basic-openssl:libopenssl
+endef
+
+define Package/hostapd-basic-openssl/description
+ This package contains a basic IEEE 802.1x/WPA Authenticator with WPA-PSK, 802.11r and 802.11w support.
+endef
+
+define Package/hostapd-basic-wolfssl
+$(call Package/hostapd/Default,$(1))
+  TITLE+= (WPA-PSK, 11r and 11w)
+  VARIANT:=basic-wolfssl
+  DEPENDS+=+PACKAGE_hostapd-basic-wolfssl:libwolfssl
+endef
+
+define Package/hostapd-basic-wolfssl/description
+ This package contains a basic IEEE 802.1x/WPA Authenticator with WPA-PSK, 802.11r and 802.11w support.
+endef
+
+define Package/hostapd-basic-mbedtls
+$(call Package/hostapd/Default,$(1))
+  TITLE+= (WPA-PSK, 11r and 11w)
+  VARIANT:=basic-mbedtls
+  DEPENDS+=+PACKAGE_hostapd-basic-mbedtls:libmbedtls
+endef
+
+define Package/hostapd-basic-mbedtls/description
+ This package contains a basic IEEE 802.1x/WPA Authenticator with WPA-PSK, 802.11r and 802.11w support.
+endef
+
+define Package/hostapd-mini
+$(call Package/hostapd/Default,$(1))
+  TITLE+= (WPA-PSK only)
+  VARIANT:=mini
+endef
+
+define Package/hostapd-mini/description
+ This package contains a minimal IEEE 802.1x/WPA Authenticator (WPA-PSK only).
+endef
+
+
+define Package/wpad/Default
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=WirelessAPD
+  TITLE:=IEEE 802.1x Auth/Supplicant
+  DEPENDS:=$(DRV_DEPENDS) +hostapd-common +libubus
+  EXTRA_DEPENDS:=hostapd-common (=$(PKG_VERSION)-$(PKG_RELEASE))
+  USERID:=network=101:network=101
+  URL:=http://hostap.epitest.fi/
+  PROVIDES:=hostapd wpa-supplicant
+  CONFLICTS:=$(HOSTAPD_PROVIDERS) $(SUPPLICANT_PROVIDERS)
+  HOSTAPD_PROVIDERS+=$(1)
+  SUPPLICANT_PROVIDERS+=$(1)
+endef
+
+define Package/wpad
+$(call Package/wpad/Default,$(1))
+  TITLE+= (built-in full)
+  VARIANT:=wpad-full-internal
+endef
+
+define Package/wpad/description
+ This package contains a full featured IEEE 802.1x/WPA/EAP/RADIUS
+ Authenticator and Supplicant
+endef
+
+define Package/wpad-openssl
+$(call Package/wpad/Default,$(1))
+  TITLE+= (OpenSSL full)
+  VARIANT:=wpad-full-openssl
+  DEPENDS+=+PACKAGE_wpad-openssl:libopenssl
+endef
+
+Package/wpad-openssl/description = $(Package/wpad/description)
+
+define Package/wpad-wolfssl
+$(call Package/wpad/Default,$(1))
+  TITLE+= (wolfSSL full)
+  VARIANT:=wpad-full-wolfssl
+  DEPENDS+=+PACKAGE_wpad-wolfssl:libwolfssl
+endef
+
+Package/wpad-wolfssl/description = $(Package/wpad/description)
+
+define Package/wpad-mbedtls
+$(call Package/wpad/Default,$(1))
+  TITLE+= (mbedTLS full)
+  VARIANT:=wpad-full-mbedtls
+  DEPENDS+=+PACKAGE_wpad-mbedtls:libmbedtls
+endef
+
+Package/wpad-mbedtls/description = $(Package/wpad/description)
+
+define Package/wpad-basic
+$(call Package/wpad/Default,$(1))
+  TITLE+= (WPA-PSK, 11r, 11w)
+  VARIANT:=wpad-basic
+endef
+
+define Package/wpad-basic/description
+ This package contains a basic IEEE 802.1x/WPA Authenticator and Supplicant with WPA-PSK, 802.11r and 802.11w support.
+endef
+
+define Package/wpad-basic-openssl
+$(call Package/wpad/Default,$(1))
+  TITLE+= (OpenSSL, 11r, 11w)
+  VARIANT:=wpad-basic-openssl
+  DEPENDS+=+PACKAGE_wpad-basic-openssl:libopenssl
+endef
+
+define Package/wpad-basic-openssl/description
+ This package contains a basic IEEE 802.1x/WPA Authenticator and Supplicant with WPA-PSK, SAE (WPA3-Personal), 802.11r and 802.11w support.
+endef
+
+define Package/wpad-basic-wolfssl
+$(call Package/wpad/Default,$(1))
+  TITLE+= (wolfSSL, 11r, 11w)
+  VARIANT:=wpad-basic-wolfssl
+  DEPENDS+=+PACKAGE_wpad-basic-wolfssl:libwolfssl
+endef
+
+define Package/wpad-basic-wolfssl/description
+ This package contains a basic IEEE 802.1x/WPA Authenticator and Supplicant with WPA-PSK, SAE (WPA3-Personal), 802.11r and 802.11w support.
+endef
+
+define Package/wpad-basic-mbedtls
+$(call Package/wpad/Default,$(1))
+  TITLE+= (mbedTLS, 11r, 11w)
+  VARIANT:=wpad-basic-mbedtls
+  DEPENDS+=+PACKAGE_wpad-basic-mbedtls:libmbedtls
+endef
+
+define Package/wpad-basic-mbedtls/description
+ This package contains a basic IEEE 802.1x/WPA Authenticator and Supplicant with WPA-PSK, SAE (WPA3-Personal), 802.11r and 802.11w support.
+endef
+
+define Package/wpad-mini
+$(call Package/wpad/Default,$(1))
+  TITLE+= (WPA-PSK only)
+  VARIANT:=wpad-mini
+endef
+
+define Package/wpad-mini/description
+ This package contains a minimal IEEE 802.1x/WPA Authenticator and Supplicant (WPA-PSK only).
+endef
+
+define Package/wpad-mesh
+$(call Package/wpad/Default,$(1))
+  DEPENDS+=@PACKAGE_kmod-cfg80211 @(!TARGET_uml||BROKEN)
+  PROVIDES+=wpa-supplicant-mesh wpad-mesh
+endef
+
+define Package/wpad-mesh/description
+ This package contains a minimal IEEE 802.1x/WPA Authenticator and Supplicant (with 802.11s mesh and SAE support).
+endef
+
+define Package/wpad-mesh-openssl
+$(call Package/wpad-mesh,$(1))
+  TITLE+= (OpenSSL, 11s, SAE)
+  DEPENDS+=+PACKAGE_wpad-mesh-openssl:libopenssl
+  VARIANT:=wpad-mesh-openssl
+endef
+
+Package/wpad-mesh-openssl/description = $(Package/wpad-mesh/description)
+
+define Package/wpad-mesh-wolfssl
+$(call Package/wpad-mesh,$(1))
+  TITLE+= (wolfSSL, 11s, SAE)
+  DEPENDS+=+PACKAGE_wpad-mesh-wolfssl:libwolfssl
+  VARIANT:=wpad-mesh-wolfssl
+endef
+
+Package/wpad-mesh-wolfssl/description = $(Package/wpad-mesh/description)
+
+define Package/wpad-mesh-mbedtls
+$(call Package/wpad-mesh,$(1))
+  TITLE+= (mbedTLS, 11s, SAE)
+  DEPENDS+=+PACKAGE_wpad-mesh-mbedtls:libmbedtls
+  VARIANT:=wpad-mesh-mbedtls
+endef
+
+Package/wpad-mesh-mbedtls/description = $(Package/wpad-mesh/description)
+
+
+define Package/wpa-supplicant/Default
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=WirelessAPD
+  TITLE:=WPA Supplicant
+  URL:=http://hostap.epitest.fi/wpa_supplicant/
+  DEPENDS:=$(DRV_DEPENDS) +hostapd-common +libubus
+  EXTRA_DEPENDS:=hostapd-common (=$(PKG_VERSION)-$(PKG_RELEASE))
+  USERID:=network=101:network=101
+  PROVIDES:=wpa-supplicant
+  CONFLICTS:=$(SUPPLICANT_PROVIDERS)
+  SUPPLICANT_PROVIDERS+=$(1)
+endef
+
+define Package/wpa-supplicant
+$(call Package/wpa-supplicant/Default,$(1))
+  TITLE+= (built-in full)
+  VARIANT:=supplicant-full-internal
+endef
+
+define Package/wpa-supplicant-openssl
+$(call Package/wpa-supplicant/Default,$(1))
+  TITLE+= (OpenSSL full)
+  VARIANT:=supplicant-full-openssl
+  DEPENDS+=+PACKAGE_wpa-supplicant-openssl:libopenssl
+endef
+
+define Package/wpa-supplicant-wolfssl
+$(call Package/wpa-supplicant/Default,$(1))
+  TITLE+= (wolfSSL full)
+  VARIANT:=supplicant-full-wolfssl
+  DEPENDS+=+PACKAGE_wpa-supplicant-wolfssl:libwolfssl
+endef
+
+define Package/wpa-supplicant-mbedtls
+$(call Package/wpa-supplicant/Default,$(1))
+  TITLE+= (mbedTLS full)
+  VARIANT:=supplicant-full-mbedtls
+  DEPENDS+=+PACKAGE_wpa-supplicant-mbedtls:libmbedtls
+endef
+
+define Package/wpa-supplicant/config
+	source "$(SOURCE)/Config.in"
+endef
+
+define Package/wpa-supplicant-p2p
+$(call Package/wpa-supplicant/Default,$(1))
+  TITLE+= (Wi-Fi P2P support)
+  DEPENDS+=@PACKAGE_kmod-cfg80211
+  VARIANT:=supplicant-p2p-internal
+endef
+
+define Package/wpa-supplicant-mesh/Default
+$(call Package/wpa-supplicant/Default,$(1))
+  DEPENDS+=@PACKAGE_kmod-cfg80211 @(!TARGET_uml||BROKEN)
+  PROVIDES+=wpa-supplicant-mesh
+endef
+
+define Package/wpa-supplicant-mesh-openssl
+$(call Package/wpa-supplicant-mesh/Default,$(1))
+  TITLE+= (OpenSSL, 11s, SAE)
+  VARIANT:=supplicant-mesh-openssl
+  DEPENDS+=+PACKAGE_wpa-supplicant-mesh-openssl:libopenssl
+endef
+
+define Package/wpa-supplicant-mesh-wolfssl
+$(call Package/wpa-supplicant-mesh/Default,$(1))
+  TITLE+= (wolfSSL, 11s, SAE)
+  VARIANT:=supplicant-mesh-wolfssl
+  DEPENDS+=+PACKAGE_wpa-supplicant-mesh-wolfssl:libwolfssl
+endef
+
+define Package/wpa-supplicant-mesh-mbedtls
+$(call Package/wpa-supplicant-mesh/Default,$(1))
+  TITLE+= (mbedTLS, 11s, SAE)
+  VARIANT:=supplicant-mesh-mbedtls
+  DEPENDS+=+PACKAGE_wpa-supplicant-mesh-mbedtls:libmbedtls
+endef
+
+define Package/wpa-supplicant-basic
+$(call Package/wpa-supplicant/Default,$(1))
+  TITLE+= (11r, 11w)
+  VARIANT:=supplicant-basic
+endef
+
+define Package/wpa-supplicant-mini
+$(call Package/wpa-supplicant/Default,$(1))
+  TITLE+= (minimal)
+  VARIANT:=supplicant-mini
+endef
+
+
+define Package/hostapd-common
+  TITLE:=hostapd/wpa_supplicant common support files
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=WirelessAPD
+endef
+
+define Package/hostapd-utils
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=WirelessAPD
+  TITLE:=IEEE 802.1x Authenticator (utils)
+  URL:=http://hostap.epitest.fi/
+  DEPENDS:=@$(subst $(space),||,$(foreach pkg,$(HOSTAPD_PROVIDERS),PACKAGE_$(pkg)))
+  VARIANT:=*
+endef
+
+define Package/hostapd-utils/description
+ This package contains a command line utility to control the
+ IEEE 802.1x/WPA/EAP/RADIUS Authenticator.
+endef
+
+define Package/wpa-cli
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=WirelessAPD
+  DEPENDS:=@$(subst $(space),||,$(foreach pkg,$(SUPPLICANT_PROVIDERS),PACKAGE_$(pkg)))
+  TITLE:=WPA Supplicant command line control utility
+  VARIANT:=*
+endef
+
+define Package/eapol-test/Default
+  TITLE:=802.1x auth test utility
+  SECTION:=net
+  SUBMENU:=WirelessAPD
+  CATEGORY:=Network
+  DEPENDS:=$(DRV_DEPENDS) +libubus
+endef
+
+define Package/eapol-test
+  $(call Package/eapol-test/Default,$(1))
+  TITLE+= (built-in full)
+  VARIANT:=supplicant-full-internal
+endef
+
+define Package/eapol-test-openssl
+  $(call Package/eapol-test/Default,$(1))
+  TITLE+= (OpenSSL full)
+  VARIANT:=supplicant-full-openssl
+  CONFLICTS:=$(filter-out eapol-test-openssl ,$(EAPOL_TEST_PROVIDERS))
+  DEPENDS+=+PACKAGE_eapol-test-openssl:libopenssl
+  PROVIDES:=eapol-test
+endef
+
+define Package/eapol-test-wolfssl
+  $(call Package/eapol-test/Default,$(1))
+  TITLE+= (wolfSSL full)
+  VARIANT:=supplicant-full-wolfssl
+  CONFLICTS:=$(filter-out eapol-test-openssl ,$(filter-out eapol-test-wolfssl ,$(EAPOL_TEST_PROVIDERS)))
+  DEPENDS+=+PACKAGE_eapol-test-wolfssl:libwolfssl
+  PROVIDES:=eapol-test
+endef
+
+define Package/eapol-test-mbedtls
+  $(call Package/eapol-test/Default,$(1))
+  TITLE+= (mbedTLS full)
+  VARIANT:=supplicant-full-mbedtls
+  CONFLICTS:=$(filter-out eapol-test-openssl ,$(filter-out eapol-test-mbedtls ,$(EAPOL_TEST_PROVIDERS)))
+  DEPENDS+=+PACKAGE_eapol-test-mbedtls:libmbedtls
+  PROVIDES:=eapol-test
+endef
+
+
+ifneq ($(wildcard $(PKG_BUILD_DIR)/.config_*),$(subst .configured_,.config_,$(STAMP_CONFIGURED)))
+  define Build/Configure/rebuild
+	$(FIND) $(PKG_BUILD_DIR) -name \*.o -or -name \*.a | $(XARGS) rm -f
+	rm -f $(PKG_BUILD_DIR)/hostapd/hostapd
+	rm -f $(PKG_BUILD_DIR)/wpa_supplicant/wpa_supplicant
+	rm -f $(PKG_BUILD_DIR)/.config_*
+	touch $(subst .configured_,.config_,$(STAMP_CONFIGURED))
+  endef
 endif
-ifdef CONFIG_PACKAGE_kmod-mt7921e
-  PKG_MAKE_FLAGS += CONFIG_MT7921E=m
+
+define Build/Configure
+	$(Build/Configure/rebuild)
+	$(if $(wildcard ./files/hostapd-$(CONFIG_VARIANT).config), \
+		$(CP) ./files/hostapd-$(CONFIG_VARIANT).config $(PKG_BUILD_DIR)/hostapd/.config \
+	)
+	$(if $(wildcard ./files/wpa_supplicant-$(CONFIG_VARIANT).config), \
+		$(CP) ./files/wpa_supplicant-$(CONFIG_VARIANT).config $(PKG_BUILD_DIR)/wpa_supplicant/.config
+	)
+endef
+
+TARGET_CPPFLAGS := \
+	-I$(STAGING_DIR)/usr/include/libnl-tiny \
+	-I$(PKG_BUILD_DIR)/src/crypto \
+	$(TARGET_CPPFLAGS) \
+	-DCONFIG_LIBNL20 \
+	-D_GNU_SOURCE \
+	$(if $(CONFIG_WPA_MSG_MIN_PRIORITY),-DCONFIG_MSG_MIN_PRIORITY=$(CONFIG_WPA_MSG_MIN_PRIORITY))
+
+TARGET_CFLAGS += -ffunction-sections -fdata-sections -flto
+TARGET_LDFLAGS += -Wl,--gc-sections -flto=jobserver -fuse-linker-plugin -lubox -lubus
+
+ifdef CONFIG_PACKAGE_kmod-cfg80211
+  TARGET_LDFLAGS += -lm -lnl-tiny
 endif
+
+ifdef CONFIG_WPA_ENABLE_WEP
+    DRIVER_MAKEOPTS += CONFIG_WEP=y
+endif
+
+define Build/RunMake
+	CFLAGS="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS)" \
+	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/$(1) \
+		$(TARGET_CONFIGURE_OPTS) \
+		$(DRIVER_MAKEOPTS) \
+		LIBS="$(TARGET_LDFLAGS)" \
+		LIBS_c="$(TARGET_LDFLAGS_C)" \
+		AR="$(TARGET_CROSS)gcc-ar" \
+		BCHECK= \
+		$(if $(findstring s,$(OPENWRT_VERBOSE)),V=1) \
+		$(2)
+endef
+
+define Build/Compile/wpad
+	echo ` \
+		$(call Build/RunMake,hostapd,-s MULTICALL=1 dump_cflags); \
+		$(call Build/RunMake,wpa_supplicant,-s MULTICALL=1 dump_cflags) | \
+		sed -e 's,-n ,,g' -e 's^$(TARGET_CFLAGS)^^' \
+	` > $(PKG_BUILD_DIR)/.cflags
+	sed -i 's/"/\\"/g' $(PKG_BUILD_DIR)/.cflags
+	+$(call Build/RunMake,hostapd, \
+		CFLAGS="$$$$(cat $(PKG_BUILD_DIR)/.cflags)" \
+		MULTICALL=1 \
+		hostapd_cli hostapd_multi.a \
+	)
+	+$(call Build/RunMake,wpa_supplicant, \
+		CFLAGS="$$$$(cat $(PKG_BUILD_DIR)/.cflags)" \
+		MULTICALL=1 \
+		wpa_cli wpa_supplicant_multi.a \
+	)
+	+export MAKEFLAGS="$(MAKE_JOBSERVER)"; $(TARGET_CC) -o $(PKG_BUILD_DIR)/wpad \
+		$(TARGET_CFLAGS) \
+		./files/multicall.c \
+		$(PKG_BUILD_DIR)/hostapd/hostapd_multi.a \
+		$(PKG_BUILD_DIR)/wpa_supplicant/wpa_supplicant_multi.a \
+		$(TARGET_LDFLAGS)
+endef
+
+define Build/Compile/hostapd
+	+$(call Build/RunMake,hostapd, \
+		hostapd hostapd_cli \
+	)
+endef
+
+define Build/Compile/supplicant
+	+$(call Build/RunMake,wpa_supplicant, \
+		wpa_cli wpa_supplicant \
+	)
+endef
+
+define Build/Compile/supplicant-full-internal
+	+$(call Build/RunMake,wpa_supplicant, \
+		eapol_test \
+	)
+endef
+
+define Build/Compile/supplicant-full-openssl
+	+$(call Build/RunMake,wpa_supplicant, \
+		eapol_test \
+	)
+endef
+
+define Build/Compile/supplicant-full-wolfssl
+	+$(call Build/RunMake,wpa_supplicant, \
+		eapol_test \
+	)
+endef
+
+define Build/Compile/supplicant-full-mbedtls
+	+$(call Build/RunMake,wpa_supplicant, \
+		eapol_test \
+	)
+endef
 
 define Build/Compile
-	+$(KERNEL_MAKE) $(PKG_JOBS) \
-		$(PKG_MAKE_FLAGS) \
-		M="$(PKG_BUILD_DIR)" \
-		NOSTDINC_FLAGS="$(NOSTDINC_FLAGS)" \
-		modules
-	$(MAKE) -C $(PKG_BUILD_DIR)/tools
+	$(Build/Compile/$(LOCAL_TYPE))
+	$(Build/Compile/$(BUILD_VARIANT))
 endef
 
-define Build/Install
-	:
+define Install/hostapd
+	$(INSTALL_DIR) $(1)/usr/sbin
 endef
 
-define Package/kmod-mt76/install
-	true
+define Install/supplicant
+	$(INSTALL_DIR) $(1)/usr/sbin
 endef
 
-define KernelPackage/mt76x0-common/install
-	$(INSTALL_DIR) $(1)/lib/firmware/mediatek
-	cp \
-		$(PKG_BUILD_DIR)/firmware/mt7610e.bin \
-		$(1)/lib/firmware/mediatek
+define Package/hostapd-common/install
+	$(INSTALL_DIR) $(1)/etc/capabilities $(1)/etc/rc.button $(1)/etc/hotplug.d/ieee80211 $(1)/etc/init.d $(1)/lib/netifd  $(1)/usr/share/acl.d
+	$(INSTALL_BIN) ./files/dhcp-get-server.sh $(1)/lib/netifd/dhcp-get-server.sh
+	$(INSTALL_DATA) ./files/hostapd.sh $(1)/lib/netifd/hostapd.sh
+	$(INSTALL_BIN) ./files/wpad.init $(1)/etc/init.d/wpad
+	$(INSTALL_BIN) ./files/wps-hotplug.sh $(1)/etc/rc.button/wps
+	$(INSTALL_DATA) ./files/wpad_acl.json $(1)/usr/share/acl.d
+	$(INSTALL_DATA) ./files/wpad.json $(1)/etc/capabilities
 endef
 
-define KernelPackage/mt76x2-common/install
-	$(INSTALL_DIR) $(1)/lib/firmware
-	cp \
-		$(PKG_BUILD_DIR)/firmware/mt7662_rom_patch.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7662.bin \
-		$(1)/lib/firmware
+define Package/hostapd/install
+	$(call Install/hostapd,$(1))
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/hostapd $(1)/usr/sbin/
 endef
+Package/hostapd-basic/install = $(Package/hostapd/install)
+Package/hostapd-basic-openssl/install = $(Package/hostapd/install)
+Package/hostapd-basic-wolfssl/install = $(Package/hostapd/install)
+Package/hostapd-basic-mbedtls/install = $(Package/hostapd/install)
+Package/hostapd-mini/install = $(Package/hostapd/install)
+Package/hostapd-openssl/install = $(Package/hostapd/install)
+Package/hostapd-wolfssl/install = $(Package/hostapd/install)
+Package/hostapd-mbedtls/install = $(Package/hostapd/install)
 
-define KernelPackage/mt76x0u/install
-	$(INSTALL_DIR) $(1)/lib/firmware/mediatek
-	ln -sf mt7610e.bin $(1)/lib/firmware/mediatek/mt7610u.bin
+ifneq ($(LOCAL_TYPE),supplicant)
+  define Package/hostapd-utils/install
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/hostapd/hostapd_cli $(1)/usr/sbin/
+  endef
+endif
+
+define Package/wpad/install
+	$(call Install/hostapd,$(1))
+	$(call Install/supplicant,$(1))
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/wpad $(1)/usr/sbin/
+	$(LN) wpad $(1)/usr/sbin/hostapd
+	$(LN) wpad $(1)/usr/sbin/wpa_supplicant
 endef
+Package/wpad-basic/install = $(Package/wpad/install)
+Package/wpad-basic-openssl/install = $(Package/wpad/install)
+Package/wpad-basic-wolfssl/install = $(Package/wpad/install)
+Package/wpad-basic-mbedtls/install = $(Package/wpad/install)
+Package/wpad-mini/install = $(Package/wpad/install)
+Package/wpad-openssl/install = $(Package/wpad/install)
+Package/wpad-wolfssl/install = $(Package/wpad/install)
+Package/wpad-mbedtls/install = $(Package/wpad/install)
+Package/wpad-mesh-openssl/install = $(Package/wpad/install)
+Package/wpad-mesh-wolfssl/install = $(Package/wpad/install)
+Package/wpad-mesh-mbedtls/install = $(Package/wpad/install)
 
-define KernelPackage/mt76x2u/install
-	$(INSTALL_DIR) $(1)/lib/firmware/mediatek
-	ln -sf ../mt7662.bin $(1)/lib/firmware/mediatek/mt7662u.bin
-	ln -sf ../mt7662_rom_patch.bin $(1)/lib/firmware/mediatek/mt7662u_rom_patch.bin
+define Package/wpa-supplicant/install
+	$(call Install/supplicant,$(1))
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/wpa_supplicant/wpa_supplicant $(1)/usr/sbin/
 endef
+Package/wpa-supplicant-basic/install = $(Package/wpa-supplicant/install)
+Package/wpa-supplicant-mini/install = $(Package/wpa-supplicant/install)
+Package/wpa-supplicant-p2p/install = $(Package/wpa-supplicant/install)
+Package/wpa-supplicant-openssl/install = $(Package/wpa-supplicant/install)
+Package/wpa-supplicant-wolfssl/install = $(Package/wpa-supplicant/install)
+Package/wpa-supplicant-mbedtls/install = $(Package/wpa-supplicant/install)
+Package/wpa-supplicant-mesh-openssl/install = $(Package/wpa-supplicant/install)
+Package/wpa-supplicant-mesh-wolfssl/install = $(Package/wpa-supplicant/install)
+Package/wpa-supplicant-mesh-mbedtls/install = $(Package/wpa-supplicant/install)
 
-define KernelPackage/mt7603/install
-	$(INSTALL_DIR) $(1)/lib/firmware
-	cp $(if $(CONFIG_TARGET_ramips_mt76x8), \
-		$(PKG_BUILD_DIR)/firmware/mt7628_e1.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7628_e2.bin \
-		,\
-		$(PKG_BUILD_DIR)/firmware/mt7603_e1.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7603_e2.bin \
-		) \
-		$(1)/lib/firmware
-endef
+ifneq ($(LOCAL_TYPE),hostapd)
+  define Package/wpa-cli/install
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(CP) $(PKG_BUILD_DIR)/wpa_supplicant/wpa_cli $(1)/usr/sbin/
+  endef
+endif
 
-define KernelPackage/mt7615-firmware/install
-	$(INSTALL_DIR) $(1)/lib/firmware/mediatek
-	cp \
-		$(PKG_BUILD_DIR)/firmware/mt7615_cr4.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7615_n9.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7615_rom_patch.bin \
-		$(1)/lib/firmware/mediatek
-endef
+ifeq ($(BUILD_VARIANT),supplicant-full-internal)
+  define Package/eapol-test/install
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(CP) $(PKG_BUILD_DIR)/wpa_supplicant/eapol_test $(1)/usr/sbin/
+  endef
+endif
 
-define KernelPackage/mt7622-firmware/install
-	$(INSTALL_DIR) $(1)/lib/firmware/mediatek
-	cp \
-		$(PKG_BUILD_DIR)/firmware/mt7622_n9.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7622_rom_patch.bin \
-		$(1)/lib/firmware/mediatek
-endef
+ifeq ($(BUILD_VARIANT),supplicant-full-openssl)
+  define Package/eapol-test-openssl/install
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(CP) $(PKG_BUILD_DIR)/wpa_supplicant/eapol_test $(1)/usr/sbin/
+  endef
+endif
 
-define KernelPackage/mt7663-firmware-ap/install
-	$(INSTALL_DIR) $(1)/lib/firmware/mediatek
-	cp \
-		$(PKG_BUILD_DIR)/firmware/mt7663_n9_rebb.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7663pr2h_rebb.bin \
-		$(1)/lib/firmware/mediatek
-endef
+ifeq ($(BUILD_VARIANT),supplicant-full-wolfssl)
+  define Package/eapol-test-wolfssl/install
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(CP) $(PKG_BUILD_DIR)/wpa_supplicant/eapol_test $(1)/usr/sbin/
+  endef
+endif
 
-define KernelPackage/mt7663-firmware-sta/install
-	$(INSTALL_DIR) $(1)/lib/firmware/mediatek
-	cp \
-		$(PKG_BUILD_DIR)/firmware/mt7663_n9_v3.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7663pr2h.bin \
-		$(1)/lib/firmware/mediatek
-endef
+ifeq ($(BUILD_VARIANT),supplicant-full-mbedtls)
+  define Package/eapol-test-mbedtls/install
+	$(INSTALL_DIR) $(1)/usr/sbin
+	$(CP) $(PKG_BUILD_DIR)/wpa_supplicant/eapol_test $(1)/usr/sbin/
+  endef
+endif
 
-define KernelPackage/mt7915-firmware/install
-	$(INSTALL_DIR) $(1)/lib/firmware/mediatek
-	cp \
-		$(PKG_BUILD_DIR)/firmware/mt7915_wa.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7915_wm.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7915_rom_patch.bin \
-		$(1)/lib/firmware/mediatek
-endef
-
-define KernelPackage/mt7916-firmware/install
-	$(INSTALL_DIR) $(1)/lib/firmware/mediatek
-	cp \
-		$(PKG_BUILD_DIR)/firmware/mt7916_wa.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7916_wm.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7916_rom_patch.bin \
-		$(1)/lib/firmware/mediatek
-endef
-
-define KernelPackage/mt7986-firmware/install
-	$(INSTALL_DIR) $(1)/lib/firmware/mediatek
-	cp \
-		$(PKG_BUILD_DIR)/firmware/mt7986_wa.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7986_wm_mt7975.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7986_wm.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7986_rom_patch_mt7975.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7986_rom_patch.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7986_eeprom_mt7975_dual.bin \
-		$(PKG_BUILD_DIR)/firmware/mt7986_eeprom_mt7976_dual.bin \
-		$(1)/lib/firmware/mediatek
-endef
-
-define KernelPackage/mt7921-firmware/install
-	$(INSTALL_DIR) $(1)/lib/firmware/mediatek
-	cp \
-		$(PKG_BUILD_DIR)/firmware/WIFI_MT7961_patch_mcu_1_2_hdr.bin \
-		$(PKG_BUILD_DIR)/firmware/WIFI_RAM_CODE_MT7961_1.bin \
-		$(1)/lib/firmware/mediatek
-endef
-
-define Package/mt76-test/install
-	mkdir -p $(1)/usr/sbin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/tools/mt76-test $(1)/usr/sbin
-endef
-
-$(eval $(call KernelPackage,mt76-core))
-$(eval $(call KernelPackage,mt76-usb))
-$(eval $(call KernelPackage,mt76x02-usb))
-$(eval $(call KernelPackage,mt76x02-common))
-$(eval $(call KernelPackage,mt76x0-common))
-$(eval $(call KernelPackage,mt76x0e))
-$(eval $(call KernelPackage,mt76x0u))
-$(eval $(call KernelPackage,mt76x2-common))
-$(eval $(call KernelPackage,mt76x2u))
-$(eval $(call KernelPackage,mt76x2))
-$(eval $(call KernelPackage,mt7603))
-$(eval $(call KernelPackage,mt76-connac))
-$(eval $(call KernelPackage,mt76-sdio))
-$(eval $(call KernelPackage,mt7615-common))
-$(eval $(call KernelPackage,mt7615-firmware))
-$(eval $(call KernelPackage,mt7622-firmware))
-$(eval $(call KernelPackage,mt7615e))
-$(eval $(call KernelPackage,mt7663-firmware-ap))
-$(eval $(call KernelPackage,mt7663-firmware-sta))
-$(eval $(call KernelPackage,mt7663-usb-sdio))
-$(eval $(call KernelPackage,mt7663u))
-$(eval $(call KernelPackage,mt7663s))
-$(eval $(call KernelPackage,mt7915-firmware))
-$(eval $(call KernelPackage,mt7915e))
-$(eval $(call KernelPackage,mt7916-firmware))
-$(eval $(call KernelPackage,mt7986-firmware))
-$(eval $(call KernelPackage,mt7921-firmware))
-$(eval $(call KernelPackage,mt7921-common))
-$(eval $(call KernelPackage,mt7921u))
-$(eval $(call KernelPackage,mt7921s))
-$(eval $(call KernelPackage,mt7921e))
-$(eval $(call KernelPackage,mt76))
-$(eval $(call BuildPackage,mt76-test))
+# Build hostapd-common before its dependents, to avoid
+# spurious rebuilds when building multiple variants.
+$(eval $(call BuildPackage,hostapd-common))
+$(eval $(call BuildPackage,hostapd))
+$(eval $(call BuildPackage,hostapd-basic))
+$(eval $(call BuildPackage,hostapd-basic-openssl))
+$(eval $(call BuildPackage,hostapd-basic-wolfssl))
+$(eval $(call BuildPackage,hostapd-basic-mbedtls))
+$(eval $(call BuildPackage,hostapd-mini))
+$(eval $(call BuildPackage,hostapd-openssl))
+$(eval $(call BuildPackage,hostapd-wolfssl))
+$(eval $(call BuildPackage,hostapd-mbedtls))
+$(eval $(call BuildPackage,wpad))
+$(eval $(call BuildPackage,wpad-mesh-openssl))
+$(eval $(call BuildPackage,wpad-mesh-wolfssl))
+$(eval $(call BuildPackage,wpad-mesh-mbedtls))
+$(eval $(call BuildPackage,wpad-basic))
+$(eval $(call BuildPackage,wpad-basic-openssl))
+$(eval $(call BuildPackage,wpad-basic-wolfssl))
+$(eval $(call BuildPackage,wpad-basic-mbedtls))
+$(eval $(call BuildPackage,wpad-mini))
+$(eval $(call BuildPackage,wpad-openssl))
+$(eval $(call BuildPackage,wpad-wolfssl))
+$(eval $(call BuildPackage,wpad-mbedtls))
+$(eval $(call BuildPackage,wpa-supplicant))
+$(eval $(call BuildPackage,wpa-supplicant-mesh-openssl))
+$(eval $(call BuildPackage,wpa-supplicant-mesh-wolfssl))
+$(eval $(call BuildPackage,wpa-supplicant-mesh-mbedtls))
+$(eval $(call BuildPackage,wpa-supplicant-basic))
+$(eval $(call BuildPackage,wpa-supplicant-mini))
+$(eval $(call BuildPackage,wpa-supplicant-p2p))
+$(eval $(call BuildPackage,wpa-supplicant-openssl))
+$(eval $(call BuildPackage,wpa-supplicant-wolfssl))
+$(eval $(call BuildPackage,wpa-supplicant-mbedtls))
+$(eval $(call BuildPackage,wpa-cli))
+$(eval $(call BuildPackage,hostapd-utils))
+$(eval $(call BuildPackage,eapol-test))
+$(eval $(call BuildPackage,eapol-test-openssl))
+$(eval $(call BuildPackage,eapol-test-wolfssl))
+$(eval $(call BuildPackage,eapol-test-mbedtls))
