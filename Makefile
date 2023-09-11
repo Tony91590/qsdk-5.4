@@ -182,6 +182,7 @@ define KernelPackage/mt7615e
   AUTOLOAD:=$(call AutoProbe,mt7615e)
 endef
 
+
 define KernelPackage/mt7622-firmware
   $(KernelPackage/mt76-default)
   TITLE:=MediaTek MT7622 firmware
@@ -236,6 +237,9 @@ define KernelPackage/mt7915e
   DEPENDS+=@PCI_SUPPORT +kmod-mt76-connac +kmod-hwmon-core +kmod-thermal +@DRIVER_11AX_SUPPORT +@KERNEL_RELAY
   FILES:= $(PKG_BUILD_DIR)/mt7915/mt7915e.ko
   AUTOLOAD:=$(call AutoProbe,mt7915e)
+  ifdef CONFIG_TARGET_mediatek_filogic
+    MODPARAMS.mt7915e:=wed_enable=Y
+  endif
 endef
 
 define KernelPackage/mt7916-firmware
