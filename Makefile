@@ -182,7 +182,6 @@ define KernelPackage/mt7615e
   AUTOLOAD:=$(call AutoProbe,mt7615e)
 endef
 
-
 define KernelPackage/mt7622-firmware
   $(KernelPackage/mt76-default)
   TITLE:=MediaTek MT7622 firmware
