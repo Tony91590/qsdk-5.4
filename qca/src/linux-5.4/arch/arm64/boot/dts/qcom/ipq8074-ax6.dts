@@ -8,9 +8,11 @@
 / {
 	#address-cells = <0x2>;
 	#size-cells = <0x2>;
-	model = "XIAOMI AX6";
+	model = "XIAOMI AX3600";
 	compatible = "qcom,ap-ac04", "qcom,ipq8074";
+	qcom,board-id = <0x8 0x0>;
 	qcom,msm-id = <0x18C 0x0>;
+	qcom,pmic-id = <0x0 0x0 0x0 0x0>;
 	interrupt-parent = <&intc>;
 
 	aliases {
@@ -117,6 +119,13 @@
 
 				net_yellow {
 					pins = "gpio22";
+					function = "gpio";
+					drive-strength = <8>;
+					bias-pull-down;
+				};
+
+				led_ant {
+					pins = "gpio51";
 					function = "gpio";
 					drive-strength = <8>;
 					bias-pull-down;
@@ -231,12 +240,22 @@
 
 				partition13@2dc0000 {
 					label = "rootfs_1";
-					reg = <0x2dc0000 0x4280000>;
+					reg = <0x2dc0000 0x8000000>;
+				};
+
+				partition14@adc0000 {
+					label = "overlay";
+					reg = <0xadc0000 0x1ec0000>;
 				};
 
 				partition15@cc80000 {
 					label = "rsvd0";
 					reg = <0xcc80000 0x80000>;
+				};
+
+				partition16@cd00000 {
+					label = "0:WIFIFW";
+					reg = <0xcd00000 0x900000>;
 				};
 			};
 		};
@@ -316,6 +335,11 @@
 			led@22 {
 				label = "net_yellow";
 				gpio = <&tlmm 22 GPIO_ACTIVE_HIGH>;
+			};
+
+			led@51 {
+				label = "led_ant";
+				gpio = <&tlmm 51 GPIO_ACTIVE_HIGH>;
 			};
 		};
 
@@ -702,6 +726,18 @@
 			local-mac-address = [000000000000];
 			qcom,link-poll = <1>;
 			qcom,phy-mdio-addr = <4>;
+			phy-mode = "sgmii";
+		};
+
+		dp6 {
+			device_type = "network";
+			compatible = "qcom,nss-dp";
+			qcom,id = <6>;
+			reg = <0x3a007000 0x3fff>;
+			qcom,mactype = <1>;
+			local-mac-address = [000000000000];
+			qcom,link-poll = <1>;
+			qcom,phy-mdio-addr = <7>;
 			phy-mode = "sgmii";
 		};
 	};
